@@ -37,11 +37,18 @@
             
             <div class="bg-white/10 backdrop-blur-lg rounded-xl p-6 text-center border border-white/20">
                 <i class="bi bi-tree icon-lg mb-3" style="color: {{ land_color }};"></i>
-                <h3 class="text-4xl font-bold mb-2" style="color: {{ land_color }};">{{ land_health }}</h3>
-                <p class="text-xs text-gray-700 mb-3" style="text-shadow: 0 1px 2px rgba(255,255,255,0.5);">Land Health (SDG 15)</p>
-                <div class="w-full bg-gray-200 rounded-full h-1.5">
-                    <div class="h-1.5 rounded-full transition-all" style="width: {{ land_health }}0%; background-color: {{ land_color }};"></div>
+                <div class="relative inline-flex items-center justify-center w-32 h-32 mb-3">
+                    <svg class="w-full h-full transform -rotate-90">
+                        <circle cx="64" cy="64" r="56" stroke="#e5e7eb" stroke-width="8" fill="none"></circle>
+                        <circle cx="64" cy="64" r="56" stroke="{{ land_color }}" stroke-width="8" fill="none" 
+                                stroke-dasharray="352" stroke-dashoffset="{{ 352 - (land_health * 35.2)|floatformat:0 }}"
+                                class="transition-all duration-1000" stroke-linecap="round"></circle>
+                    </svg>
+                    <div class="absolute inset-0 flex items-center justify-center">
+                        <span class="text-3xl font-bold" style="color: {{ land_color }};">{{ land_health }}</span>
+                    </div>
                 </div>
+                <p class="text-xs text-gray-700" style="text-shadow: 0 1px 2px rgba(255,255,255,0.5);">Land Health (SDG 15)</p>
             </div>
         </div>
 
