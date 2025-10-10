@@ -37,3 +37,7 @@ externalPort = 80
 [[ports]]
 localPort = 46661
 externalPort = 3000
+
+[deployment]
+deploymentTarget = "autoscale"
+run = ["gunicorn", "--bind=0.0.0.0:5000", "--reuse-port", "asase_project.wsgi:application"]
