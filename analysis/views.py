@@ -19,8 +19,27 @@ def live_report(request):
         location = request.POST.get('location', '')
         country = request.POST.get('country', '')
         
+        if not location or not country:
+            return HttpResponse(
+                '<div class="bg-red-100 border border-red-400 text-red-700 px-6 py-4 rounded-xl text-center">'
+                '<i class="bi bi-exclamation-circle text-2xl mr-2"></i>'
+                'Please provide both location and country to analyze.'
+                '</div>',
+                status=400
+            )
+        
         full_location = f"{location}, {country}" if country else location
         coords = get_coords_from_location(full_location)
+        
+        if not coords or coords.get('lat') == 6.5244:
+            return HttpResponse(
+                '<div class="bg-amber-100 border border-amber-400 text-amber-800 px-6 py-4 rounded-xl text-center">'
+                '<i class="bi bi-search text-2xl mr-2"></i>'
+                'Location not found. Please check the spelling and try again, or try a nearby major city.'
+                '</div>',
+                status=404
+            )
+        
         weather = get_weather_data(coords['lat'], coords['lon'])
         elevation = get_elevation_data(coords['lat'], coords['lon'])
         ndvi = get_real_ndvi(coords['lat'], coords['lon'])
