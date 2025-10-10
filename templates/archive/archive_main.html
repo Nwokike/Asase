@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+
+{% block title %}Environmental Archive - ASASE{% endblock %}
+
+{% block content %}
+<div class="min-h-screen py-16 px-4">
+    <div class="max-w-7xl mx-auto">
+        <div class="text-center mb-12">
+            <h1 class="text-4xl md:text-6xl font-extrabold text-white mb-4">
+                <i class="bi bi-archive-fill text-green-leaf mr-3"></i>
+                Environmental Archive
+            </h1>
+            <p class="text-xl text-white opacity-90">Africa's Environmental Intelligence Database</p>
+        </div>
+
+        <div class="glass-card rounded-3xl p-6 md:p-8 mb-8">
+            <form method="get" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-white font-semibold mb-2">
+                        <i class="bi bi-geo-alt text-green-leaf mr-2"></i>Filter by Location
+                    </label>
+                    <input 
+                        type="text" 
+                        name="location" 
+                        value="{{ filter_location }}"
+                        class="w-full px-4 py-3 rounded-lg bg-white bg-opacity-20 border border-white border-opacity-30 text-white placeholder-white placeholder-opacity-60 focus:outline-none focus:border-green-leaf" 
+                        placeholder="Enter location..."
+                    >
+                </div>
+                <div>
+                    <label class="block text-white font-semibold mb-2">
+                        <i class="bi bi-flag text-green-leaf mr-2"></i>Filter by Country
+                    </label>
+                    <input 
+                        type="text" 
+                        name="country" 
+                        value="{{ filter_country }}"
+                        class="w-full px-4 py-3 rounded-lg bg-white bg-opacity-20 border border-white border-opacity-30 text-white placeholder-white placeholder-opacity-60 focus:outline-none focus:border-green-leaf" 
+                        placeholder="Enter country..."
+                    >
+                </div>
+                <div class="flex items-end">
+                    <button type="submit" class="w-full bg-green-leaf hover:bg-opacity-90 text-white font-bold py-3 px-6 rounded-lg transition-all">
+                        <i class="bi bi-funnel mr-2"></i>Apply Filters
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        {% if reports %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for report in reports %}
+                <a href="/archive/{{ report.slug }}/" class="block group">
+                    <div class="glass-card rounded-2xl p-6 hover-lift h-full">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="text-xl font-bold text-white mb-1">
+                                    <i class="bi bi-geo-alt-fill text-green-leaf mr-2"></i>
+                                    {{ report.location_name }}
+                                </h3>
+                                <p class="text-white opacity-75 text-sm">{{ report.country }}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="text-white opacity-90 text-sm mb-4">
+                            <i class="bi bi-calendar-event mr-1"></i>
+                            {{ report.timestamp|date:"F d, Y - H:i" }} WAT
+                        </div>
+                        
+                        <div class="grid grid-cols-3 gap-3 text-center">
+                            <div class="bg-white bg-opacity-10 rounded-lg py-2">
+                                <p class="text-white opacity-75 text-xs mb-1">Flood</p>
+                                <p class="text-2xl font-bold text-white">{{ report.risk_scores.flood }}</p>
+                            </div>
+                            <div class="bg-white bg-opacity-10 rounded-lg py-2">
+                                <p class="text-white opacity-75 text-xs mb-1">Air</p>
+                                <p class="text-2xl font-bold text-white">{{ report.risk_scores.air }}</p>
+                            </div>
+                            <div class="bg-white bg-opacity-10 rounded-lg py-2">
+                                <p class="text-white opacity-75 text-xs mb-1">Land</p>
+                                <p class="text-2xl font-bold text-white">{{ report.risk_scores.land_health }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+
+            {% if reports.has_other_pages %}
+            <div class="flex justify-center mt-10 space-x-4">
+                {% if reports.has_previous %}
+                    <a href="?page={{ reports.previous_page_number }}{% if filter_location %}&location={{ filter_location }}{% endif %}{% if filter_country %}&country={{ filter_country }}{% endif %}" 
+                       class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white font-semibold px-6 py-3 rounded-lg transition-all">
+                        <i class="bi bi-chevron-left mr-2"></i>Previous
+                    </a>
+                {% endif %}
+                
+                <span class="text-white font-semibold px-6 py-3">
+                    Page {{ reports.number }} of {{ reports.paginator.num_pages }}
+                </span>
+                
+                {% if reports.has_next %}
+                    <a href="?page={{ reports.next_page_number }}{% if filter_location %}&location={{ filter_location }}{% endif %}{% if filter_country %}&country={{ filter_country }}{% endif %}" 
+                       class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white font-semibold px-6 py-3 rounded-lg transition-all">
+                        Next<i class="bi bi-chevron-right ml-2"></i>
+                    </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        {% else %}
+            <div class="glass-card rounded-3xl p-12 text-center">
+                <i class="bi bi-inbox text-8xl text-white opacity-30 mb-6 block"></i>
+                <h3 class="text-2xl font-bold text-white mb-3">No Reports Found</h3>
+                <p class="text-white opacity-75 text-lg mb-6">
+                    {% if filter_location or filter_country %}
+                        Try adjusting your filters or clear them to see all reports.
+                    {% else %}
+                        Start analyzing locations to build the environmental archive!
+                    {% endif %}
+                </p>
+                <a href="/" class="inline-block bg-green-leaf hover:bg-opacity-90 text-white font-bold py-3 px-8 rounded-lg transition-all">
+                    <i class="bi bi-search mr-2"></i>Analyze Location
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

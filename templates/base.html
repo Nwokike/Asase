@@ -111,11 +111,14 @@
                     <a href="/" class="text-white hover:text-green-leaf transition-colors duration-300 font-medium">
                         <i class="bi bi-search me-1"></i> Search
                     </a>
+                    <a href="/map/" class="text-white hover:text-green-leaf transition-colors duration-300 font-medium">
+                        <i class="bi bi-map me-1"></i> Map
+                    </a>
+                    <a href="/archive/" class="text-white hover:text-green-leaf transition-colors duration-300 font-medium">
+                        <i class="bi bi-archive me-1"></i> Archive
+                    </a>
                     <a href="/about/" class="text-white hover:text-green-leaf transition-colors duration-300 font-medium">
                         <i class="bi bi-info-circle me-1"></i> About
-                    </a>
-                    <a href="/privacy/" class="text-white hover:text-green-leaf transition-colors duration-300 font-medium">
-                        <i class="bi bi-shield-check me-1"></i> Privacy
                     </a>
                 </div>
             </div>
@@ -132,13 +135,13 @@
                 <i class="bi bi-search text-2xl"></i>
                 <span class="text-xs">Search</span>
             </a>
-            <a href="/about/" class="flex flex-col items-center space-y-1 text-white hover:text-green-leaf transition-colors {% if request.path == '/about/' %}text-green-leaf{% endif %}">
-                <i class="bi bi-info-circle text-2xl"></i>
-                <span class="text-xs">About</span>
+            <a href="/map/" class="flex flex-col items-center space-y-1 text-white hover:text-green-leaf transition-colors {% if request.path == '/map/' %}text-green-leaf{% endif %}">
+                <i class="bi bi-map text-2xl"></i>
+                <span class="text-xs">Map</span>
             </a>
-            <a href="/privacy/" class="flex flex-col items-center space-y-1 text-white hover:text-green-leaf transition-colors {% if request.path == '/privacy/' %}text-green-leaf{% endif %}">
-                <i class="bi bi-shield-check text-2xl"></i>
-                <span class="text-xs">Privacy</span>
+            <a href="/archive/" class="flex flex-col items-center space-y-1 text-white hover:text-green-leaf transition-colors {% if request.path == '/archive/' %}text-green-leaf{% endif %}">
+                <i class="bi bi-archive text-2xl"></i>
+                <span class="text-xs">Archive</span>
             </a>
         </div>
     </div>
