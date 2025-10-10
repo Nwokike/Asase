@@ -1,84 +1,96 @@
-<div class="max-w-7xl mx-auto px-4 py-8 pb-24 md:pb-8">
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-10">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-8 pb-6 border-b border-gray-200">
-            <div class="mb-4 md:mb-0">
-                <h2 class="text-2xl md:text-3xl font-semibold text-navy mb-1">
+<div class="max-w-7xl mx-auto px-6 py-12 pb-28 md:pb-12">
+    <div class="bg-white/10 backdrop-blur-lg rounded-3xl border border-white/20 p-8 md:p-12">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-10 pb-8 border-b border-white/20">
+            <div class="mb-6 md:mb-0">
+                <h2 class="text-3xl md:text-4xl font-semibold text-navy mb-2 flex items-center">
+                    <i class="bi bi-geo-alt-fill text-3xl mr-3"></i>
                     {{ location_name }}, {{ country }}
                 </h2>
-                <p class="text-xs text-gray-500">
+                <p class="text-sm text-gray-600 ml-12">
                     {{ timestamp }}
                 </p>
             </div>
-            <a href="/location/{{ location_slug }}/" class="inline-block bg-gray-100 hover:bg-gray-200 text-navy font-medium px-5 py-2 rounded-lg transition-colors text-sm">
-                <i class="bi bi-archive icon-sm mr-1"></i> Location Hub
+            <a href="/location/{{ location_slug }}/" class="inline-flex items-center bg-navy hover:bg-opacity-90 text-white font-medium px-6 py-3 rounded-xl transition-colors text-base">
+                <i class="bi bi-archive text-xl mr-2"></i> Location Hub
             </a>
         </div>
 
-        <div id="map" class="rounded-xl mb-8 border border-gray-200" style="height: 300px;"></div>
+        <div id="map" class="rounded-2xl mb-10 border border-white/20" style="height: 350px;"></div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div class="bg-white/10 backdrop-blur-lg rounded-xl p-6 text-center border border-white/20">
-                <i class="bi bi-droplet icon-lg mb-3" style="color: {{ flood_color }};"></i>
-                <h3 class="text-4xl font-bold mb-2" style="color: {{ flood_color }};">{{ flood_risk }}</h3>
-                <p class="text-xs text-gray-700 mb-3" style="text-shadow: 0 1px 2px rgba(255,255,255,0.5);">Flood Risk</p>
-                <div class="w-full bg-gray-200 rounded-full h-1.5">
-                    <div class="h-1.5 rounded-full transition-all" style="width: {{ flood_risk }}0%; background-color: {{ flood_color }};"></div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-8 text-center border border-white/20">
+                <i class="bi bi-droplet text-5xl mb-4" style="color: {{ flood_color }};"></i>
+                <h3 class="text-5xl font-bold mb-3" style="color: {{ flood_color }};">{{ flood_risk }}</h3>
+                <p class="text-sm text-gray-700 mb-4 font-medium">Flood Risk</p>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="h-2 rounded-full transition-all" style="width: {{ flood_risk }}0%; background-color: {{ flood_color }};"></div>
                 </div>
             </div>
             
-            <div class="bg-white/10 backdrop-blur-lg rounded-xl p-6 text-center border border-white/20">
-                <i class="bi bi-wind icon-lg mb-3" style="color: {{ air_color }};"></i>
-                <h3 class="text-4xl font-bold mb-2" style="color: {{ air_color }};">{{ air_quality }}</h3>
-                <p class="text-xs text-gray-700 mb-3" style="text-shadow: 0 1px 2px rgba(255,255,255,0.5);">Air Quality</p>
-                <div class="w-full bg-gray-200 rounded-full h-1.5">
-                    <div class="h-1.5 rounded-full transition-all" style="width: {{ air_quality }}0%; background-color: {{ air_color }};"></div>
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-8 text-center border border-white/20">
+                <i class="bi bi-wind text-5xl mb-4" style="color: {{ air_color }};"></i>
+                <h3 class="text-5xl font-bold mb-3" style="color: {{ air_color }};">{{ air_quality }}</h3>
+                <p class="text-sm text-gray-700 mb-4 font-medium">Air Quality</p>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="h-2 rounded-full transition-all" style="width: {{ air_quality }}0%; background-color: {{ air_color }};"></div>
                 </div>
             </div>
             
-            <div class="bg-white/10 backdrop-blur-lg rounded-xl p-6 text-center border border-white/20">
-                <i class="bi bi-tree icon-lg mb-3" style="color: {{ land_color }};"></i>
-                <div class="relative inline-flex items-center justify-center w-32 h-32 mb-3">
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-8 text-center border border-white/20">
+                <i class="bi bi-tree text-5xl mb-4" style="color: {{ land_color }};"></i>
+                <div class="relative inline-flex items-center justify-center w-36 h-36 mb-3">
                     <svg class="w-full h-full transform -rotate-90">
-                        <circle cx="64" cy="64" r="56" stroke="#e5e7eb" stroke-width="8" fill="none"></circle>
-                        <circle cx="64" cy="64" r="56" stroke="{{ land_color }}" stroke-width="8" fill="none" 
-                                stroke-dasharray="352" stroke-dashoffset="{{ 352 - (land_health * 35.2)|floatformat:0 }}"
+                        <circle cx="72" cy="72" r="64" stroke="#e5e7eb" stroke-width="10" fill="none"></circle>
+                        <circle cx="72" cy="72" r="64" stroke="{{ land_color }}" stroke-width="10" fill="none" 
+                                stroke-dasharray="402" stroke-dashoffset="{{ 402 - (land_health * 40.2)|floatformat:0 }}"
                                 class="transition-all duration-1000" stroke-linecap="round"></circle>
                     </svg>
                     <div class="absolute inset-0 flex items-center justify-center">
-                        <span class="text-3xl font-bold" style="color: {{ land_color }};">{{ land_health }}</span>
+                        <span class="text-4xl font-bold" style="color: {{ land_color }};">{{ land_health }}</span>
                     </div>
                 </div>
-                <p class="text-xs text-gray-700" style="text-shadow: 0 1px 2px rgba(255,255,255,0.5);">Land Health (SDG 15)</p>
+                <p class="text-sm text-gray-700 font-medium">Land Health (SDG 15)</p>
             </div>
         </div>
 
-        <div class="bg-gray-50 rounded-xl p-6 md:p-8 mb-8 border border-gray-200">
-            <h4 class="text-xl font-semibold text-navy mb-4">
+        <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-8 md:p-10 mb-10 border border-white/20">
+            <h4 class="text-2xl font-semibold text-navy mb-3 flex items-center">
+                <i class="bi bi-file-earmark-text text-3xl mr-3"></i>
                 {{ analysis.title }}
             </h4>
-            <p class="text-xs text-gray-500 mb-6">{{ analysis.timestamp }}</p>
-            <p class="text-sm font-medium text-gray-700 mb-6">{{ analysis.subject }}</p>
+            <p class="text-sm text-gray-600 mb-8 ml-12">{{ analysis.timestamp }}</p>
+            <p class="text-base font-medium text-gray-800 mb-8 ml-12">{{ analysis.subject }}</p>
             
-            <div class="space-y-6">
+            <div class="space-y-8 ml-12">
                 <div>
-                    <h5 class="text-sm font-semibold text-navy mb-2">Risk Assessment</h5>
-                    <p class="text-gray-700 leading-relaxed text-sm">{{ analysis.assessment }}</p>
+                    <h5 class="text-base font-semibold text-navy mb-3 flex items-center">
+                        <i class="bi bi-exclamation-triangle text-xl mr-2"></i>
+                        Risk Assessment
+                    </h5>
+                    <p class="text-gray-700 leading-relaxed text-base">{{ analysis.assessment }}</p>
                 </div>
                 
                 <div>
-                    <h5 class="text-sm font-semibold text-navy mb-2">SDG 15 Compliance Analysis</h5>
-                    <p class="text-gray-700 leading-relaxed text-sm">{{ analysis.sdg_15_compliance }}</p>
+                    <h5 class="text-base font-semibold text-navy mb-3 flex items-center">
+                        <i class="bi bi-globe text-xl mr-2"></i>
+                        SDG 15 Compliance Analysis
+                    </h5>
+                    <p class="text-gray-700 leading-relaxed text-base">{{ analysis.sdg_15_compliance }}</p>
                 </div>
                 
                 <div>
-                    <h5 class="text-sm font-semibold text-navy mb-2">Recommendations</h5>
-                    <p class="text-gray-700 leading-relaxed text-sm">{{ analysis.recommendations }}</p>
+                    <h5 class="text-base font-semibold text-navy mb-3 flex items-center">
+                        <i class="bi bi-lightbulb text-xl mr-2"></i>
+                        Recommendations
+                    </h5>
+                    <p class="text-gray-700 leading-relaxed text-base">{{ analysis.recommendations }}</p>
                 </div>
             </div>
         </div>
 
         <div class="text-center">
-            <a href="/" class="inline-block bg-navy hover:bg-opacity-90 text-white font-medium py-3 px-8 rounded-lg transition-all text-sm">
+            <a href="/" class="inline-flex items-center bg-navy hover:bg-opacity-90 text-white font-medium py-4 px-10 rounded-xl transition-all text-base">
+                <i class="bi bi-arrow-left text-xl mr-3"></i>
                 Analyze Another Location
             </a>
         </div>

@@ -3,78 +3,82 @@
 {% block title %}{{ location_name }}, {{ country }} - ASASE{% endblock %}
 
 {% block content %}
-<div class="min-h-screen py-12 px-4 pb-24 md:pb-12">
+<div class="min-h-screen py-16 px-6 pb-28 md:pb-16">
     <div class="max-w-7xl mx-auto">
-        <div class="mb-10">
-            <h1 class="text-3xl md:text-4xl font-semibold text-navy mb-2">
+        <div class="mb-16">
+            <h1 class="text-4xl md:text-5xl font-light text-navy mb-4 tracking-tight flex items-center">
+                <i class="bi bi-building text-4xl mr-4"></i>
                 {{ location_name }}, {{ country }}
             </h1>
-            <p class="text-base text-gray-600">Environmental Intelligence Hub</p>
+            <p class="text-xl text-gray-600 font-light ml-16">Environmental Intelligence Hub</p>
         </div>
 
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 md:p-10 mb-10">
-            <h3 class="text-xl font-semibold text-navy mb-6">
+        <div class="bg-white/10 backdrop-blur-lg rounded-3xl border border-white/20 p-10 md:p-12 mb-12">
+            <h3 class="text-2xl font-semibold text-navy mb-8 flex items-center">
+                <i class="bi bi-activity text-3xl mr-3"></i>
                 Live Environmental Data
             </h3>
             
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div class="bg-gray-50 rounded-xl p-6 text-center border border-gray-200">
-                    <i class="bi bi-droplet icon-lg mb-3" style="color: {{ flood_color }};"></i>
-                    <h3 class="text-3xl font-bold mb-1" style="color: {{ flood_color }};">{{ live_data.flood }}</h3>
-                    <p class="text-gray-600 text-xs">Flood Risk</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
+                <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-8 text-center border border-white/20">
+                    <i class="bi bi-droplet text-5xl mb-4" style="color: {{ flood_color }};"></i>
+                    <h3 class="text-4xl font-bold mb-2" style="color: {{ flood_color }};">{{ live_data.flood }}</h3>
+                    <p class="text-gray-700 text-sm font-medium">Flood Risk</p>
                 </div>
                 
-                <div class="bg-gray-50 rounded-xl p-6 text-center border border-gray-200">
-                    <i class="bi bi-wind icon-lg mb-3" style="color: {{ air_color }};"></i>
-                    <h3 class="text-3xl font-bold mb-1" style="color: {{ air_color }};">{{ live_data.air }}</h3>
-                    <p class="text-gray-600 text-xs">Air Quality</p>
+                <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-8 text-center border border-white/20">
+                    <i class="bi bi-wind text-5xl mb-4" style="color: {{ air_color }};"></i>
+                    <h3 class="text-4xl font-bold mb-2" style="color: {{ air_color }};">{{ live_data.air }}</h3>
+                    <p class="text-gray-700 text-sm font-medium">Air Quality</p>
                 </div>
                 
-                <div class="bg-gray-50 rounded-xl p-6 text-center border border-gray-200">
-                    <i class="bi bi-tree icon-lg mb-3" style="color: {{ land_color }};"></i>
-                    <h3 class="text-3xl font-bold mb-1" style="color: {{ land_color }};">{{ live_data.land_health }}</h3>
-                    <p class="text-gray-600 text-xs">Land Health</p>
+                <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-8 text-center border border-white/20">
+                    <i class="bi bi-tree text-5xl mb-4" style="color: {{ land_color }};"></i>
+                    <h3 class="text-4xl font-bold mb-2" style="color: {{ land_color }};">{{ live_data.land_health }}</h3>
+                    <p class="text-gray-700 text-sm font-medium">Land Health</p>
                 </div>
             </div>
             
             <div class="text-center">
-                <a href="/" class="inline-block bg-navy hover:bg-opacity-90 text-white font-medium py-3 px-8 rounded-lg transition-all text-sm">
-                    <i class="bi bi-bar-chart icon-sm mr-1"></i>
+                <a href="/" class="inline-flex items-center bg-navy hover:bg-opacity-90 text-white font-medium py-4 px-10 rounded-xl transition-all text-base">
+                    <i class="bi bi-bar-chart text-xl mr-3"></i>
                     Get Latest Full Analysis
                 </a>
             </div>
         </div>
 
-        <h3 class="text-xl font-semibold text-navy mb-6">
+        <h3 class="text-2xl font-semibold text-navy mb-8 flex items-center">
+            <i class="bi bi-clock-history text-3xl mr-3"></i>
             Historical Reports Archive
         </h3>
         
         {% if snapshots %}
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {% for snapshot in snapshots %}
                 <a href="/archive/{{ snapshot.slug }}/" class="block hover-lift">
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <div class="flex justify-between items-start mb-4">
-                            <h5 class="text-lg font-semibold text-navy">
+                    <div class="bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 p-8">
+                        <div class="flex justify-between items-start mb-6">
+                            <h5 class="text-xl font-semibold text-navy flex items-center">
+                                <i class="bi bi-calendar-event text-2xl mr-2"></i>
                                 {{ snapshot.timestamp|date:"F d, Y" }}
                             </h5>
-                            <span class="bg-gray-100 text-navy px-3 py-1 rounded-full text-xs font-medium">
+                            <span class="bg-navy/20 text-navy px-4 py-2 rounded-full text-sm font-medium">
                                 {{ snapshot.timestamp|date:"H:i" }} WAT
                             </span>
                         </div>
                         
-                        <div class="grid grid-cols-3 gap-4 text-center mt-4">
+                        <div class="grid grid-cols-3 gap-4 text-center mt-6">
                             <div>
-                                <p class="text-gray-500 text-xs mb-1">Flood</p>
-                                <h5 class="text-xl font-bold text-navy">{{ snapshot.risk_scores.flood }}</h5>
+                                <p class="text-gray-600 text-xs mb-2">Flood</p>
+                                <h5 class="text-2xl font-bold text-navy">{{ snapshot.risk_scores.flood }}</h5>
                             </div>
                             <div>
-                                <p class="text-gray-500 text-xs mb-1">Air</p>
-                                <h5 class="text-xl font-bold text-navy">{{ snapshot.risk_scores.air }}</h5>
+                                <p class="text-gray-600 text-xs mb-2">Air</p>
+                                <h5 class="text-2xl font-bold text-navy">{{ snapshot.risk_scores.air }}</h5>
                             </div>
                             <div>
-                                <p class="text-gray-500 text-xs mb-1">Land</p>
-                                <h5 class="text-xl font-bold text-navy">{{ snapshot.risk_scores.land_health }}</h5>
+                                <p class="text-gray-600 text-xs mb-2">Land</p>
+                                <h5 class="text-2xl font-bold text-navy">{{ snapshot.risk_scores.land_health }}</h5>
                             </div>
                         </div>
                     </div>

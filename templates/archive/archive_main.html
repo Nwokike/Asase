@@ -3,80 +3,82 @@
 {% block title %}Environmental Archive - ASASE{% endblock %}
 
 {% block content %}
-<div class="min-h-screen py-12 px-4 pb-24 md:pb-12">
+<div class="min-h-screen py-16 px-6 pb-28 md:pb-16">
     <div class="max-w-7xl mx-auto">
-        <div class="text-center mb-10">
-            <h1 class="text-3xl md:text-4xl font-semibold text-navy mb-3">
+        <div class="text-center mb-16">
+            <h1 class="text-4xl md:text-5xl font-light text-navy mb-6 tracking-tight flex items-center justify-center">
+                <i class="bi bi-archive text-4xl mr-4"></i>
                 Environmental Archive
             </h1>
-            <p class="text-base text-gray-600">Africa's Environmental Intelligence Database</p>
+            <p class="text-xl text-gray-600 font-light">Africa's Environmental Intelligence Database</p>
         </div>
 
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 md:p-8 mb-8">
-            <form method="get" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white/10 backdrop-blur-lg rounded-3xl border border-white/20 p-8 md:p-10 mb-12">
+            <form method="get" class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
-                    <label class="block text-gray-700 font-medium mb-2 text-sm">
-                        <i class="bi bi-geo-alt icon-sm text-gray-500 mr-1"></i>Filter by Location
+                    <label class="block text-gray-800 font-medium mb-3 text-base flex items-center">
+                        <i class="bi bi-geo-alt text-2xl text-navy mr-3"></i>Filter by Location
                     </label>
                     <input 
                         type="text" 
                         name="location" 
                         value="{{ filter_location }}"
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-navy focus:border-transparent text-sm" 
+                        class="w-full px-5 py-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-navy focus:border-transparent text-base" 
                         placeholder="Enter location..."
                     >
                 </div>
                 <div>
-                    <label class="block text-gray-700 font-medium mb-2 text-sm">
-                        <i class="bi bi-flag icon-sm text-gray-500 mr-1"></i>Filter by Country
+                    <label class="block text-gray-800 font-medium mb-3 text-base flex items-center">
+                        <i class="bi bi-flag text-2xl text-navy mr-3"></i>Filter by Country
                     </label>
                     <input 
                         type="text" 
                         name="country" 
                         value="{{ filter_country }}"
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-navy focus:border-transparent text-sm" 
+                        class="w-full px-5 py-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-navy focus:border-transparent text-base" 
                         placeholder="Enter country..."
                     >
                 </div>
                 <div class="flex items-end">
-                    <button type="submit" class="w-full bg-navy hover:bg-opacity-90 text-white font-medium py-2 px-6 rounded-lg transition-all text-sm">
-                        <i class="bi bi-funnel icon-sm mr-1"></i>Apply Filters
+                    <button type="submit" class="w-full bg-navy hover:bg-opacity-90 text-white font-medium py-4 px-8 rounded-xl transition-all text-base flex items-center justify-center">
+                        <i class="bi bi-funnel text-xl mr-2"></i>Apply Filters
                     </button>
                 </div>
             </form>
         </div>
 
         {% if reports %}
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {% for report in reports %}
                 <a href="/archive/{{ report.slug }}/" class="block hover-lift">
-                    <div class="bg-white/10 backdrop-blur-lg rounded-xl border border-white/20 p-6 h-full">
-                        <div class="flex justify-between items-start mb-4">
+                    <div class="bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 p-8 h-full">
+                        <div class="flex justify-between items-start mb-6">
                             <div>
-                                <h3 class="text-lg font-semibold text-navy mb-1">
+                                <h3 class="text-xl font-semibold text-navy mb-2 flex items-center">
+                                    <i class="bi bi-pin-map text-2xl mr-2"></i>
                                     {{ report.location_name }}
                                 </h3>
-                                <p class="text-gray-700 text-xs" style="text-shadow: 0 1px 2px rgba(255,255,255,0.5);">{{ report.country }}</p>
+                                <p class="text-gray-700 text-sm ml-8">{{ report.country }}</p>
                             </div>
                         </div>
                         
-                        <div class="text-gray-700 text-xs mb-4" style="text-shadow: 0 1px 2px rgba(255,255,255,0.5);">
-                            <i class="bi bi-calendar icon-sm mr-1"></i>
+                        <div class="text-gray-700 text-sm mb-6 ml-8 flex items-center">
+                            <i class="bi bi-calendar text-lg mr-2"></i>
                             {{ report.timestamp|date:"M d, Y - H:i" }} WAT
                         </div>
                         
-                        <div class="grid grid-cols-3 gap-3 text-center">
-                            <div class="bg-white/20 backdrop-blur-sm rounded-lg py-2">
-                                <p class="text-gray-700 text-xs mb-1" style="text-shadow: 0 1px 2px rgba(255,255,255,0.5);">Flood</p>
-                                <p class="text-xl font-bold text-navy">{{ report.risk_scores.flood }}</p>
+                        <div class="grid grid-cols-3 gap-4 text-center">
+                            <div class="bg-white/20 backdrop-blur-sm rounded-xl py-3">
+                                <p class="text-gray-700 text-xs mb-1">Flood</p>
+                                <p class="text-2xl font-bold text-navy">{{ report.risk_scores.flood }}</p>
                             </div>
-                            <div class="bg-white/20 backdrop-blur-sm rounded-lg py-2">
-                                <p class="text-gray-700 text-xs mb-1" style="text-shadow: 0 1px 2px rgba(255,255,255,0.5);">Air</p>
-                                <p class="text-xl font-bold text-navy">{{ report.risk_scores.air }}</p>
+                            <div class="bg-white/20 backdrop-blur-sm rounded-xl py-3">
+                                <p class="text-gray-700 text-xs mb-1">Air</p>
+                                <p class="text-2xl font-bold text-navy">{{ report.risk_scores.air }}</p>
                             </div>
-                            <div class="bg-white/20 backdrop-blur-sm rounded-lg py-2">
-                                <p class="text-gray-700 text-xs mb-1" style="text-shadow: 0 1px 2px rgba(255,255,255,0.5);">Land</p>
-                                <p class="text-xl font-bold text-navy">{{ report.risk_scores.land_health }}</p>
+                            <div class="bg-white/20 backdrop-blur-sm rounded-xl py-3">
+                                <p class="text-gray-700 text-xs mb-1">Land</p>
+                                <p class="text-2xl font-bold text-navy">{{ report.risk_scores.land_health }}</p>
                             </div>
                         </div>
                     </div>

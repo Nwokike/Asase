@@ -41,6 +41,14 @@ def location_hub(request, location_slug):
     
     if snapshots.exists():
         latest = snapshots.first()
+        
+        trend_data = []
+        for snapshot in snapshots:
+            trend_data.append({
+                'date': snapshot.timestamp.strftime('%Y-%m-%d'),
+                'score': snapshot.risk_scores.get('land_health', 0)
+            })
+        
         context = {
             'location_name': latest.location_name,
             'country': latest.country,
@@ -49,6 +57,7 @@ def location_hub(request, location_slug):
             'flood_color': get_risk_color(latest.risk_scores.get('flood', 5)),
             'air_color': get_risk_color(latest.risk_scores.get('air', 5)),
             'land_color': get_risk_color(latest.risk_scores.get('land_health', 5)),
+            'trend_data': trend_data,
         }
         return render(request, 'archive/location_hub.html', context)
     
