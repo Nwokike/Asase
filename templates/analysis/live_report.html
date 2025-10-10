@@ -1,57 +1,105 @@
-<div class="w-full max-w-6xl mx-auto">
-    <div class="glass-dark rounded-2xl p-8 shadow-2xl">
-        <div class="flex justify-between items-start mb-8">
-            <div>
-                <h2 class="text-3xl font-bold text-navy mb-2">{{ location_name }}, {{ country }}</h2>
-                <p class="text-gray-600">{{ timestamp }}</p>
+<div class="container my-5">
+    <div class="glass-card p-4 p-md-5">
+        <div class="row align-items-center mb-4">
+            <div class="col-md-8">
+                <h2 class="fw-bold mb-1" style="color: var(--navy);">
+                    <i class="bi bi-geo-alt-fill me-2" style="color: var(--green-leaf);"></i>
+                    {{ location_name }}, {{ country }}
+                </h2>
+                <p class="text-muted mb-0">
+                    <i class="bi bi-clock me-1"></i> {{ timestamp }}
+                </p>
             </div>
-            <a href="/location/{{ location_slug }}/" class="bg-navy text-white px-6 py-2 rounded-lg hover:bg-opacity-90 transition-colors">
-                View Location Hub
-            </a>
-        </div>
-
-        <div id="map" class="w-full h-64 rounded-lg mb-8"></div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div class="glass rounded-xl p-6 text-center">
-                <div class="text-5xl font-bold mb-2" style="color: {{ flood_color }}">{{ flood_risk }}</div>
-                <p class="text-gray-700 font-semibold">Flood Risk</p>
-            </div>
-            
-            <div class="glass rounded-xl p-6 text-center">
-                <div class="text-5xl font-bold mb-2" style="color: {{ air_color }}">{{ air_quality }}</div>
-                <p class="text-gray-700 font-semibold">Air Quality</p>
-            </div>
-            
-            <div class="glass rounded-xl p-6 text-center">
-                <div class="text-5xl font-bold mb-2" style="color: {{ land_color }}">{{ land_health }}</div>
-                <p class="text-gray-700 font-semibold">Land Health (SDG 15)</p>
+            <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                <a href="/location/{{ location_slug }}/" class="btn text-white" style="background-color: var(--navy);">
+                    <i class="bi bi-archive me-1"></i> View Location Hub
+                </a>
             </div>
         </div>
 
-        <div class="glass rounded-xl p-8 mb-6">
-            <h3 class="text-2xl font-bold text-navy mb-4">{{ analysis.title }}</h3>
-            <p class="text-sm text-gray-600 mb-2">{{ analysis.timestamp }}</p>
-            <p class="text-md font-semibold text-gray-800 mb-4">{{ analysis.subject }}</p>
-            
-            <div class="mb-6">
-                <h4 class="font-bold text-lg text-navy mb-2">Risk Assessment</h4>
-                <p class="text-gray-700 leading-relaxed">{{ analysis.assessment }}</p>
+        <div id="map" class="rounded-3 mb-4" style="height: 300px; border: 3px solid var(--navy);"></div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-water display-4 mb-3" style="color: {{ flood_color }};"></i>
+                        <h3 class="display-4 fw-bold mb-2" style="color: {{ flood_color }};">{{ flood_risk }}</h3>
+                        <h6 class="text-muted">Flood Risk</h6>
+                        <div class="progress mt-3" style="height: 8px;">
+                            <div class="progress-bar" role="progressbar" style="width: {{ flood_risk }}0%; background-color: {{ flood_color }};"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
             
-            <div class="mb-6">
-                <h4 class="font-bold text-lg text-navy mb-2">SDG 15 Compliance Analysis</h4>
-                <p class="text-gray-700 leading-relaxed">{{ analysis.sdg_15_compliance }}</p>
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-wind display-4 mb-3" style="color: {{ air_color }};"></i>
+                        <h3 class="display-4 fw-bold mb-2" style="color: {{ air_color }};">{{ air_quality }}</h3>
+                        <h6 class="text-muted">Air Quality</h6>
+                        <div class="progress mt-3" style="height: 8px;">
+                            <div class="progress-bar" role="progressbar" style="width: {{ air_quality }}0%; background-color: {{ air_color }};"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
             
-            <div>
-                <h4 class="font-bold text-lg text-navy mb-2">Recommendations</h4>
-                <p class="text-gray-700 leading-relaxed">{{ analysis.recommendations }}</p>
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-tree-fill display-4 mb-3" style="color: {{ land_color }};"></i>
+                        <h3 class="display-4 fw-bold mb-2" style="color: {{ land_color }};">{{ land_health }}</h3>
+                        <h6 class="text-muted">Land Health (SDG 15)</h6>
+                        <div class="progress mt-3" style="height: 8px;">
+                            <div class="progress-bar" role="progressbar" style="width: {{ land_health }}0%; background-color: {{ land_color }};"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <h4 class="fw-bold mb-3" style="color: var(--navy);">
+                    <i class="bi bi-file-text me-2" style="color: var(--green-leaf);"></i>
+                    {{ analysis.title }}
+                </h4>
+                <p class="text-muted mb-3">
+                    <i class="bi bi-calendar-event me-1"></i> {{ analysis.timestamp }}
+                </p>
+                <p class="fw-semibold text-secondary mb-4">{{ analysis.subject }}</p>
+                
+                <div class="mb-4">
+                    <h5 class="fw-bold mb-3" style="color: var(--navy);">
+                        <i class="bi bi-exclamation-triangle me-2" style="color: var(--green-leaf);"></i>
+                        Risk Assessment
+                    </h5>
+                    <p class="text-secondary lh-lg">{{ analysis.assessment }}</p>
+                </div>
+                
+                <div class="mb-4">
+                    <h5 class="fw-bold mb-3" style="color: var(--navy);">
+                        <i class="bi bi-graph-up me-2" style="color: var(--green-leaf);"></i>
+                        SDG 15 Compliance Analysis
+                    </h5>
+                    <p class="text-secondary lh-lg">{{ analysis.sdg_15_compliance }}</p>
+                </div>
+                
+                <div>
+                    <h5 class="fw-bold mb-3" style="color: var(--navy);">
+                        <i class="bi bi-lightbulb me-2" style="color: var(--green-leaf);"></i>
+                        Recommendations
+                    </h5>
+                    <p class="text-secondary lh-lg">{{ analysis.recommendations }}</p>
+                </div>
             </div>
         </div>
 
         <div class="text-center">
-            <a href="/" class="inline-block bg-green-leaf text-white px-8 py-3 rounded-lg font-semibold hover:bg-green-600 transition-colors">
+            <a href="/" class="btn btn-lg text-white px-5" style="background-color: var(--green-leaf); border-radius: 12px;">
+                <i class="bi bi-arrow-left-circle me-2"></i>
                 Analyze Another Location
             </a>
         </div>
@@ -63,7 +111,14 @@
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors'
     }).addTo(map);
-    L.marker([{{ latitude }}, {{ longitude }}]).addTo(map)
-        .bindPopup('{{ location_name }}')
+    
+    var customIcon = L.icon({
+        iconUrl: 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/images/marker-icon.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+    });
+    
+    L.marker([{{ latitude }}, {{ longitude }}], {icon: customIcon}).addTo(map)
+        .bindPopup('<b>{{ location_name }}</b>')
         .openPopup();
 </script>

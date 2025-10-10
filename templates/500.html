@@ -3,14 +3,22 @@
 {% block title %}Server Error - ASASE{% endblock %}
 
 {% block content %}
-<div class="min-h-screen flex items-center justify-center px-4 -mt-20">
-    <div class="text-center">
-        <h1 class="text-9xl font-bold text-navy mb-4">500</h1>
-        <h2 class="text-3xl font-semibold text-gray-700 mb-4">Analysis Error</h2>
-        <p class="text-gray-600 mb-8">Our environmental analysis system encountered an error. Please try again.</p>
-        <a href="/" class="inline-block bg-green-leaf text-white px-8 py-3 rounded-lg font-semibold hover:bg-green-600 transition-colors">
-            Return to Search
-        </a>
+<div class="container">
+    <div class="row min-vh-100 align-items-center justify-content-center">
+        <div class="col-lg-6 text-center">
+            <div class="mb-4">
+                <i class="bi bi-exclamation-triangle display-1" style="color: #EF5350; opacity: 0.5;"></i>
+            </div>
+            <h1 class="display-1 fw-bold mb-3" style="color: var(--navy);">500</h1>
+            <h3 class="fw-bold mb-3" style="color: var(--navy);">Analysis Error</h3>
+            <p class="lead text-secondary mb-4">
+                Our environmental analysis system encountered an error. Please try again.
+            </p>
+            <a href="/" class="btn btn-lg text-white px-5" style="background-color: var(--green-leaf); border-radius: 12px;">
+                <i class="bi bi-arrow-left-circle me-2"></i>
+                Return to Search
+            </a>
+        </div>
     </div>
 </div>
 {% endblock %}

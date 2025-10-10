@@ -7,11 +7,12 @@
     <meta name="description" content="ASASE - Environmental Intelligence Platform for Africa. Real-time AI-driven risk analysis on Flood, Air Quality, and Land Health with focus on SDG 15: Life on Land.">
     <title>{% block title %}ASASE - Earth Intelligence{% endblock %}</title>
     
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
-    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -19,88 +20,175 @@
     <link rel="manifest" href="{% static 'manifest.json' %}">
     <meta name="theme-color" content="#1e3a5f">
     
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'navy': '#1e3a5f',
-                        'green-leaf': '#7cb342',
-                    },
-                    fontFamily: {
-                        'sans': ['Inter', 'sans-serif'],
-                    },
-                }
-            }
-        }
-    </script>
-    
     <style>
+        :root {
+            --navy: #1e3a5f;
+            --green-leaf: #7cb342;
+            --light-gray: #f8f9fa;
+        }
+        
         body {
             font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding-bottom: 80px;
         }
-        .glass {
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+        
+        .navbar-custom {
+            background-color: var(--navy);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-        .glass-dark {
-            background: rgba(30, 58, 95, 0.15);
+        
+        .navbar-brand img {
+            height: 50px;
+        }
+        
+        .nav-link-custom {
+            color: white !important;
+            font-weight: 500;
+            transition: all 0.3s;
+            padding: 0.5rem 1rem !important;
+        }
+        
+        .nav-link-custom:hover {
+            color: var(--green-leaf) !important;
+        }
+        
+        .btn-install {
+            background-color: var(--green-leaf);
+            color: white;
+            border: none;
+            padding: 0.5rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-install:hover {
+            background-color: #689f38;
+            transform: translateY(-2px);
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(30, 58, 95, 0.2);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .mobile-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--navy);
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            display: none;
+        }
+        
+        .mobile-nav-item {
+            flex: 1;
+            text-align: center;
+            padding: 12px 0;
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+        
+        .mobile-nav-item:hover,
+        .mobile-nav-item.active {
+            color: var(--green-leaf);
+        }
+        
+        .mobile-nav-item i {
+            font-size: 1.5rem;
+            display: block;
+            margin-bottom: 4px;
+        }
+        
+        .mobile-nav-item span {
+            font-size: 0.75rem;
+            display: block;
+        }
+        
+        @media (max-width: 768px) {
+            .mobile-nav {
+                display: flex;
+            }
+            .desktop-nav {
+                display: none !important;
+            }
+            body {
+                padding-bottom: 80px;
+            }
+        }
+        
+        @media (min-width: 769px) {
+            .desktop-nav {
+                display: flex !important;
+            }
         }
     </style>
     
     {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+<body>
     
-    <header class="hidden md:block bg-navy text-white shadow-lg sticky top-0 z-50">
-        <nav class="container mx-auto px-4 py-4 flex justify-between items-center">
-            <a href="/" class="flex items-center space-x-3">
-                <img src="{% static 'images/logo.png' %}" alt="ASASE Logo" class="h-12">
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="/">
+                <img src="{% static 'images/logo.png' %}" alt="ASASE Logo" class="me-2">
             </a>
             
-            <div class="flex items-center space-x-8">
-                <a href="/" class="hover:text-green-leaf transition-colors font-medium">Search</a>
-                <a href="/about/" class="hover:text-green-leaf transition-colors font-medium">About</a>
-                <a href="/privacy/" class="hover:text-green-leaf transition-colors font-medium">Privacy</a>
-                <button id="installBtn" class="hidden bg-green-leaf px-4 py-2 rounded-lg font-semibold hover:bg-green-600 transition-colors">
-                    Install App
-                </button>
+            <div class="desktop-nav ms-auto">
+                <ul class="navbar-nav align-items-center">
+                    <li class="nav-item">
+                        <a class="nav-link nav-link-custom" href="/">
+                            <i class="bi bi-search me-1"></i> Search
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link nav-link-custom" href="/about/">
+                            <i class="bi bi-info-circle me-1"></i> About
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link nav-link-custom" href="/privacy/">
+                            <i class="bi bi-shield-check me-1"></i> Privacy
+                        </a>
+                    </li>
+                    <li class="nav-item ms-3">
+                        <button id="installBtn" class="btn btn-install d-none">
+                            <i class="bi bi-download me-1"></i> Install App
+                        </button>
+                    </li>
+                </ul>
             </div>
-        </nav>
-    </header>
-
-    <main class="pb-20 md:pb-8">
-        {% block content %}{% endblock %}
-    </main>
-
-    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-navy text-white shadow-2xl z-50">
-        <div class="flex justify-around items-center py-3">
-            <a href="/" class="flex flex-col items-center px-4 py-2 {% if request.path == '/' %}text-green-leaf{% else %}text-white{% endif %} hover:text-green-leaf transition-colors">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                </svg>
-                <span class="text-xs mt-1">Search</span>
-            </a>
-            
-            <a href="/about/" class="flex flex-col items-center px-4 py-2 {% if request.path == '/about/' %}text-green-leaf{% else %}text-white{% endif %} hover:text-green-leaf transition-colors">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                <span class="text-xs mt-1">About</span>
-            </a>
-            
-            <a href="/privacy/" class="flex flex-col items-center px-4 py-2 {% if request.path == '/privacy/' %}text-green-leaf{% else %}text-white{% endif %} hover:text-green-leaf transition-colors">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-                </svg>
-                <span class="text-xs mt-1">Privacy</span>
-            </a>
         </div>
     </nav>
 
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <div class="mobile-nav">
+        <a href="/" class="mobile-nav-item {% if request.path == '/' %}active{% endif %}">
+            <i class="bi bi-search"></i>
+            <span>Search</span>
+        </a>
+        <a href="#" onclick="var form = document.querySelector('form'); if(form) form.submit(); return false;" class="mobile-nav-item">
+            <i class="bi bi-activity"></i>
+            <span>Analyze</span>
+        </a>
+        <a href="/about/" class="mobile-nav-item {% if request.path == '/about/' %}active{% endif %}">
+            <i class="bi bi-info-circle"></i>
+            <span>About</span>
+        </a>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{% static 'js/main.js' %}"></script>
     {% block extra_scripts %}{% endblock %}
 </body>

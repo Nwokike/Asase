@@ -3,46 +3,81 @@
 {% block title %}ASASE - Environmental Intelligence for Africa{% endblock %}
 
 {% block content %}
-<div class="min-h-screen flex flex-col items-center justify-center px-4 -mt-20">
-    <div class="text-center mb-12">
-        <h1 class="text-5xl md:text-7xl font-bold text-navy mb-4">ASASE</h1>
-        <p class="text-xl md:text-2xl text-gray-600">Earth Intelligence for Africa</p>
-        <p class="text-md text-gray-500 mt-2">AI-Driven Environmental Risk Analysis</p>
-    </div>
-
-    <div class="w-full max-w-3xl">
-        <form hx-post="/analysis/live-report/" 
-              hx-target="#analysis-results" 
-              hx-swap="innerHTML" 
-              class="glass-dark rounded-2xl p-8 shadow-2xl">
-            {% csrf_token %}
-            <div class="flex flex-col md:flex-row gap-4">
-                <input 
-                    type="text" 
-                    name="location" 
-                    placeholder="Enter location (e.g., Lagos, Nigeria)" 
-                    required
-                    class="flex-1 px-6 py-4 rounded-lg border-2 border-navy focus:border-green-leaf focus:outline-none text-lg"
-                >
-                <button 
-                    type="submit" 
-                    class="bg-green-leaf text-white px-8 py-4 rounded-lg font-semibold hover:bg-green-600 transition-colors text-lg">
-                    Analyze
-                </button>
+<div class="container">
+    <div class="row min-vh-100 align-items-center justify-content-center">
+        <div class="col-lg-8 col-xl-6">
+            <div class="text-center mb-5">
+                <h1 class="display-3 fw-bold mb-3" style="color: var(--navy);">ASASE</h1>
+                <p class="lead text-secondary mb-2">Earth Intelligence for Africa</p>
+                <p class="text-muted">AI-Driven Environmental Risk Analysis</p>
             </div>
-        </form>
 
-        <div id="analysis-results" class="mt-8">
-        </div>
-    </div>
+            <div class="glass-card p-4 p-md-5 mb-4">
+                <form hx-post="/analysis/live-report/" 
+                      hx-target="#analysis-results" 
+                      hx-swap="innerHTML" 
+                      hx-indicator="#loading"
+                      class="mb-3">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="location" class="form-label fw-semibold" style="color: var(--navy);">
+                            <i class="bi bi-geo-alt-fill me-2" style="color: var(--green-leaf);"></i>
+                            Enter Location
+                        </label>
+                        <input 
+                            type="text" 
+                            class="form-control form-control-lg" 
+                            id="location"
+                            name="location" 
+                            placeholder="e.g., Lagos, Nigeria"
+                            required
+                            style="border: 2px solid var(--navy); border-radius: 12px;"
+                        >
+                    </div>
+                    <button type="submit" class="btn btn-lg w-100 text-white fw-semibold" style="background-color: var(--green-leaf); border-radius: 12px;">
+                        <i class="bi bi-bar-chart-line me-2"></i>
+                        Analyze Environment
+                    </button>
+                </form>
 
-    <div class="mt-16 text-center">
-        <p class="text-gray-600 mb-4">Focus Areas</p>
-        <div class="flex flex-wrap justify-center gap-4">
-            <span class="glass px-6 py-2 rounded-full text-navy font-medium">Flood Risk</span>
-            <span class="glass px-6 py-2 rounded-full text-navy font-medium">Air Quality</span>
-            <span class="glass px-6 py-2 rounded-full text-navy font-medium">Land Health (SDG 15)</span>
+                <div id="loading" class="htmx-indicator text-center py-3">
+                    <div class="spinner-border" style="color: var(--green-leaf);" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Analyzing environmental data...</p>
+                </div>
+            </div>
+
+            <div id="analysis-results"></div>
+
+            <div class="text-center mt-4">
+                <p class="text-muted mb-3">Our Focus Areas</p>
+                <div class="d-flex flex-wrap justify-content-center gap-2">
+                    <span class="badge bg-light text-dark px-3 py-2 rounded-pill">
+                        <i class="bi bi-water me-1" style="color: var(--navy);"></i> Flood Risk
+                    </span>
+                    <span class="badge bg-light text-dark px-3 py-2 rounded-pill">
+                        <i class="bi bi-wind me-1" style="color: var(--navy);"></i> Air Quality
+                    </span>
+                    <span class="badge bg-light text-dark px-3 py-2 rounded-pill">
+                        <i class="bi bi-tree me-1" style="color: var(--green-leaf);"></i> Land Health (SDG 15)
+                    </span>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+<style>
+    .htmx-indicator {
+        display: none;
+    }
+    .htmx-request .htmx-indicator {
+        display: block;
+    }
+    .htmx-request button {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+</style>
 {% endblock %}
