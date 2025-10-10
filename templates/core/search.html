@@ -3,66 +3,63 @@
 {% block title %}ASASE - Environmental Intelligence for Africa{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="row min-vh-100 align-items-center justify-content-center">
-        <div class="col-lg-8 col-xl-6">
-            <div class="text-center mb-5">
-                <h1 class="display-3 fw-bold mb-3" style="color: var(--navy);">ASASE</h1>
-                <p class="lead text-secondary mb-2">Earth Intelligence for Africa</p>
-                <p class="text-muted">AI-Driven Environmental Risk Analysis</p>
-            </div>
+<div class="min-h-screen flex items-center justify-center px-4 py-12">
+    <div class="max-w-4xl w-full">
+        <div class="text-center mb-12">
+            <h1 class="text-5xl md:text-7xl font-extrabold text-white mb-4">
+                ASASE
+            </h1>
+            <p class="text-xl md:text-2xl text-white font-light mb-2">Earth Intelligence for Africa</p>
+            <p class="text-lg text-white opacity-90">AI-Driven Environmental Risk Analysis</p>
+        </div>
 
-            <div class="glass-card p-4 p-md-5 mb-4">
-                <form hx-post="/analysis/live-report/" 
-                      hx-target="#analysis-results" 
-                      hx-swap="innerHTML" 
-                      hx-indicator="#loading"
-                      class="mb-3">
-                    {% csrf_token %}
-                    <div class="mb-3">
-                        <label for="location" class="form-label fw-semibold" style="color: var(--navy);">
-                            <i class="bi bi-geo-alt-fill me-2" style="color: var(--green-leaf);"></i>
-                            Enter Location
-                        </label>
-                        <input 
-                            type="text" 
-                            class="form-control form-control-lg" 
-                            id="location"
-                            name="location" 
-                            placeholder="e.g., Lagos, Nigeria"
-                            required
-                            style="border: 2px solid var(--navy); border-radius: 12px;"
-                        >
-                    </div>
-                    <button type="submit" class="btn btn-lg w-100 text-white fw-semibold" style="background-color: var(--green-leaf); border-radius: 12px;">
-                        <i class="bi bi-bar-chart-line me-2"></i>
-                        Analyze Environment
-                    </button>
-                </form>
-
-                <div id="loading" class="htmx-indicator text-center py-3">
-                    <div class="spinner-border" style="color: var(--green-leaf);" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <p class="mt-2 text-muted">Analyzing environmental data...</p>
+        <div class="glass-card rounded-3xl p-8 md:p-12 mb-8">
+            <form hx-post="/analysis/live-report/" 
+                  hx-target="#analysis-results" 
+                  hx-swap="innerHTML" 
+                  hx-indicator="#loading"
+                  class="space-y-6">
+                {% csrf_token %}
+                <div>
+                    <label for="location" class="block text-white font-semibold text-lg mb-3">
+                        <i class="bi bi-geo-alt-fill text-green-leaf mr-2"></i>
+                        Enter Location
+                    </label>
+                    <input 
+                        type="text" 
+                        class="w-full px-6 py-4 rounded-xl bg-white bg-opacity-20 border-2 border-white border-opacity-30 text-white placeholder-white placeholder-opacity-60 focus:outline-none focus:border-green-leaf focus:bg-opacity-30 transition-all text-lg" 
+                        id="location"
+                        name="location" 
+                        placeholder="e.g., Lagos, Nigeria"
+                        required
+                    >
                 </div>
+                <button type="submit" class="w-full bg-green-leaf hover:bg-opacity-90 text-white font-bold py-4 px-8 rounded-xl transition-all duration-300 text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1">
+                    <i class="bi bi-bar-chart-line mr-2"></i>
+                    Analyze Environment
+                </button>
+            </form>
+
+            <div id="loading" class="htmx-indicator text-center py-6">
+                <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-white border-t-green-leaf"></div>
+                <p class="mt-4 text-white text-lg">Analyzing environmental data...</p>
             </div>
+        </div>
 
-            <div id="analysis-results"></div>
+        <div id="analysis-results"></div>
 
-            <div class="text-center mt-4">
-                <p class="text-muted mb-3">Our Focus Areas</p>
-                <div class="d-flex flex-wrap justify-content-center gap-2">
-                    <span class="badge bg-light text-dark px-3 py-2 rounded-pill">
-                        <i class="bi bi-water me-1" style="color: var(--navy);"></i> Flood Risk
-                    </span>
-                    <span class="badge bg-light text-dark px-3 py-2 rounded-pill">
-                        <i class="bi bi-wind me-1" style="color: var(--navy);"></i> Air Quality
-                    </span>
-                    <span class="badge bg-light text-dark px-3 py-2 rounded-pill">
-                        <i class="bi bi-tree me-1" style="color: var(--green-leaf);"></i> Land Health (SDG 15)
-                    </span>
-                </div>
+        <div class="text-center">
+            <p class="text-white text-opacity-90 mb-4 font-medium">Our Focus Areas</p>
+            <div class="flex flex-wrap justify-center gap-3">
+                <span class="glass-card px-6 py-3 rounded-full text-white font-medium">
+                    <i class="bi bi-water mr-2"></i> Flood Risk
+                </span>
+                <span class="glass-card px-6 py-3 rounded-full text-white font-medium">
+                    <i class="bi bi-wind mr-2"></i> Air Quality
+                </span>
+                <span class="glass-card px-6 py-3 rounded-full text-white font-medium">
+                    <i class="bi bi-tree mr-2 text-green-leaf"></i> Land Health (SDG 15)
+                </span>
             </div>
         </div>
     </div>

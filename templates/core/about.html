@@ -3,116 +3,92 @@
 {% block title %}About ASASE - Environmental Intelligence Platform{% endblock %}
 
 {% block content %}
-<div class="container py-5">
-    <div class="row">
-        <div class="col-lg-10 mx-auto">
-            <h1 class="display-4 fw-bold mb-4" style="color: var(--navy);">
-                <i class="bi bi-info-circle-fill me-3" style="color: var(--green-leaf);"></i>
-                About ASASE
-            </h1>
-            
-            <div class="glass-card p-4 p-md-5 mb-4">
-                <h3 class="fw-bold mb-3" style="color: var(--navy);">
-                    <i class="bi bi-bullseye me-2" style="color: var(--green-leaf);"></i>
-                    Our Mission
-                </h3>
-                <p class="lead text-secondary mb-3">
-                    ASASE (Earth Intelligence) is Africa's premier environmental intelligence platform, providing real-time, AI-driven risk analysis on critical environmental factors affecting communities across the continent.
-                </p>
-                <p class="text-secondary">
-                    Our focus on SDG 15: Life on Land drives our commitment to preserving and restoring terrestrial ecosystems while providing actionable insights to communities, policymakers, and researchers.
-                </p>
-            </div>
+<div class="min-h-screen py-16 px-4">
+    <div class="max-w-6xl mx-auto">
+        <h1 class="text-5xl md:text-6xl font-extrabold text-white mb-6 text-center">
+            <i class="bi bi-info-circle-fill text-green-leaf mr-3"></i>
+            About ASASE
+        </h1>
+        
+        <div class="glass-card rounded-3xl p-8 md:p-12 mb-8">
+            <h3 class="text-3xl font-bold text-white mb-6">
+                <i class="bi bi-bullseye text-green-leaf mr-3"></i>
+                Our Mission
+            </h3>
+            <p class="text-xl text-white opacity-90 mb-6 leading-relaxed">
+                ASASE (Earth Intelligence) is Africa's premier environmental intelligence platform, providing real-time, AI-driven risk analysis on critical environmental factors affecting communities across the continent.
+            </p>
+            <p class="text-lg text-white opacity-90 leading-relaxed">
+                Our focus on SDG 15: Life on Land drives our commitment to preserving and restoring terrestrial ecosystems while providing actionable insights to communities, policymakers, and researchers.
+            </p>
+        </div>
 
-            <div class="glass-card p-4 p-md-5 mb-4">
-                <h3 class="fw-bold mb-4" style="color: var(--navy);">
-                    <i class="bi bi-bar-chart-line me-2" style="color: var(--green-leaf);"></i>
-                    What We Analyze
-                </h3>
+        <div class="glass-card rounded-3xl p-8 md:p-12 mb-8">
+            <h3 class="text-3xl font-bold text-white mb-8">
+                <i class="bi bi-bar-chart-line text-green-leaf mr-3"></i>
+                What We Analyze
+            </h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white bg-opacity-20 backdrop-blur-md rounded-2xl p-6 text-center hover-lift">
+                    <i class="bi bi-water text-6xl text-blue-400 mb-4 block"></i>
+                    <h5 class="text-xl font-bold text-white mb-3">Flood Risk Assessment</h5>
+                    <p class="text-white opacity-90">Real-time precipitation forecasting and terrain analysis to predict flood vulnerabilities in your area.</p>
+                </div>
                 
-                <div class="row g-4">
-                    <div class="col-md-4">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-body text-center p-4">
-                                <i class="bi bi-water display-4 mb-3" style="color: #2196F3;"></i>
-                                <h5 class="fw-bold mb-3" style="color: var(--navy);">Flood Risk Assessment</h5>
-                                <p class="text-secondary">Real-time precipitation forecasting and terrain analysis to predict flood vulnerabilities in your area.</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-md-4">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-body text-center p-4">
-                                <i class="bi bi-wind display-4 mb-3" style="color: #9C27B0;"></i>
-                                <h5 class="fw-bold mb-3" style="color: var(--navy);">Air Quality Monitoring</h5>
-                                <p class="text-secondary">Comprehensive air quality assessment using multiple environmental indicators.</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-md-4">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-body text-center p-4">
-                                <i class="bi bi-tree-fill display-4 mb-3" style="color: var(--green-leaf);"></i>
-                                <h5 class="fw-bold mb-3" style="color: var(--navy);">Land Health & SDG 15</h5>
-                                <p class="text-secondary">Satellite-based vegetation analysis (NDVI) to track land degradation and ecosystem health.</p>
-                            </div>
-                        </div>
-                    </div>
+                <div class="bg-white bg-opacity-20 backdrop-blur-md rounded-2xl p-6 text-center hover-lift">
+                    <i class="bi bi-wind text-6xl text-purple-400 mb-4 block"></i>
+                    <h5 class="text-xl font-bold text-white mb-3">Air Quality Monitoring</h5>
+                    <p class="text-white opacity-90">Comprehensive air quality assessment using multiple environmental indicators.</p>
+                </div>
+                
+                <div class="bg-white bg-opacity-20 backdrop-blur-md rounded-2xl p-6 text-center hover-lift">
+                    <i class="bi bi-tree-fill text-6xl text-green-leaf mb-4 block"></i>
+                    <h5 class="text-xl font-bold text-white mb-3">Land Health & SDG 15</h5>
+                    <p class="text-white opacity-90">Satellite-based vegetation analysis (NDVI) to track land degradation and ecosystem health.</p>
                 </div>
             </div>
+        </div>
 
-            <div class="glass-card p-4 p-md-5">
-                <h3 class="fw-bold mb-4" style="color: var(--navy);">
-                    <i class="bi bi-database me-2" style="color: var(--green-leaf);"></i>
-                    Our Data Sources
-                </h3>
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="d-flex align-items-start">
-                            <i class="bi bi-check-circle-fill me-3 mt-1" style="color: var(--green-leaf); font-size: 1.5rem;"></i>
-                            <div>
-                                <h6 class="fw-bold mb-1">OpenStreetMap Nominatim</h6>
-                                <p class="text-muted small mb-0">Geocoding services</p>
-                            </div>
-                        </div>
+        <div class="glass-card rounded-3xl p-8 md:p-12">
+            <h3 class="text-3xl font-bold text-white mb-8">
+                <i class="bi bi-database text-green-leaf mr-3"></i>
+                Our Data Sources
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="flex items-start space-x-4">
+                    <i class="bi bi-check-circle-fill text-green-leaf text-3xl mt-1"></i>
+                    <div>
+                        <h6 class="text-lg font-bold text-white mb-1">OpenStreetMap Nominatim</h6>
+                        <p class="text-white opacity-80">Geocoding services</p>
                     </div>
-                    <div class="col-md-6">
-                        <div class="d-flex align-items-start">
-                            <i class="bi bi-check-circle-fill me-3 mt-1" style="color: var(--green-leaf); font-size: 1.5rem;"></i>
-                            <div>
-                                <h6 class="fw-bold mb-1">OpenWeatherMap One Call API</h6>
-                                <p class="text-muted small mb-0">Weather & climate data</p>
-                            </div>
-                        </div>
+                </div>
+                <div class="flex items-start space-x-4">
+                    <i class="bi bi-check-circle-fill text-green-leaf text-3xl mt-1"></i>
+                    <div>
+                        <h6 class="text-lg font-bold text-white mb-1">OpenWeatherMap One Call API</h6>
+                        <p class="text-white opacity-80">Weather & climate data</p>
                     </div>
-                    <div class="col-md-6">
-                        <div class="d-flex align-items-start">
-                            <i class="bi bi-check-circle-fill me-3 mt-1" style="color: var(--green-leaf); font-size: 1.5rem;"></i>
-                            <div>
-                                <h6 class="fw-bold mb-1">Open-Meteo</h6>
-                                <p class="text-muted small mb-0">Elevation data</p>
-                            </div>
-                        </div>
+                </div>
+                <div class="flex items-start space-x-4">
+                    <i class="bi bi-check-circle-fill text-green-leaf text-3xl mt-1"></i>
+                    <div>
+                        <h6 class="text-lg font-bold text-white mb-1">Open-Meteo</h6>
+                        <p class="text-white opacity-80">Elevation data</p>
                     </div>
-                    <div class="col-md-6">
-                        <div class="d-flex align-items-start">
-                            <i class="bi bi-check-circle-fill me-3 mt-1" style="color: var(--green-leaf); font-size: 1.5rem;"></i>
-                            <div>
-                                <h6 class="fw-bold mb-1">NASA GIBS / Sentinel Hub</h6>
-                                <p class="text-muted small mb-0">NDVI satellite imagery</p>
-                            </div>
-                        </div>
+                </div>
+                <div class="flex items-start space-x-4">
+                    <i class="bi bi-check-circle-fill text-green-leaf text-3xl mt-1"></i>
+                    <div>
+                        <h6 class="text-lg font-bold text-white mb-1">NASA GIBS / Sentinel Hub</h6>
+                        <p class="text-white opacity-80">NDVI satellite imagery</p>
                     </div>
-                    <div class="col-md-6">
-                        <div class="d-flex align-items-start">
-                            <i class="bi bi-check-circle-fill me-3 mt-1" style="color: var(--green-leaf); font-size: 1.5rem;"></i>
-                            <div>
-                                <h6 class="fw-bold mb-1">Google Gemini 2.5 Flash</h6>
-                                <p class="text-muted small mb-0">AI environmental analysis</p>
-                            </div>
-                        </div>
+                </div>
+                <div class="flex items-start space-x-4">
+                    <i class="bi bi-check-circle-fill text-green-leaf text-3xl mt-1"></i>
+                    <div>
+                        <h6 class="text-lg font-bold text-white mb-1">Google Gemini 2.5 Flash</h6>
+                        <p class="text-white opacity-80">AI environmental analysis</p>
                     </div>
                 </div>
             </div>

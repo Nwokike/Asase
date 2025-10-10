@@ -1,105 +1,91 @@
-<div class="container my-5">
-    <div class="glass-card p-4 p-md-5">
-        <div class="row align-items-center mb-4">
-            <div class="col-md-8">
-                <h2 class="fw-bold mb-1" style="color: var(--navy);">
-                    <i class="bi bi-geo-alt-fill me-2" style="color: var(--green-leaf);"></i>
+<div class="max-w-7xl mx-auto px-4 py-8">
+    <div class="glass-card rounded-3xl p-6 md:p-10">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
+            <div class="mb-4 md:mb-0">
+                <h2 class="text-3xl md:text-4xl font-bold text-white mb-2">
+                    <i class="bi bi-geo-alt-fill text-green-leaf mr-2"></i>
                     {{ location_name }}, {{ country }}
                 </h2>
-                <p class="text-muted mb-0">
-                    <i class="bi bi-clock me-1"></i> {{ timestamp }}
+                <p class="text-white opacity-90">
+                    <i class="bi bi-clock mr-2"></i> {{ timestamp }}
                 </p>
             </div>
-            <div class="col-md-4 text-md-end mt-3 mt-md-0">
-                <a href="/location/{{ location_slug }}/" class="btn text-white" style="background-color: var(--navy);">
-                    <i class="bi bi-archive me-1"></i> View Location Hub
-                </a>
-            </div>
+            <a href="/archive/location/{{ location_slug }}/" class="inline-block bg-navy hover:bg-opacity-90 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-300 shadow-lg">
+                <i class="bi bi-archive mr-2"></i> View Location Hub
+            </a>
         </div>
 
-        <div id="map" class="rounded-3 mb-4" style="height: 300px; border: 3px solid var(--navy);"></div>
+        <div id="map" class="rounded-2xl mb-8 border-4 border-white border-opacity-30" style="height: 350px;"></div>
 
-        <div class="row g-4 mb-4">
-            <div class="col-md-4">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body text-center">
-                        <i class="bi bi-water display-4 mb-3" style="color: {{ flood_color }};"></i>
-                        <h3 class="display-4 fw-bold mb-2" style="color: {{ flood_color }};">{{ flood_risk }}</h3>
-                        <h6 class="text-muted">Flood Risk</h6>
-                        <div class="progress mt-3" style="height: 8px;">
-                            <div class="progress-bar" role="progressbar" style="width: {{ flood_risk }}0%; background-color: {{ flood_color }};"></div>
-                        </div>
-                    </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white bg-opacity-20 backdrop-blur-md rounded-2xl p-6 text-center hover-lift">
+                <i class="bi bi-water text-6xl mb-4" style="color: {{ flood_color }};"></i>
+                <h3 class="text-5xl font-bold mb-2" style="color: {{ flood_color }};">{{ flood_risk }}</h3>
+                <h6 class="text-white font-medium mb-4">Flood Risk</h6>
+                <div class="w-full bg-white bg-opacity-30 rounded-full h-2">
+                    <div class="h-2 rounded-full transition-all duration-500" style="width: {{ flood_risk }}0%; background-color: {{ flood_color }};"></div>
                 </div>
             </div>
             
-            <div class="col-md-4">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body text-center">
-                        <i class="bi bi-wind display-4 mb-3" style="color: {{ air_color }};"></i>
-                        <h3 class="display-4 fw-bold mb-2" style="color: {{ air_color }};">{{ air_quality }}</h3>
-                        <h6 class="text-muted">Air Quality</h6>
-                        <div class="progress mt-3" style="height: 8px;">
-                            <div class="progress-bar" role="progressbar" style="width: {{ air_quality }}0%; background-color: {{ air_color }};"></div>
-                        </div>
-                    </div>
+            <div class="bg-white bg-opacity-20 backdrop-blur-md rounded-2xl p-6 text-center hover-lift">
+                <i class="bi bi-wind text-6xl mb-4" style="color: {{ air_color }};"></i>
+                <h3 class="text-5xl font-bold mb-2" style="color: {{ air_color }};">{{ air_quality }}</h3>
+                <h6 class="text-white font-medium mb-4">Air Quality</h6>
+                <div class="w-full bg-white bg-opacity-30 rounded-full h-2">
+                    <div class="h-2 rounded-full transition-all duration-500" style="width: {{ air_quality }}0%; background-color: {{ air_color }};"></div>
                 </div>
             </div>
             
-            <div class="col-md-4">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body text-center">
-                        <i class="bi bi-tree-fill display-4 mb-3" style="color: {{ land_color }};"></i>
-                        <h3 class="display-4 fw-bold mb-2" style="color: {{ land_color }};">{{ land_health }}</h3>
-                        <h6 class="text-muted">Land Health (SDG 15)</h6>
-                        <div class="progress mt-3" style="height: 8px;">
-                            <div class="progress-bar" role="progressbar" style="width: {{ land_health }}0%; background-color: {{ land_color }};"></div>
-                        </div>
-                    </div>
+            <div class="bg-white bg-opacity-20 backdrop-blur-md rounded-2xl p-6 text-center hover-lift">
+                <i class="bi bi-tree-fill text-6xl mb-4" style="color: {{ land_color }};"></i>
+                <h3 class="text-5xl font-bold mb-2" style="color: {{ land_color }};">{{ land_health }}</h3>
+                <h6 class="text-white font-medium mb-4">Land Health (SDG 15)</h6>
+                <div class="w-full bg-white bg-opacity-30 rounded-full h-2">
+                    <div class="h-2 rounded-full transition-all duration-500" style="width: {{ land_health }}0%; background-color: {{ land_color }};"></div>
                 </div>
             </div>
         </div>
 
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-body p-4">
-                <h4 class="fw-bold mb-3" style="color: var(--navy);">
-                    <i class="bi bi-file-text me-2" style="color: var(--green-leaf);"></i>
-                    {{ analysis.title }}
-                </h4>
-                <p class="text-muted mb-3">
-                    <i class="bi bi-calendar-event me-1"></i> {{ analysis.timestamp }}
-                </p>
-                <p class="fw-semibold text-secondary mb-4">{{ analysis.subject }}</p>
-                
-                <div class="mb-4">
-                    <h5 class="fw-bold mb-3" style="color: var(--navy);">
-                        <i class="bi bi-exclamation-triangle me-2" style="color: var(--green-leaf);"></i>
+        <div class="bg-white bg-opacity-20 backdrop-blur-md rounded-2xl p-8 mb-8">
+            <h4 class="text-2xl font-bold text-white mb-4">
+                <i class="bi bi-file-text text-green-leaf mr-2"></i>
+                {{ analysis.title }}
+            </h4>
+            <p class="text-white opacity-90 mb-6">
+                <i class="bi bi-calendar-event mr-2"></i> {{ analysis.timestamp }}
+            </p>
+            <p class="text-xl font-semibold text-white opacity-95 mb-8">{{ analysis.subject }}</p>
+            
+            <div class="space-y-6">
+                <div>
+                    <h5 class="text-xl font-bold text-white mb-3">
+                        <i class="bi bi-exclamation-triangle text-green-leaf mr-2"></i>
                         Risk Assessment
                     </h5>
-                    <p class="text-secondary lh-lg">{{ analysis.assessment }}</p>
-                </div>
-                
-                <div class="mb-4">
-                    <h5 class="fw-bold mb-3" style="color: var(--navy);">
-                        <i class="bi bi-graph-up me-2" style="color: var(--green-leaf);"></i>
-                        SDG 15 Compliance Analysis
-                    </h5>
-                    <p class="text-secondary lh-lg">{{ analysis.sdg_15_compliance }}</p>
+                    <p class="text-white opacity-90 leading-relaxed">{{ analysis.assessment }}</p>
                 </div>
                 
                 <div>
-                    <h5 class="fw-bold mb-3" style="color: var(--navy);">
-                        <i class="bi bi-lightbulb me-2" style="color: var(--green-leaf);"></i>
+                    <h5 class="text-xl font-bold text-white mb-3">
+                        <i class="bi bi-graph-up text-green-leaf mr-2"></i>
+                        SDG 15 Compliance Analysis
+                    </h5>
+                    <p class="text-white opacity-90 leading-relaxed">{{ analysis.sdg_15_compliance }}</p>
+                </div>
+                
+                <div>
+                    <h5 class="text-xl font-bold text-white mb-3">
+                        <i class="bi bi-lightbulb text-green-leaf mr-2"></i>
                         Recommendations
                     </h5>
-                    <p class="text-secondary lh-lg">{{ analysis.recommendations }}</p>
+                    <p class="text-white opacity-90 leading-relaxed">{{ analysis.recommendations }}</p>
                 </div>
             </div>
         </div>
 
         <div class="text-center">
-            <a href="/" class="btn btn-lg text-white px-5" style="background-color: var(--green-leaf); border-radius: 12px;">
-                <i class="bi bi-arrow-left-circle me-2"></i>
+            <a href="/" class="inline-block bg-green-leaf hover:bg-opacity-90 text-white font-bold py-4 px-10 rounded-xl transition-all duration-300 shadow-lg transform hover:-translate-y-1">
+                <i class="bi bi-arrow-left-circle mr-2"></i>
                 Analyze Another Location
             </a>
         </div>
