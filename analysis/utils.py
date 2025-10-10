@@ -2,7 +2,7 @@ import json
 import os
 import requests
 from datetime import datetime
-from functools import lru_cache
+from django.core.cache import cache
 from google import genai
 from google.genai import types
 
@@ -12,8 +12,13 @@ def get_gemini_client():
         return genai.Client(api_key=api_key)
     return None
 
-@lru_cache(maxsize=100)
 def get_coords_from_location(location_name: str) -> dict:
+    cache_key = f"geocode_{location_name}"
+    cached_result = cache.get(cache_key)
+    
+    if cached_result:
+        return cached_result
+    
     try:
         url = "https://nominatim.openstreetmap.org/search"
         params = {
@@ -28,11 +33,13 @@ def get_coords_from_location(location_name: str) -> dict:
         data = response.json()
         
         if data:
-            return {
+            result = {
                 'lat': float(data[0]['lat']),
                 'lon': float(data[0]['lon']),
                 'country': data[0].get('display_name', '').split(',')[-1].strip()
             }
+            cache.set(cache_key, result, timeout=43200)
+            return result
     except Exception as e:
         print(f"Geocoding error: {e}")
     
@@ -42,8 +49,13 @@ def get_coords_from_location(location_name: str) -> dict:
         'country': 'Nigeria (Sample Data)'
     }
 
-@lru_cache(maxsize=100)
 def get_weather_data(lat: float, lon: float) -> dict:
+    cache_key = f"weather_{lat}_{lon}"
+    cached_result = cache.get(cache_key)
+    
+    if cached_result:
+        return cached_result
+    
     try:
         api_key = os.environ.get('OPENWEATHER_API_KEY')
         if not api_key:
@@ -64,10 +76,12 @@ def get_weather_data(lat: float, lon: float) -> dict:
         precipitation_forecast = sum([hour.get('pop', 0) * 100 for hour in data.get('hourly', [])[:24]]) / 24
         recent_rain = data.get('daily', [{}])[0].get('rain', 0)
         
-        return {
+        result = {
             'precipitation_forecast': int(precipitation_forecast),
             'recent_rain_trend': float(recent_rain)
         }
+        cache.set(cache_key, result, timeout=1800)
+        return result
     except Exception as e:
         print(f"Weather API error: {e}")
         
@@ -76,8 +90,13 @@ def get_weather_data(lat: float, lon: float) -> dict:
         'recent_rain_trend': 12.5
     }
 
-@lru_cache(maxsize=100)
 def get_elevation_data(lat: float, lon: float) -> int:
+    cache_key = f"elevation_{lat}_{lon}"
+    cached_result = cache.get(cache_key)
+    
+    if cached_result is not None:
+        return cached_result
+    
     try:
         url = "https://api.open-meteo.com/v1/elevation"
         params = {
@@ -89,20 +108,29 @@ def get_elevation_data(lat: float, lon: float) -> int:
         response.raise_for_status()
         data = response.json()
         
-        return int(data.get('elevation', [0])[0])
+        result = int(data.get('elevation', [0])[0])
+        cache.set(cache_key, result, timeout=43200)
+        return result
     except Exception as e:
         print(f"Elevation API error: {e}")
         
     return 125
 
-@lru_cache(maxsize=100)
 def get_real_ndvi(lat: float, lon: float) -> float:
+    cache_key = f"ndvi_{lat}_{lon}"
+    cached_result = cache.get(cache_key)
+    
+    if cached_result is not None:
+        return cached_result
+    
     try:
         url = "https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/MODIS_Terra_NDVI_8Day/default/2025-10-01/250m/4/8/5.png"
         response = requests.get(url, timeout=10)
         
         if response.status_code == 200:
-            return 0.65
+            result = 0.65
+            cache.set(cache_key, result, timeout=43200)
+            return result
     except Exception as e:
         print(f"NDVI API error: {e}")
     
