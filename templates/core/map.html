@@ -3,11 +3,11 @@
 {% block title %}Map - ASASE{% endblock %}
 
 {% block content %}
-<div class="h-screen pt-16 pb-20 md:pb-0">
+<div class="h-screen pt-20 pb-20 md:pb-0">
     <div id="mainMap" class="w-full h-full"></div>
     
-    <div class="absolute top-24 left-4 right-4 md:left-8 md:right-auto md:w-96 z-[1000]">
-        <div class="glass-card rounded-2xl p-4">
+    <div class="absolute top-28 left-4 right-4 md:left-8 md:right-auto md:w-96 z-[1000]">
+        <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-4">
             <form hx-post="/analysis/live-report/" 
                   hx-target="#map-analysis-results" 
                   hx-swap="innerHTML"
@@ -19,17 +19,17 @@
                         type="text" 
                         id="map-location"
                         name="location" 
-                        class="flex-1 px-4 py-3 rounded-lg bg-white bg-opacity-20 border border-white border-opacity-30 text-white placeholder-white placeholder-opacity-60 focus:outline-none focus:border-green-leaf" 
-                        placeholder="Search location on map..."
+                        class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-navy focus:border-transparent text-sm" 
+                        placeholder="Search location..."
                         required
                     >
-                    <button type="submit" class="bg-green-leaf hover:bg-opacity-90 text-white px-6 py-3 rounded-lg font-semibold transition-all whitespace-nowrap">
-                        <i class="bi bi-search"></i>
+                    <button type="submit" class="bg-navy hover:bg-opacity-90 text-white px-5 py-2 rounded-lg font-medium transition-all text-sm">
+                        <i class="bi bi-search icon-sm"></i>
                     </button>
                 </div>
                 <div id="map-loading" class="htmx-indicator text-center py-2">
-                    <div class="inline-block animate-spin rounded-full h-6 w-6 border-2 border-white border-t-green-leaf"></div>
-                    <span class="text-white text-sm ml-2">Analyzing...</span>
+                    <div class="inline-block animate-spin rounded-full h-5 w-5 border-2 border-gray-300 border-t-navy"></div>
+                    <span class="text-gray-600 text-xs ml-2">Analyzing...</span>
                 </div>
             </form>
         </div>
@@ -46,8 +46,6 @@
         maxZoom: 18
     }).addTo(map);
     
-    var markers = [];
-    
     map.on('click', function(e) {
         var lat = e.latlng.lat.toFixed(4);
         var lon = e.latlng.lng.toFixed(4);
@@ -63,16 +61,4 @@
         });
     });
 </script>
-
-<style>
-    .htmx-indicator {
-        display: none;
-    }
-    .htmx-request .htmx-indicator {
-        display: block;
-    }
-    #mainMap {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-</style>
 {% endblock %}

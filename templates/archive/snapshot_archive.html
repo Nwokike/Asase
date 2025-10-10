@@ -3,22 +3,22 @@
 {% block title %}{{ snapshot.location_name }} Report - {{ snapshot.timestamp|date:"F d, Y" }} - ASASE{% endblock %}
 
 {% block content %}
-<div class="sticky top-16 glass-nav z-40 border-b border-white border-opacity-20">
-    <div class="max-w-7xl mx-auto px-4 py-4">
-        <div class="flex flex-col md:flex-row md:items-center gap-4">
-            <p class="text-white font-semibold flex items-center">
-                <i class="bi bi-archive text-green-leaf mr-2"></i>
-                Archived Environmental Report
+<div class="sticky top-20 bg-white border-b border-gray-200 z-40">
+    <div class="max-w-7xl mx-auto px-4 py-3">
+        <div class="flex flex-col md:flex-row md:items-center gap-3">
+            <p class="text-gray-700 font-medium text-sm flex items-center">
+                <i class="bi bi-archive icon-sm text-gray-500 mr-2"></i>
+                Archived Report
             </p>
             <form action="/" method="get" class="flex gap-2 flex-1 md:max-w-md ml-auto">
                 <input 
                     type="text" 
                     name="location" 
-                    class="flex-1 px-4 py-2 rounded-lg bg-white bg-opacity-20 border border-white border-opacity-30 text-white placeholder-white placeholder-opacity-60 focus:outline-none focus:border-green-leaf" 
-                    placeholder="Get live report for your location"
+                    class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-navy focus:border-transparent text-sm" 
+                    placeholder="Get live report..."
                 >
-                <button type="submit" class="bg-green-leaf hover:bg-opacity-90 text-white px-6 py-2 rounded-lg font-semibold transition-all whitespace-nowrap">
-                    <i class="bi bi-search mr-1"></i>
+                <button type="submit" class="bg-navy hover:bg-opacity-90 text-white px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap text-sm">
+                    <i class="bi bi-search icon-sm mr-1"></i>
                     Analyze
                 </button>
             </form>
@@ -26,62 +26,60 @@
     </div>
 </div>
 
-<div class="py-16 px-4">
+<div class="py-12 px-4 pb-24 md:pb-12">
     <div class="max-w-7xl mx-auto">
-        <div class="glass-card rounded-3xl p-8 md:p-12">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 md:p-10">
             <div class="mb-8">
-                <h1 class="text-4xl md:text-5xl font-extrabold text-white mb-3">
-                    <i class="bi bi-geo-alt-fill text-green-leaf mr-3"></i>
+                <h1 class="text-3xl md:text-4xl font-semibold text-navy mb-2">
                     {{ snapshot.location_name }}, {{ snapshot.country }}
                 </h1>
-                <p class="text-lg text-white opacity-90">
-                    <i class="bi bi-calendar-event mr-2"></i>
+                <p class="text-sm text-gray-500">
                     Report Date: {{ snapshot.timestamp|date:"F d, Y at H:i" }} WAT
                 </p>
             </div>
 
-            <div id="map" class="rounded-2xl mb-8 border-4 border-white border-opacity-30" style="height: 350px;"></div>
+            <div id="map" class="rounded-xl mb-8 border border-gray-200" style="height: 300px;"></div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div class="bg-white bg-opacity-20 backdrop-blur-md rounded-2xl p-6 text-center hover-lift">
-                    <i class="bi bi-water text-6xl mb-4" style="color: {{ flood_color }};"></i>
-                    <h3 class="text-5xl font-bold mb-2" style="color: {{ flood_color }};">{{ snapshot.risk_scores.flood }}</h3>
-                    <h6 class="text-white font-medium mb-4">Flood Risk</h6>
-                    <div class="w-full bg-white bg-opacity-30 rounded-full h-2">
-                        <div class="h-2 rounded-full transition-all duration-500" style="width: {{ snapshot.risk_scores.flood }}0%; background-color: {{ flood_color }};"></div>
+                <div class="bg-gray-50 rounded-xl p-6 text-center border border-gray-200">
+                    <i class="bi bi-droplet icon-lg mb-3" style="color: {{ flood_color }};"></i>
+                    <h3 class="text-4xl font-bold mb-2" style="color: {{ flood_color }};">{{ snapshot.risk_scores.flood }}</h3>
+                    <p class="text-xs text-gray-600 mb-3">Flood Risk</p>
+                    <div class="w-full bg-gray-200 rounded-full h-1.5">
+                        <div class="h-1.5 rounded-full transition-all" style="width: {{ snapshot.risk_scores.flood }}0%; background-color: {{ flood_color }};"></div>
                     </div>
                 </div>
                 
-                <div class="bg-white bg-opacity-20 backdrop-blur-md rounded-2xl p-6 text-center hover-lift">
-                    <i class="bi bi-wind text-6xl mb-4" style="color: {{ air_color }};"></i>
-                    <h3 class="text-5xl font-bold mb-2" style="color: {{ air_color }};">{{ snapshot.risk_scores.air }}</h3>
-                    <h6 class="text-white font-medium mb-4">Air Quality</h6>
-                    <div class="w-full bg-white bg-opacity-30 rounded-full h-2">
-                        <div class="h-2 rounded-full transition-all duration-500" style="width: {{ snapshot.risk_scores.air }}0%; background-color: {{ air_color }};"></div>
+                <div class="bg-gray-50 rounded-xl p-6 text-center border border-gray-200">
+                    <i class="bi bi-wind icon-lg mb-3" style="color: {{ air_color }};"></i>
+                    <h3 class="text-4xl font-bold mb-2" style="color: {{ air_color }};">{{ snapshot.risk_scores.air }}</h3>
+                    <p class="text-xs text-gray-600 mb-3">Air Quality</p>
+                    <div class="w-full bg-gray-200 rounded-full h-1.5">
+                        <div class="h-1.5 rounded-full transition-all" style="width: {{ snapshot.risk_scores.air }}0%; background-color: {{ air_color }};"></div>
                     </div>
                 </div>
                 
-                <div class="bg-white bg-opacity-20 backdrop-blur-md rounded-2xl p-6 text-center hover-lift">
-                    <i class="bi bi-tree-fill text-6xl mb-4" style="color: {{ land_color }};"></i>
-                    <h3 class="text-5xl font-bold mb-2" style="color: {{ land_color }};">{{ snapshot.risk_scores.land_health }}</h3>
-                    <h6 class="text-white font-medium mb-4">Land Health (SDG 15)</h6>
-                    <div class="w-full bg-white bg-opacity-30 rounded-full h-2">
-                        <div class="h-2 rounded-full transition-all duration-500" style="width: {{ snapshot.risk_scores.land_health }}0%; background-color: {{ land_color }};"></div>
+                <div class="bg-gray-50 rounded-xl p-6 text-center border border-gray-200">
+                    <i class="bi bi-tree icon-lg mb-3" style="color: {{ land_color }};"></i>
+                    <h3 class="text-4xl font-bold mb-2" style="color: {{ land_color }};">{{ snapshot.risk_scores.land_health }}</h3>
+                    <p class="text-xs text-gray-600 mb-3">Land Health (SDG 15)</p>
+                    <div class="w-full bg-gray-200 rounded-full h-1.5">
+                        <div class="h-1.5 rounded-full transition-all" style="width: {{ snapshot.risk_scores.land_health }}0%; background-color: {{ land_color }};"></div>
                     </div>
                 </div>
             </div>
 
-            <div class="bg-white bg-opacity-20 backdrop-blur-md rounded-2xl p-8 mb-8">
+            <div class="bg-gray-50 rounded-xl p-6 md:p-8 mb-8 border border-gray-200">
                 {{ snapshot.ai_analysis_text|safe }}
             </div>
 
             <div class="flex flex-col sm:flex-row justify-center gap-4">
-                <a href="/location/{{ snapshot.location_name|slugify }}/" class="inline-block bg-navy hover:bg-opacity-90 text-white font-bold py-4 px-8 rounded-xl transition-all duration-300 shadow-lg text-center">
-                    <i class="bi bi-archive mr-2"></i>
+                <a href="/location/{{ snapshot.location_name|slugify }}/" class="inline-block bg-gray-100 hover:bg-gray-200 text-navy font-medium py-3 px-6 rounded-lg transition-all text-center text-sm">
+                    <i class="bi bi-archive icon-sm mr-1"></i>
                     View Location Hub
                 </a>
-                <a href="/" class="inline-block bg-green-leaf hover:bg-opacity-90 text-white font-bold py-4 px-8 rounded-xl transition-all duration-300 shadow-lg transform hover:-translate-y-1 text-center">
-                    <i class="bi bi-arrow-left-circle mr-2"></i>
+                <a href="/" class="inline-block bg-navy hover:bg-opacity-90 text-white font-medium py-3 px-6 rounded-lg transition-all text-center text-sm">
+                    <i class="bi bi-arrow-left icon-sm mr-1"></i>
                     Analyze Another Location
                 </a>
             </div>

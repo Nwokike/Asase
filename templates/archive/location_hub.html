@@ -3,82 +3,78 @@
 {% block title %}{{ location_name }}, {{ country }} - ASASE{% endblock %}
 
 {% block content %}
-<div class="min-h-screen py-16 px-4">
+<div class="min-h-screen py-12 px-4 pb-24 md:pb-12">
     <div class="max-w-7xl mx-auto">
         <div class="mb-10">
-            <h1 class="text-4xl md:text-6xl font-extrabold text-white mb-3">
-                <i class="bi bi-geo-alt-fill text-green-leaf mr-3"></i>
+            <h1 class="text-3xl md:text-4xl font-semibold text-navy mb-2">
                 {{ location_name }}, {{ country }}
             </h1>
-            <p class="text-xl text-white opacity-90">Environmental Intelligence Hub</p>
+            <p class="text-base text-gray-600">Environmental Intelligence Hub</p>
         </div>
 
-        <div class="glass-card rounded-3xl p-8 md:p-12 mb-10">
-            <h3 class="text-3xl font-bold text-white mb-8">
-                <i class="bi bi-activity text-green-leaf mr-3"></i>
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 md:p-10 mb-10">
+            <h3 class="text-xl font-semibold text-navy mb-6">
                 Live Environmental Data
             </h3>
             
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div class="bg-white bg-opacity-20 backdrop-blur-md rounded-2xl p-6 text-center hover-lift">
-                    <i class="bi bi-water text-5xl mb-3" style="color: {{ flood_color }};"></i>
-                    <h3 class="text-4xl font-bold mb-1" style="color: {{ flood_color }};">{{ live_data.flood }}</h3>
-                    <p class="text-white opacity-90">Flood Risk</p>
+                <div class="bg-gray-50 rounded-xl p-6 text-center border border-gray-200">
+                    <i class="bi bi-droplet icon-lg mb-3" style="color: {{ flood_color }};"></i>
+                    <h3 class="text-3xl font-bold mb-1" style="color: {{ flood_color }};">{{ live_data.flood }}</h3>
+                    <p class="text-gray-600 text-xs">Flood Risk</p>
                 </div>
                 
-                <div class="bg-white bg-opacity-20 backdrop-blur-md rounded-2xl p-6 text-center hover-lift">
-                    <i class="bi bi-wind text-5xl mb-3" style="color: {{ air_color }};"></i>
-                    <h3 class="text-4xl font-bold mb-1" style="color: {{ air_color }};">{{ live_data.air }}</h3>
-                    <p class="text-white opacity-90">Air Quality</p>
+                <div class="bg-gray-50 rounded-xl p-6 text-center border border-gray-200">
+                    <i class="bi bi-wind icon-lg mb-3" style="color: {{ air_color }};"></i>
+                    <h3 class="text-3xl font-bold mb-1" style="color: {{ air_color }};">{{ live_data.air }}</h3>
+                    <p class="text-gray-600 text-xs">Air Quality</p>
                 </div>
                 
-                <div class="bg-white bg-opacity-20 backdrop-blur-md rounded-2xl p-6 text-center hover-lift">
-                    <i class="bi bi-tree-fill text-5xl mb-3" style="color: {{ land_color }};"></i>
-                    <h3 class="text-4xl font-bold mb-1" style="color: {{ land_color }};">{{ live_data.land_health }}</h3>
-                    <p class="text-white opacity-90">Land Health</p>
+                <div class="bg-gray-50 rounded-xl p-6 text-center border border-gray-200">
+                    <i class="bi bi-tree icon-lg mb-3" style="color: {{ land_color }};"></i>
+                    <h3 class="text-3xl font-bold mb-1" style="color: {{ land_color }};">{{ live_data.land_health }}</h3>
+                    <p class="text-gray-600 text-xs">Land Health</p>
                 </div>
             </div>
             
             <div class="text-center">
-                <a href="/" class="inline-block bg-green-leaf hover:bg-opacity-90 text-white font-bold py-4 px-10 rounded-xl transition-all duration-300 shadow-lg transform hover:-translate-y-1">
-                    <i class="bi bi-bar-chart-line mr-2"></i>
+                <a href="/" class="inline-block bg-navy hover:bg-opacity-90 text-white font-medium py-3 px-8 rounded-lg transition-all text-sm">
+                    <i class="bi bi-bar-chart icon-sm mr-1"></i>
                     Get Latest Full Analysis
                 </a>
             </div>
         </div>
 
-        <h3 class="text-3xl font-bold text-white mb-8">
-            <i class="bi bi-clock-history text-green-leaf mr-3"></i>
+        <h3 class="text-xl font-semibold text-navy mb-6">
             Historical Reports Archive
         </h3>
         
         {% if snapshots %}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {% for snapshot in snapshots %}
-                <a href="/archive/{{ snapshot.slug }}/" class="block group">
-                    <div class="glass-card rounded-2xl p-6 hover-lift">
+                <a href="/archive/{{ snapshot.slug }}/" class="block hover-lift">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                         <div class="flex justify-between items-start mb-4">
-                            <h5 class="text-xl font-bold text-white">
-                                <i class="bi bi-calendar-event text-green-leaf mr-2"></i>
+                            <h5 class="text-lg font-semibold text-navy">
                                 {{ snapshot.timestamp|date:"F d, Y" }}
                             </h5>
-                            <span class="bg-green-leaf text-white px-4 py-1 rounded-full text-sm font-semibold">
+                            <span class="bg-gray-100 text-navy px-3 py-1 rounded-full text-xs font-medium">
                                 {{ snapshot.timestamp|date:"H:i" }} WAT
                             </span>
                         </div>
                         
                         <div class="grid grid-cols-3 gap-4 text-center mt-4">
                             <div>
-                                <p class="text-white opacity-75 text-sm mb-1">Flood</p>
-                                <h5 class="text-2xl font-bold text-white">{{ snapshot.risk_scores.flood }}</h5>
+                                <p class="text-gray-500 text-xs mb-1">Flood</p>
+                                <h5 class="text-xl font-bold text-navy">{{ snapshot.risk_scores.flood }}</h5>
                             </div>
                             <div>
-                                <p class="text-white opacity-75 text-sm mb-1">Air</p>
-                                <h5 class="text-2xl font-bold text-white">{{ snapshot.risk_scores.air }}</h5>
+                                <p class="text-gray-500 text-xs mb-1">Air</p>
+                                <h5 class="text-xl font-bold text-navy">{{ snapshot.risk_scores.air }}</h5>
                             </div>
                             <div>
-                                <p class="text-white opacity-75 text-sm mb-1">Land</p>
-                                <h5 class="text-2xl font-bold text-white">{{ snapshot.risk_scores.land_health }}</h5>
+                                <p class="text-gray-500 text-xs mb-1">Land</p>
+                                <h5 class="text-xl font-bold text-navy">{{ snapshot.risk_scores.land_health }}</h5>
                             </div>
                         </div>
                     </div>
@@ -86,10 +82,10 @@
                 {% endfor %}
             </div>
         {% else %}
-            <div class="glass-card rounded-3xl p-12 text-center">
-                <i class="bi bi-inbox text-8xl text-white opacity-30 mb-6 block"></i>
-                <h5 class="text-2xl text-white font-semibold mb-2">No historical reports yet</h5>
-                <p class="text-white opacity-75 text-lg">Generate your first analysis above!</p>
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
+                <i class="bi bi-inbox text-6xl text-gray-300 mb-6 block"></i>
+                <h5 class="text-xl font-semibold text-navy mb-2">No historical reports yet</h5>
+                <p class="text-gray-600 text-sm">Generate your first analysis above!</p>
             </div>
         {% endif %}
     </div>
