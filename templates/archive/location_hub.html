@@ -3,123 +3,95 @@
 {% block title %}{{ location_name }}, {{ country }} - ASASE{% endblock %}
 
 {% block content %}
-<div class="container py-5">
-    <div class="row">
-        <div class="col-lg-10 mx-auto">
-            <div class="mb-5">
-                <h1 class="display-4 fw-bold mb-2" style="color: var(--navy);">
-                    <i class="bi bi-geo-alt-fill me-3" style="color: var(--green-leaf);"></i>
-                    {{ location_name }}, {{ country }}
-                </h1>
-                <p class="lead text-muted">Environmental Intelligence Hub</p>
-            </div>
+<div class="min-h-screen py-16 px-4">
+    <div class="max-w-7xl mx-auto">
+        <div class="mb-10">
+            <h1 class="text-4xl md:text-6xl font-extrabold text-white mb-3">
+                <i class="bi bi-geo-alt-fill text-green-leaf mr-3"></i>
+                {{ location_name }}, {{ country }}
+            </h1>
+            <p class="text-xl text-white opacity-90">Environmental Intelligence Hub</p>
+        </div>
 
-            <div class="glass-card p-4 p-md-5 mb-5">
-                <h3 class="fw-bold mb-4" style="color: var(--navy);">
-                    <i class="bi bi-activity me-2" style="color: var(--green-leaf);"></i>
-                    Live Environmental Data
-                </h3>
-                
-                <div class="row g-4 mb-4">
-                    <div class="col-md-4">
-                        <div class="card border-0 shadow-sm text-center">
-                            <div class="card-body">
-                                <i class="bi bi-water display-5 mb-2" style="color: {{ flood_color }};"></i>
-                                <h3 class="fw-bold" style="color: {{ flood_color }};">{{ live_data.flood_risk }}</h3>
-                                <p class="text-muted mb-0">Flood Risk</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-md-4">
-                        <div class="card border-0 shadow-sm text-center">
-                            <div class="card-body">
-                                <i class="bi bi-wind display-5 mb-2" style="color: {{ air_color }};"></i>
-                                <h3 class="fw-bold" style="color: {{ air_color }};">{{ live_data.air_quality }}</h3>
-                                <p class="text-muted mb-0">Air Quality</p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-md-4">
-                        <div class="card border-0 shadow-sm text-center">
-                            <div class="card-body">
-                                <i class="bi bi-tree-fill display-5 mb-2" style="color: {{ land_color }};"></i>
-                                <h3 class="fw-bold" style="color: {{ land_color }};">{{ live_data.land_health }}</h3>
-                                <p class="text-muted mb-0">Land Health</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="text-center">
-                    <a href="/analysis/live-report/?location={{ location_name }}, {{ country }}" class="btn btn-lg text-white px-5" style="background-color: var(--green-leaf); border-radius: 12px;">
-                        <i class="bi bi-bar-chart-line me-2"></i>
-                        Get Latest Full Analysis
-                    </a>
-                </div>
-            </div>
-
-            <h3 class="fw-bold mb-4" style="color: var(--navy);">
-                <i class="bi bi-clock-history me-2" style="color: var(--green-leaf);"></i>
-                Historical Reports Archive
+        <div class="glass-card rounded-3xl p-8 md:p-12 mb-10">
+            <h3 class="text-3xl font-bold text-white mb-8">
+                <i class="bi bi-activity text-green-leaf mr-3"></i>
+                Live Environmental Data
             </h3>
             
-            {% if snapshots %}
-                <div class="row g-4">
-                    {% for snapshot in snapshots %}
-                    <div class="col-md-6">
-                        <a href="/archive/{{ snapshot.slug }}/" class="text-decoration-none">
-                            <div class="card border-0 shadow-sm h-100 hover-lift">
-                                <div class="card-body p-4">
-                                    <div class="d-flex justify-content-between align-items-start mb-3">
-                                        <h5 class="fw-bold mb-0" style="color: var(--navy);">
-                                            <i class="bi bi-calendar-event me-2"></i>
-                                            {{ snapshot.timestamp|date:"F d, Y" }}
-                                        </h5>
-                                        <span class="badge" style="background-color: var(--green-leaf);">
-                                            {{ snapshot.timestamp|date:"H:i" }} WAT
-                                        </span>
-                                    </div>
-                                    
-                                    <div class="d-flex justify-content-between text-center mt-3">
-                                        <div>
-                                            <p class="text-muted small mb-1">Flood</p>
-                                            <h5 class="fw-bold">{{ snapshot.risk_scores.flood }}</h5>
-                                        </div>
-                                        <div>
-                                            <p class="text-muted small mb-1">Air</p>
-                                            <h5 class="fw-bold">{{ snapshot.risk_scores.air }}</h5>
-                                        </div>
-                                        <div>
-                                            <p class="text-muted small mb-1">Land</p>
-                                            <h5 class="fw-bold">{{ snapshot.risk_scores.land_health }}</h5>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </a>
-                    </div>
-                    {% endfor %}
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white bg-opacity-20 backdrop-blur-md rounded-2xl p-6 text-center hover-lift">
+                    <i class="bi bi-water text-5xl mb-3" style="color: {{ flood_color }};"></i>
+                    <h3 class="text-4xl font-bold mb-1" style="color: {{ flood_color }};">{{ live_data.flood }}</h3>
+                    <p class="text-white opacity-90">Flood Risk</p>
                 </div>
-            {% else %}
-                <div class="glass-card p-5 text-center">
-                    <i class="bi bi-inbox display-1 mb-3" style="color: var(--navy); opacity: 0.3;"></i>
-                    <h5 class="text-muted">No historical reports yet</h5>
-                    <p class="text-muted">Generate your first analysis above!</p>
+                
+                <div class="bg-white bg-opacity-20 backdrop-blur-md rounded-2xl p-6 text-center hover-lift">
+                    <i class="bi bi-wind text-5xl mb-3" style="color: {{ air_color }};"></i>
+                    <h3 class="text-4xl font-bold mb-1" style="color: {{ air_color }};">{{ live_data.air }}</h3>
+                    <p class="text-white opacity-90">Air Quality</p>
                 </div>
-            {% endif %}
+                
+                <div class="bg-white bg-opacity-20 backdrop-blur-md rounded-2xl p-6 text-center hover-lift">
+                    <i class="bi bi-tree-fill text-5xl mb-3" style="color: {{ land_color }};"></i>
+                    <h3 class="text-4xl font-bold mb-1" style="color: {{ land_color }};">{{ live_data.land_health }}</h3>
+                    <p class="text-white opacity-90">Land Health</p>
+                </div>
+            </div>
+            
+            <div class="text-center">
+                <a href="/" class="inline-block bg-green-leaf hover:bg-opacity-90 text-white font-bold py-4 px-10 rounded-xl transition-all duration-300 shadow-lg transform hover:-translate-y-1">
+                    <i class="bi bi-bar-chart-line mr-2"></i>
+                    Get Latest Full Analysis
+                </a>
+            </div>
         </div>
+
+        <h3 class="text-3xl font-bold text-white mb-8">
+            <i class="bi bi-clock-history text-green-leaf mr-3"></i>
+            Historical Reports Archive
+        </h3>
+        
+        {% if snapshots %}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {% for snapshot in snapshots %}
+                <a href="/archive/{{ snapshot.slug }}/" class="block group">
+                    <div class="glass-card rounded-2xl p-6 hover-lift">
+                        <div class="flex justify-between items-start mb-4">
+                            <h5 class="text-xl font-bold text-white">
+                                <i class="bi bi-calendar-event text-green-leaf mr-2"></i>
+                                {{ snapshot.timestamp|date:"F d, Y" }}
+                            </h5>
+                            <span class="bg-green-leaf text-white px-4 py-1 rounded-full text-sm font-semibold">
+                                {{ snapshot.timestamp|date:"H:i" }} WAT
+                            </span>
+                        </div>
+                        
+                        <div class="grid grid-cols-3 gap-4 text-center mt-4">
+                            <div>
+                                <p class="text-white opacity-75 text-sm mb-1">Flood</p>
+                                <h5 class="text-2xl font-bold text-white">{{ snapshot.risk_scores.flood }}</h5>
+                            </div>
+                            <div>
+                                <p class="text-white opacity-75 text-sm mb-1">Air</p>
+                                <h5 class="text-2xl font-bold text-white">{{ snapshot.risk_scores.air }}</h5>
+                            </div>
+                            <div>
+                                <p class="text-white opacity-75 text-sm mb-1">Land</p>
+                                <h5 class="text-2xl font-bold text-white">{{ snapshot.risk_scores.land_health }}</h5>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="glass-card rounded-3xl p-12 text-center">
+                <i class="bi bi-inbox text-8xl text-white opacity-30 mb-6 block"></i>
+                <h5 class="text-2xl text-white font-semibold mb-2">No historical reports yet</h5>
+                <p class="text-white opacity-75 text-lg">Generate your first analysis above!</p>
+            </div>
+        {% endif %}
     </div>
 </div>
-
-<style>
-    .hover-lift {
-        transition: all 0.3s;
-    }
-    .hover-lift:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
-    }
-</style>
 {% endblock %}

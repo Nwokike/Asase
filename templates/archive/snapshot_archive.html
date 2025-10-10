@@ -3,108 +3,87 @@
 {% block title %}{{ snapshot.location_name }} Report - {{ snapshot.timestamp|date:"F d, Y" }} - ASASE{% endblock %}
 
 {% block content %}
-<div class="sticky-top" style="background-color: white; border-bottom: 2px solid var(--green-leaf); z-index: 100;">
-    <div class="container py-3">
-        <div class="row align-items-center g-3">
-            <div class="col-md-4">
-                <p class="mb-0 fw-semibold" style="color: var(--navy);">
-                    <i class="bi bi-archive me-2" style="color: var(--green-leaf);"></i>
-                    Archived Environmental Report
-                </p>
-            </div>
-            <div class="col-md-8">
-                <form action="/" method="get" class="d-flex gap-2">
-                    <input 
-                        type="text" 
-                        name="location" 
-                        class="form-control" 
-                        placeholder="Get live report for your location" 
-                        style="border-radius: 8px; border: 2px solid var(--navy);"
-                    >
-                    <button type="submit" class="btn text-white px-4" style="background-color: var(--green-leaf); border-radius: 8px; white-space: nowrap;">
-                        <i class="bi bi-search me-1"></i>
-                        Analyze
-                    </button>
-                </form>
-            </div>
+<div class="sticky top-16 glass-nav z-40 border-b border-white border-opacity-20">
+    <div class="max-w-7xl mx-auto px-4 py-4">
+        <div class="flex flex-col md:flex-row md:items-center gap-4">
+            <p class="text-white font-semibold flex items-center">
+                <i class="bi bi-archive text-green-leaf mr-2"></i>
+                Archived Environmental Report
+            </p>
+            <form action="/" method="get" class="flex gap-2 flex-1 md:max-w-md ml-auto">
+                <input 
+                    type="text" 
+                    name="location" 
+                    class="flex-1 px-4 py-2 rounded-lg bg-white bg-opacity-20 border border-white border-opacity-30 text-white placeholder-white placeholder-opacity-60 focus:outline-none focus:border-green-leaf" 
+                    placeholder="Get live report for your location"
+                >
+                <button type="submit" class="bg-green-leaf hover:bg-opacity-90 text-white px-6 py-2 rounded-lg font-semibold transition-all whitespace-nowrap">
+                    <i class="bi bi-search mr-1"></i>
+                    Analyze
+                </button>
+            </form>
         </div>
     </div>
 </div>
 
-<div class="container py-5">
-    <div class="row">
-        <div class="col-lg-10 mx-auto">
-            <div class="glass-card p-4 p-md-5">
-                <div class="mb-4">
-                    <h1 class="display-5 fw-bold mb-2" style="color: var(--navy);">
-                        <i class="bi bi-geo-alt-fill me-2" style="color: var(--green-leaf);"></i>
-                        {{ snapshot.location_name }}, {{ snapshot.country }}
-                    </h1>
-                    <p class="text-muted">
-                        <i class="bi bi-calendar-event me-1"></i>
-                        Report Date: {{ snapshot.timestamp|date:"F d, Y at H:i" }} WAT
-                    </p>
-                </div>
+<div class="py-16 px-4">
+    <div class="max-w-7xl mx-auto">
+        <div class="glass-card rounded-3xl p-8 md:p-12">
+            <div class="mb-8">
+                <h1 class="text-4xl md:text-5xl font-extrabold text-white mb-3">
+                    <i class="bi bi-geo-alt-fill text-green-leaf mr-3"></i>
+                    {{ snapshot.location_name }}, {{ snapshot.country }}
+                </h1>
+                <p class="text-lg text-white opacity-90">
+                    <i class="bi bi-calendar-event mr-2"></i>
+                    Report Date: {{ snapshot.timestamp|date:"F d, Y at H:i" }} WAT
+                </p>
+            </div>
 
-                <div id="map" class="rounded-3 mb-4" style="height: 300px; border: 3px solid var(--navy);"></div>
+            <div id="map" class="rounded-2xl mb-8 border-4 border-white border-opacity-30" style="height: 350px;"></div>
 
-                <div class="row g-4 mb-4">
-                    <div class="col-md-4">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-body text-center">
-                                <i class="bi bi-water display-4 mb-3" style="color: {{ flood_color }};"></i>
-                                <h3 class="display-4 fw-bold mb-2" style="color: {{ flood_color }};">{{ snapshot.risk_scores.flood }}</h3>
-                                <h6 class="text-muted">Flood Risk</h6>
-                                <div class="progress mt-3" style="height: 8px;">
-                                    <div class="progress-bar" role="progressbar" style="width: {{ snapshot.risk_scores.flood }}0%; background-color: {{ flood_color }};"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-md-4">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-body text-center">
-                                <i class="bi bi-wind display-4 mb-3" style="color: {{ air_color }};"></i>
-                                <h3 class="display-4 fw-bold mb-2" style="color: {{ air_color }};">{{ snapshot.risk_scores.air }}</h3>
-                                <h6 class="text-muted">Air Quality</h6>
-                                <div class="progress mt-3" style="height: 8px;">
-                                    <div class="progress-bar" role="progressbar" style="width: {{ snapshot.risk_scores.air }}0%; background-color: {{ air_color }};"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-md-4">
-                        <div class="card border-0 shadow-sm h-100">
-                            <div class="card-body text-center">
-                                <i class="bi bi-tree-fill display-4 mb-3" style="color: {{ land_color }};"></i>
-                                <h3 class="display-4 fw-bold mb-2" style="color: {{ land_color }};">{{ snapshot.risk_scores.land_health }}</h3>
-                                <h6 class="text-muted">Land Health (SDG 15)</h6>
-                                <div class="progress mt-3" style="height: 8px;">
-                                    <div class="progress-bar" role="progressbar" style="width: {{ snapshot.risk_scores.land_health }}0%; background-color: {{ land_color }};"></div>
-                                </div>
-                            </div>
-                        </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white bg-opacity-20 backdrop-blur-md rounded-2xl p-6 text-center hover-lift">
+                    <i class="bi bi-water text-6xl mb-4" style="color: {{ flood_color }};"></i>
+                    <h3 class="text-5xl font-bold mb-2" style="color: {{ flood_color }};">{{ snapshot.risk_scores.flood }}</h3>
+                    <h6 class="text-white font-medium mb-4">Flood Risk</h6>
+                    <div class="w-full bg-white bg-opacity-30 rounded-full h-2">
+                        <div class="h-2 rounded-full transition-all duration-500" style="width: {{ snapshot.risk_scores.flood }}0%; background-color: {{ flood_color }};"></div>
                     </div>
                 </div>
-
-                <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-body p-4">
-                        {{ snapshot.ai_analysis_text|safe }}
+                
+                <div class="bg-white bg-opacity-20 backdrop-blur-md rounded-2xl p-6 text-center hover-lift">
+                    <i class="bi bi-wind text-6xl mb-4" style="color: {{ air_color }};"></i>
+                    <h3 class="text-5xl font-bold mb-2" style="color: {{ air_color }};">{{ snapshot.risk_scores.air }}</h3>
+                    <h6 class="text-white font-medium mb-4">Air Quality</h6>
+                    <div class="w-full bg-white bg-opacity-30 rounded-full h-2">
+                        <div class="h-2 rounded-full transition-all duration-500" style="width: {{ snapshot.risk_scores.air }}0%; background-color: {{ air_color }};"></div>
                     </div>
                 </div>
-
-                <div class="text-center">
-                    <a href="/location/{{ snapshot.location_name|slugify }}/" class="btn btn-lg me-2 mb-2 text-white" style="background-color: var(--navy); border-radius: 12px;">
-                        <i class="bi bi-archive me-2"></i>
-                        View Location Hub
-                    </a>
-                    <a href="/" class="btn btn-lg mb-2 text-white" style="background-color: var(--green-leaf); border-radius: 12px;">
-                        <i class="bi bi-arrow-left-circle me-2"></i>
-                        Analyze Another Location
-                    </a>
+                
+                <div class="bg-white bg-opacity-20 backdrop-blur-md rounded-2xl p-6 text-center hover-lift">
+                    <i class="bi bi-tree-fill text-6xl mb-4" style="color: {{ land_color }};"></i>
+                    <h3 class="text-5xl font-bold mb-2" style="color: {{ land_color }};">{{ snapshot.risk_scores.land_health }}</h3>
+                    <h6 class="text-white font-medium mb-4">Land Health (SDG 15)</h6>
+                    <div class="w-full bg-white bg-opacity-30 rounded-full h-2">
+                        <div class="h-2 rounded-full transition-all duration-500" style="width: {{ snapshot.risk_scores.land_health }}0%; background-color: {{ land_color }};"></div>
+                    </div>
                 </div>
+            </div>
+
+            <div class="bg-white bg-opacity-20 backdrop-blur-md rounded-2xl p-8 mb-8">
+                {{ snapshot.ai_analysis_text|safe }}
+            </div>
+
+            <div class="flex flex-col sm:flex-row justify-center gap-4">
+                <a href="/archive/location/{{ snapshot.location_name|slugify }}/" class="inline-block bg-navy hover:bg-opacity-90 text-white font-bold py-4 px-8 rounded-xl transition-all duration-300 shadow-lg text-center">
+                    <i class="bi bi-archive mr-2"></i>
+                    View Location Hub
+                </a>
+                <a href="/" class="inline-block bg-green-leaf hover:bg-opacity-90 text-white font-bold py-4 px-8 rounded-xl transition-all duration-300 shadow-lg transform hover:-translate-y-1 text-center">
+                    <i class="bi bi-arrow-left-circle mr-2"></i>
+                    Analyze Another Location
+                </a>
             </div>
         </div>
     </div>
