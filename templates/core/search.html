@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block title %}ASASE - Environmental Intelligence for Africa{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex flex-col items-center justify-center px-4 -mt-20">
+    <div class="text-center mb-12">
+        <h1 class="text-5xl md:text-7xl font-bold text-navy mb-4">ASASE</h1>
+        <p class="text-xl md:text-2xl text-gray-600">Earth Intelligence for Africa</p>
+        <p class="text-md text-gray-500 mt-2">AI-Driven Environmental Risk Analysis</p>
+    </div>
+
+    <div class="w-full max-w-3xl">
+        <form hx-post="/analysis/live-report/" 
+              hx-target="#analysis-results" 
+              hx-swap="innerHTML" 
+              class="glass-dark rounded-2xl p-8 shadow-2xl">
+            {% csrf_token %}
+            <div class="flex flex-col md:flex-row gap-4">
+                <input 
+                    type="text" 
+                    name="location" 
+                    placeholder="Enter location (e.g., Lagos, Nigeria)" 
+                    required
+                    class="flex-1 px-6 py-4 rounded-lg border-2 border-navy focus:border-green-leaf focus:outline-none text-lg"
+                >
+                <button 
+                    type="submit" 
+                    class="bg-green-leaf text-white px-8 py-4 rounded-lg font-semibold hover:bg-green-600 transition-colors text-lg">
+                    Analyze
+                </button>
+            </div>
+        </form>
+
+        <div id="analysis-results" class="mt-8">
+        </div>
+    </div>
+
+    <div class="mt-16 text-center">
+        <p class="text-gray-600 mb-4">Focus Areas</p>
+        <div class="flex flex-wrap justify-center gap-4">
+            <span class="glass px-6 py-2 rounded-full text-navy font-medium">Flood Risk</span>
+            <span class="glass px-6 py-2 rounded-full text-navy font-medium">Air Quality</span>
+            <span class="glass px-6 py-2 rounded-full text-navy font-medium">Land Health (SDG 15)</span>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -6,7 +6,11 @@ from functools import lru_cache
 from google import genai
 from google.genai import types
 
-client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+def get_gemini_client():
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if api_key:
+        return genai.Client(api_key=api_key)
+    return None
 
 @lru_cache(maxsize=100)
 def get_coords_from_location(location_name: str) -> dict:
@@ -106,6 +110,10 @@ def get_real_ndvi(lat: float, lon: float) -> float:
 
 def get_ai_analysis(location_name: str, country: str, all_data: dict) -> dict:
     try:
+        client = get_gemini_client()
+        if not client:
+            raise ValueError("Gemini API key not configured")
+            
         current_time = datetime.now().strftime('%H:%M')
         
         prompt = f"""You are an expert Environmental Geo-Analyst providing a professional risk assessment.

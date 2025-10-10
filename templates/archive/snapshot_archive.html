@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ snapshot.location_name }} Report - {{ snapshot.timestamp|date:"F d, Y" }} - ASASE{% endblock %}
+
+{% block content %}
+<div class="bg-green-leaf text-white py-4 sticky top-0 z-40 shadow-lg">
+    <div class="container mx-auto px-4">
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+            <p class="text-sm md:text-base">📊 Archived Environmental Report</p>
+            <form action="/" method="get" class="flex gap-2 w-full md:w-auto">
+                <input 
+                    type="text" 
+                    name="location" 
+                    placeholder="Get live report for your location" 
+                    class="flex-1 md:w-64 px-4 py-2 rounded-lg text-gray-800"
+                >
+                <button type="submit" class="bg-navy px-6 py-2 rounded-lg font-semibold hover:bg-opacity-90 transition-colors">
+                    Analyze
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="container mx-auto px-4 py-12">
+    <div class="max-w-5xl mx-auto">
+        <div class="glass-dark rounded-2xl p-8 shadow-2xl">
+            <div class="mb-8">
+                <h1 class="text-3xl md:text-4xl font-bold text-navy mb-2">{{ snapshot.location_name }}, {{ snapshot.country }}</h1>
+                <p class="text-gray-600">Report Date: {{ snapshot.timestamp|date:"F d, Y at H:i" }} WAT</p>
+            </div>
+
+            <div id="map" class="w-full h-64 rounded-lg mb-8"></div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="glass rounded-xl p-6 text-center">
+                    <div class="text-5xl font-bold mb-2" style="color: {{ flood_color }}">{{ snapshot.risk_scores.flood }}</div>
+                    <p class="text-gray-700 font-semibold">Flood Risk</p>
+                </div>
+                
+                <div class="glass rounded-xl p-6 text-center">
+                    <div class="text-5xl font-bold mb-2" style="color: {{ air_color }}">{{ snapshot.risk_scores.air }}</div>
+                    <p class="text-gray-700 font-semibold">Air Quality</p>
+                </div>
+                
+                <div class="glass rounded-xl p-6 text-center">
+                    <div class="text-5xl font-bold mb-2" style="color: {{ land_color }}">{{ snapshot.risk_scores.land_health }}</div>
+                    <p class="text-gray-700 font-semibold">Land Health (SDG 15)</p>
+                </div>
+            </div>
+
+            <div class="prose prose-lg max-w-none">
+                {{ snapshot.ai_analysis_text|safe }}
+            </div>
+
+            <div class="mt-8 text-center">
+                <a href="/location/{{ snapshot.location_name|slugify }}/" class="inline-block bg-navy text-white px-8 py-3 rounded-lg font-semibold hover:bg-opacity-90 transition-colors mr-4">
+                    View Location Hub
+                </a>
+                <a href="/" class="inline-block bg-green-leaf text-white px-8 py-3 rounded-lg font-semibold hover:bg-green-600 transition-colors">
+                    Analyze Another Location
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    var map = L.map('map').setView([{{ snapshot.latitude }}, {{ snapshot.longitude }}], 10);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    L.marker([{{ snapshot.latitude }}, {{ snapshot.longitude }}]).addTo(map)
+        .bindPopup('{{ snapshot.location_name }}')
+        .openPopup();
+</script>
+{% endblock %}
