@@ -3,12 +3,12 @@
 {% block title %}{{ snapshot.location_name }} Report - {{ snapshot.timestamp|date:"F d, Y" }} - ASASE{% endblock %}
 
 {% block content %}
-<div class="sticky-top" style="background-color: var(--green-leaf); z-index: 100;">
+<div class="sticky-top" style="background-color: white; border-bottom: 2px solid var(--green-leaf); z-index: 100;">
     <div class="container py-3">
         <div class="row align-items-center g-3">
             <div class="col-md-4">
-                <p class="text-white mb-0 fw-semibold">
-                    <i class="bi bi-archive me-2"></i>
+                <p class="mb-0 fw-semibold" style="color: var(--navy);">
+                    <i class="bi bi-archive me-2" style="color: var(--green-leaf);"></i>
                     Archived Environmental Report
                 </p>
             </div>
@@ -19,9 +19,9 @@
                         name="location" 
                         class="form-control" 
                         placeholder="Get live report for your location" 
-                        style="border-radius: 8px;"
+                        style="border-radius: 8px; border: 2px solid var(--navy);"
                     >
-                    <button type="submit" class="btn text-white px-4" style="background-color: var(--navy); border-radius: 8px; white-space: nowrap;">
+                    <button type="submit" class="btn text-white px-4" style="background-color: var(--green-leaf); border-radius: 8px; white-space: nowrap;">
                         <i class="bi bi-search me-1"></i>
                         Analyze
                     </button>
