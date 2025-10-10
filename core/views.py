@@ -1,7 +1,11 @@
 from django.shortcuts import render
+from core.african_countries import AFRICAN_COUNTRIES
 
 def search(request):
-    return render(request, 'core/search.html')
+    context = {
+        'african_countries': AFRICAN_COUNTRIES
+    }
+    return render(request, 'core/search.html', context)
 
 def map_view(request):
     return render(request, 'core/map.html')

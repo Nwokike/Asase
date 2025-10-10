@@ -19,18 +19,35 @@
                   hx-indicator="#loading"
                   class="space-y-6">
                 {% csrf_token %}
-                <div>
-                    <label for="location" class="block text-sm font-medium text-gray-700 mb-2">
-                        Enter Location
-                    </label>
-                    <input 
-                        type="text" 
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-navy focus:border-transparent text-sm" 
-                        id="location"
-                        name="location" 
-                        placeholder="e.g., Lagos, Nigeria"
-                        required
-                    >
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="location" class="block text-sm font-medium text-gray-700 mb-2">
+                            City, Town, or Area
+                        </label>
+                        <input 
+                            type="text" 
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-navy focus:border-transparent text-sm" 
+                            id="location"
+                            name="location" 
+                            placeholder="Enter City, Town, or Area..."
+                            required
+                        >
+                    </div>
+                    <div>
+                        <label for="country" class="block text-sm font-medium text-gray-700 mb-2">
+                            Country
+                        </label>
+                        <select 
+                            id="country"
+                            name="country" 
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-navy focus:border-transparent text-sm bg-white"
+                            required>
+                            <option value="">Select Country...</option>
+                            {% for country in african_countries %}
+                            <option value="{{ country }}">{{ country }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </div>
                 <button type="submit" class="w-full bg-navy hover:bg-opacity-90 text-white font-medium py-3 px-6 rounded-lg transition-all text-sm">
                     Analyze Environment

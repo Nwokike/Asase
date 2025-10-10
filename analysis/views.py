@@ -17,8 +17,10 @@ def get_risk_color(score):
 def live_report(request):
     if request.method == 'POST':
         location = request.POST.get('location', '')
+        country = request.POST.get('country', '')
         
-        coords = get_coords_from_location(location)
+        full_location = f"{location}, {country}" if country else location
+        coords = get_coords_from_location(full_location)
         weather = get_weather_data(coords['lat'], coords['lon'])
         elevation = get_elevation_data(coords['lat'], coords['lon'])
         ndvi = get_real_ndvi(coords['lat'], coords['lon'])
