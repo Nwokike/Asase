@@ -51,15 +51,21 @@
                         </select>
                     </div>
                 </div>
-                <button type="submit" class="w-full bg-navy hover:bg-opacity-90 text-white font-medium py-5 px-8 rounded-xl transition-all text-base flex items-center justify-center">
+                <button type="submit" class="w-full bg-navy hover:bg-opacity-90 text-white font-medium py-5 px-8 rounded-xl transition-all text-base flex items-center justify-center" id="analyzeBtn">
                     <i class="bi bi-search text-xl mr-3"></i>
-                    Analyze Environment
+                    <span id="btnText">Analyze Environment</span>
                 </button>
             </form>
 
-            <div id="loading" class="htmx-indicator text-center py-8">
-                <div class="inline-block animate-spin rounded-full h-12 w-12 border-3 border-gray-300 border-t-navy"></div>
-                <p class="mt-4 text-gray-700 text-base">Analyzing environmental data...</p>
+            <div id="loading" class="htmx-indicator">
+                <div class="text-center py-12 bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 mt-8">
+                    <div class="inline-block animate-spin rounded-full h-16 w-16 border-4 border-gray-300 border-t-navy mb-4"></div>
+                    <p class="text-navy text-lg font-semibold mb-2 flex items-center justify-center">
+                        <i class="bi bi-cloud-download text-2xl mr-3"></i>
+                        Analyzing environmental data...
+                    </p>
+                    <p class="text-gray-600 text-sm">This may take up to 20 seconds</p>
+                </div>
             </div>
         </div>
 

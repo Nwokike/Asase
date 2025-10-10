@@ -14,6 +14,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
@@ -43,9 +44,9 @@
     
     <nav class="bg-white/10 backdrop-blur-lg border-b border-white/20 sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-20">
-                <a href="/" class="flex items-center">
-                    <img src="{% static 'images/logo.png' %}" alt="ASASE" class="h-16 w-16">
+            <div class="flex justify-between items-center h-32">
+                <a href="/" class="flex items-center py-2">
+                    <img src="{% static 'images/logo.png' %}" alt="ASASE" class="h-28 w-auto max-w-none">
                 </a>
                 
                 <div class="hidden md:flex items-center space-x-8">
@@ -92,6 +93,32 @@
     </button>
 
     <script src="{% static 'js/main.js' %}"></script>
+    
+    <script>
+        document.body.addEventListener('htmx:configRequest', (evt) => {
+            const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]');
+            if (csrfToken) {
+                evt.detail.headers['X-CSRFToken'] = csrfToken.value;
+            }
+        });
+        
+        document.body.addEventListener('htmx:beforeRequest', function(evt) {
+            const btn = document.getElementById('analyzeBtn');
+            if (btn && evt.target.closest('form')) {
+                btn.disabled = true;
+                btn.classList.add('opacity-75', 'cursor-not-allowed');
+            }
+        });
+        
+        document.body.addEventListener('htmx:afterRequest', function(evt) {
+            const btn = document.getElementById('analyzeBtn');
+            if (btn) {
+                btn.disabled = false;
+                btn.classList.remove('opacity-75', 'cursor-not-allowed');
+            }
+        });
+    </script>
+    
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>
