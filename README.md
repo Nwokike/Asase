@@ -4,6 +4,29 @@
 
 ASASE (Earth Intelligence) is a Django-based environmental intelligence platform focused on providing real-time, AI-driven risk analysis for African communities. The platform analyzes three critical environmental factors: flood risk, air quality, and land health (aligned with UN SDG 15: Life on Land). Users can search for any location and receive comprehensive environmental assessments powered by satellite data, weather APIs, and Google Gemini AI analysis. The platform also maintains a historical archive of all generated reports, creating a public environmental intelligence database.
 
+## Recent Updates (October 2025)
+
+### Major UI/UX Overhaul
+- **Redesigned Search Interface**: Two-input design with dedicated location text field and African country dropdown (54 countries)
+- **Glassmorphism Design**: Applied modern glassmorphism aesthetic to navigation, cards, and all UI elements
+- **Icon Enhancement**: Significantly larger icons (text-2xl to text-5xl) with proper positioning using flexbox
+- **Typography & Spacing**: Premium feel with generous padding, larger fonts (text-base to text-xl), and cleaner layout
+- **Radial Progress Bar**: Beautiful SVG radial progress visualization for Land Health Score
+- **Historical Trends**: Land Health trend tracking across all reports for each location
+
+### Backend Improvements
+- **Advanced Caching**: Upgraded from `@lru_cache` to Django's robust cache framework with configurable timeouts
+  - Geocoding: 12 hours
+  - Weather data: 30 minutes  
+  - Elevation & NDVI: 12 hours
+- **Error Handling**: User-friendly error messages for location not found and missing inputs
+- **Performance**: Optimized data retrieval with proper cache management
+
+### Features Added
+- **African Countries List**: Complete list of all 54 African countries in search dropdown
+- **Better Validation**: Improved form validation with clear error feedback
+- **Enhanced Cards**: All report cards now feature glassmorphism with larger, well-positioned icons
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
