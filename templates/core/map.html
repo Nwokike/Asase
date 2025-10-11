@@ -3,10 +3,10 @@
 {% block title %}Map - ASASE{% endblock %}
 
 {% block content %}
-<div class="h-screen pt-16 pb-14 md:pb-0">
+<div class="h-screen pt-20 pb-14 md:pb-0">
     <div id="mainMap" class="w-full h-full"></div>
     
-    <div class="absolute top-20 left-4 right-4 md:left-8 md:right-auto md:w-96 z-[1000]">
+    <div class="absolute top-24 left-4 right-4 md:left-8 md:right-auto md:w-96 z-[1000]">
         <div class="bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 p-4">
             <h3 class="text-sm font-semibold text-navy mb-3 flex items-center">
                 <i class="bi bi-pin-map text-lg mr-2"></i>
@@ -28,8 +28,9 @@
                         required
                     >
                     <input type="hidden" id="map-country" name="country" value="">
-                    <button type="submit" class="bg-navy hover:bg-opacity-90 text-white px-4 py-2 rounded-xl font-medium transition-all text-sm" id="mapAnalyzeBtn">
-                        <i class="bi bi-search"></i>
+                    <button type="submit" class="bg-navy hover:bg-opacity-90 text-white px-4 py-2 rounded-xl font-medium transition-all text-sm flex items-center" id="mapAnalyzeBtn">
+                        <i class="bi bi-search mr-1"></i>
+                        <span>Go</span>
                     </button>
                 </div>
                 <div id="map-loading" class="htmx-indicator text-center py-2">
@@ -40,7 +41,7 @@
         </div>
     </div>
     
-    <div id="map-analysis-results" class="absolute bottom-16 md:bottom-8 left-4 right-4 z-[1000] max-h-96 overflow-y-auto"></div>
+    <div id="map-analysis-results" class="absolute bottom-16 md:bottom-8 left-4 right-4 z-[1001] max-h-96 overflow-y-auto"></div>
 </div>
 
 <script>

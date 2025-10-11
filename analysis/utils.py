@@ -61,7 +61,7 @@ def get_weather_data(lat: float, lon: float) -> dict:
         if not api_key:
             raise ValueError("OpenWeather API key not found")
             
-        url = f"https://api.openweathermap.org/data/3.0/onecall"
+        url = f"https://api.openweathermap.org/data/2.5/weather"
         params = {
             'lat': lat,
             'lon': lon,
@@ -73,8 +73,10 @@ def get_weather_data(lat: float, lon: float) -> dict:
         response.raise_for_status()
         data = response.json()
         
-        precipitation_forecast = sum([hour.get('pop', 0) * 100 for hour in data.get('hourly', [])[:24]]) / 24
-        recent_rain = data.get('daily', [{}])[0].get('rain', 0)
+        clouds = data.get('clouds', {}).get('all', 0)
+        humidity = data.get('main', {}).get('humidity', 0)
+        precipitation_forecast = int((clouds + humidity) / 2)
+        recent_rain = data.get('rain', {}).get('1h', 0)
         
         result = {
             'precipitation_forecast': int(precipitation_forecast),
