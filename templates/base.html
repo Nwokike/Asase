@@ -46,7 +46,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-20">
                 <a href="/" class="flex items-center py-2">
-                    <img src="{% static 'images/logo.png' %}" alt="ASASE" class="h-16 w-auto max-w-none">
+                    <img src="{% static 'images/logo.png' %}" alt="ASASE" class="h-14 sm:h-16 w-auto">
                 </a>
                 
                 <div class="hidden md:flex items-center space-x-8">
@@ -71,7 +71,7 @@
         {% block content %}{% endblock %}
     </main>
 
-    <div class="bg-white/10 backdrop-blur-lg border-t border-white/20 fixed bottom-0 left-0 right-0 md:hidden z-40">
+    <div class="bg-white/10 backdrop-blur-lg border-t border-white/20 fixed bottom-0 left-0 right-0 md:hidden z-[1100]">
         <div class="flex justify-around items-center py-1">
             <a href="/" class="flex flex-col items-center py-1 px-2 {% if request.path == '/' %}text-navy{% else %}text-gray-800{% endif %}" style="text-shadow: 0 1px 2px rgba(255,255,255,0.5);">
                 <i class="bi bi-search text-lg"></i>
@@ -114,6 +114,10 @@
                 if (submitBtn) {
                     submitBtn.disabled = true;
                     submitBtn.classList.add('opacity-75', 'cursor-not-allowed');
+                    const icon = submitBtn.querySelector('i');
+                    if (icon) {
+                        icon.className = 'bi bi-arrow-clockwise animate-spin';
+                    }
                     const btnText = submitBtn.querySelector('span');
                     if (btnText) {
                         btnText.textContent = 'Processing... (up to 30 sec)';
@@ -129,12 +133,22 @@
                 if (submitBtn) {
                     submitBtn.disabled = false;
                     submitBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+                    const icon = submitBtn.querySelector('i');
+                    if (icon) {
+                        if (submitBtn.id === 'analyzeBtn') {
+                            icon.className = 'bi bi-search';
+                        } else if (submitBtn.id === 'mapAnalyzeBtn') {
+                            icon.className = 'bi bi-search mr-1';
+                        } else {
+                            icon.className = 'bi bi-search';
+                        }
+                    }
                     const btnText = submitBtn.querySelector('span');
                     if (btnText) {
                         if (submitBtn.id === 'analyzeBtn') {
                             btnText.textContent = 'Analyze Environment';
                         } else {
-                            btnText.textContent = 'Search';
+                            btnText.textContent = 'Go';
                         }
                     }
                 }
