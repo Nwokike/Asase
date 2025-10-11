@@ -19,11 +19,11 @@ def live_report(request):
         location = request.POST.get('location', '')
         country = request.POST.get('country', '')
         
-        if not location or not country:
+        if not location:
             return HttpResponse(
                 '<div class="bg-red-100 border border-red-400 text-red-700 px-6 py-4 rounded-xl text-center">'
                 '<i class="bi bi-exclamation-circle text-2xl mr-2"></i>'
-                'Please provide both location and country to analyze.'
+                'Please provide a location to analyze.'
                 '</div>'
             )
         

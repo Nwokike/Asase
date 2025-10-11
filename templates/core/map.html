@@ -27,6 +27,7 @@
                         placeholder="Search location..."
                         required
                     >
+                    <input type="hidden" id="map-country" name="country" value="">
                     <button type="submit" class="bg-navy hover:bg-opacity-90 text-white px-6 py-3 rounded-xl font-medium transition-all text-base">
                         <i class="bi bi-search text-lg"></i>
                     </button>
@@ -60,7 +61,12 @@
         .then(response => response.json())
         .then(data => {
             if (data.display_name) {
-                document.getElementById('map-location').value = data.display_name;
+                var country = data.address?.country || data.display_name.split(',').pop().trim();
+                var city = data.address?.city || data.address?.town || data.address?.village || data.address?.state || '';
+                var location = city || data.display_name.split(',')[0].trim();
+                
+                document.getElementById('map-location').value = location;
+                document.getElementById('map-country').value = country;
             }
         });
     });
