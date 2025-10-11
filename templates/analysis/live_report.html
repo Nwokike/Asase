@@ -41,8 +41,9 @@
                 <div class="relative inline-flex items-center justify-center w-36 h-36 mb-3">
                     <svg class="w-full h-full transform -rotate-90">
                         <circle cx="72" cy="72" r="64" stroke="#e5e7eb" stroke-width="10" fill="none"></circle>
+                        {% widthratio land_health 10 402 as progress %}
                         <circle cx="72" cy="72" r="64" stroke="{{ land_color }}" stroke-width="10" fill="none" 
-                                stroke-dasharray="402" stroke-dashoffset="{{ 402 - (land_health * 40.2)|floatformat:0 }}"
+                                stroke-dasharray="402" stroke-dashoffset="{{ progress|add:'-402'|floatformat:0 }}"
                                 class="transition-all duration-1000" stroke-linecap="round"></circle>
                     </svg>
                     <div class="absolute inset-0 flex items-center justify-center">
