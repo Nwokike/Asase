@@ -3,31 +3,31 @@
 {% block title %}ASASE - Environmental Intelligence for Africa{% endblock %}
 
 {% block content %}
-<div class="min-h-screen flex items-center justify-center px-6 py-16 pb-28 md:pb-16">
+<div class="min-h-screen flex items-center justify-center px-4 py-8 pb-16 md:pb-8">
     <div class="max-w-4xl w-full">
-        <div class="text-center mb-16">
-            <h1 class="text-5xl md:text-6xl font-light text-navy mb-6 tracking-tight">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl md:text-5xl font-light text-navy mb-3 tracking-tight">
                 Earth Intelligence for Africa
             </h1>
-            <p class="text-xl text-gray-600 font-light">AI-Driven Environmental Risk Analysis</p>
+            <p class="text-base md:text-xl text-gray-600 font-light">AI-Driven Environmental Risk Analysis</p>
         </div>
 
-        <div class="bg-white/10 backdrop-blur-lg rounded-3xl border border-white/20 p-10 md:p-12 mb-12">
+        <div class="bg-white/10 backdrop-blur-lg rounded-3xl border border-white/20 p-6 md:p-10 mb-8">
             <form hx-post="/analysis/live-report/" 
                   hx-target="#analysis-results" 
                   hx-swap="innerHTML" 
                   hx-indicator="#loading"
                   class="space-y-8">
                 {% csrf_token %}
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label for="location" class="block text-base font-medium text-gray-800 mb-3 flex items-center">
-                            <i class="bi bi-geo-alt text-2xl text-navy mr-3"></i>
+                        <label for="location" class="block text-sm font-medium text-gray-800 mb-2 flex items-center">
+                            <i class="bi bi-geo-alt text-lg text-navy mr-2"></i>
                             City, Town, or Area
                         </label>
                         <input 
                             type="text" 
-                            class="w-full px-5 py-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-navy focus:border-transparent text-base" 
+                            class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-navy focus:border-transparent text-sm" 
                             id="location"
                             name="location" 
                             placeholder="Enter location..."
@@ -35,14 +35,14 @@
                         >
                     </div>
                     <div>
-                        <label for="country" class="block text-base font-medium text-gray-800 mb-3 flex items-center">
-                            <i class="bi bi-flag text-2xl text-navy mr-3"></i>
+                        <label for="country" class="block text-sm font-medium text-gray-800 mb-2 flex items-center">
+                            <i class="bi bi-flag text-lg text-navy mr-2"></i>
                             Country
                         </label>
                         <select 
                             id="country"
                             name="country" 
-                            class="w-full px-5 py-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-navy focus:border-transparent text-base bg-white"
+                            class="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-navy focus:border-transparent text-sm bg-white"
                             required>
                             <option value="">Select Country...</option>
                             {% for country in african_countries %}
@@ -51,20 +51,20 @@
                         </select>
                     </div>
                 </div>
-                <button type="submit" class="w-full bg-navy hover:bg-opacity-90 text-white font-medium py-5 px-8 rounded-xl transition-all text-base flex items-center justify-center" id="analyzeBtn">
-                    <i class="bi bi-search text-xl mr-3"></i>
+                <button type="submit" class="w-full bg-navy hover:bg-opacity-90 text-white font-medium py-3 px-6 rounded-xl transition-all text-sm flex items-center justify-center" id="analyzeBtn">
+                    <i class="bi bi-search text-lg mr-2"></i>
                     <span id="btnText">Analyze Environment</span>
                 </button>
             </form>
 
             <div id="loading" class="htmx-indicator">
-                <div class="text-center py-12 bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 mt-8">
-                    <div class="inline-block animate-spin rounded-full h-16 w-16 border-4 border-gray-300 border-t-navy mb-4"></div>
-                    <p class="text-navy text-lg font-semibold mb-2 flex items-center justify-center">
-                        <i class="bi bi-cloud-download text-2xl mr-3"></i>
+                <div class="text-center py-8 bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 mt-6">
+                    <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-navy mb-3"></div>
+                    <p class="text-navy text-base font-semibold mb-1 flex items-center justify-center">
+                        <i class="bi bi-cloud-download text-lg mr-2"></i>
                         Analyzing environmental data...
                     </p>
-                    <p class="text-gray-600 text-sm">This may take up to 20 seconds</p>
+                    <p class="text-gray-600 text-sm">This may take up to 30 seconds</p>
                 </div>
             </div>
         </div>

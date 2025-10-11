@@ -3,13 +3,13 @@
 {% block title %}Map - ASASE{% endblock %}
 
 {% block content %}
-<div class="h-screen pt-32 pb-20 md:pb-0">
+<div class="h-screen pt-16 pb-14 md:pb-0">
     <div id="mainMap" class="w-full h-full"></div>
     
-    <div class="absolute top-40 left-4 right-4 md:left-8 md:right-auto md:w-96 z-[1000]">
-        <div class="bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 p-6">
-            <h3 class="text-base font-semibold text-navy mb-4 flex items-center">
-                <i class="bi bi-pin-map text-xl mr-2"></i>
+    <div class="absolute top-20 left-4 right-4 md:left-8 md:right-auto md:w-96 z-[1000]">
+        <div class="bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 p-4">
+            <h3 class="text-sm font-semibold text-navy mb-3 flex items-center">
+                <i class="bi bi-pin-map text-lg mr-2"></i>
                 Click map or search location
             </h3>
             <form hx-post="/analysis/live-report/" 
@@ -18,29 +18,29 @@
                   hx-indicator="#map-loading"
                   class="space-y-3">
                 {% csrf_token %}
-                <div class="flex gap-3">
+                <div class="flex gap-2">
                     <input 
                         type="text" 
                         id="map-location"
                         name="location" 
-                        class="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-navy focus:border-transparent text-base" 
+                        class="flex-1 px-3 py-2 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-navy focus:border-transparent text-sm" 
                         placeholder="Search location..."
                         required
                     >
                     <input type="hidden" id="map-country" name="country" value="">
-                    <button type="submit" class="bg-navy hover:bg-opacity-90 text-white px-6 py-3 rounded-xl font-medium transition-all text-base">
-                        <i class="bi bi-search text-lg"></i>
+                    <button type="submit" class="bg-navy hover:bg-opacity-90 text-white px-4 py-2 rounded-xl font-medium transition-all text-sm" id="mapAnalyzeBtn">
+                        <i class="bi bi-search"></i>
                     </button>
                 </div>
                 <div id="map-loading" class="htmx-indicator text-center py-2">
-                    <div class="inline-block animate-spin rounded-full h-5 w-5 border-2 border-gray-300 border-t-navy"></div>
-                    <span class="text-gray-600 text-xs ml-2">Analyzing...</span>
+                    <div class="inline-block animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-navy"></div>
+                    <span class="text-gray-600 text-xs ml-2">Analyzing... (may take 30 sec)</span>
                 </div>
             </form>
         </div>
     </div>
     
-    <div id="map-analysis-results" class="absolute bottom-24 md:bottom-8 left-4 right-4 z-[1000] max-h-96 overflow-y-auto"></div>
+    <div id="map-analysis-results" class="absolute bottom-16 md:bottom-8 left-4 right-4 z-[1000] max-h-96 overflow-y-auto"></div>
 </div>
 
 <script>
