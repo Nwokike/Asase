@@ -44,3 +44,11 @@ uritemplate==4.2.0
 urllib3==2.5.0
 websockets==15.0.1
 whitenoise==6.11.0
+dj-database-url
+django
+google-generativeai
+gunicorn
+psycopg2-binary
+python-dotenv
+requests
+whitenoise

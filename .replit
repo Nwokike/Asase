@@ -5,6 +5,7 @@ integrations = ["python_gemini:1.0.0"]
 
 [nix]
 channel = "stable-25_05"
+packages = ["c-ares", "cacert", "cargo", "glibcLocales", "grpc", "libiconv", "libxcrypt", "openssl", "pgadmin4", "pkg-config", "rustc", "zlib"]
 
 [workflows]
 runButton = "Project"
