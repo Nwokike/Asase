@@ -75,10 +75,6 @@
             </div>
 
             <div class="flex flex-col sm:flex-row justify-center gap-4">
-                <button id="shareBtn" class="inline-flex items-center justify-center bg-green-leaf hover:bg-opacity-90 text-white font-medium py-3 px-6 rounded-lg transition-all text-sm">
-                    <i class="bi bi-share icon-sm mr-2"></i>
-                    Share Report
-                </button>
                 <a href="/location/{{ snapshot.location_name|slugify }}/" class="inline-block bg-gray-100 hover:bg-gray-200 text-navy font-medium py-3 px-6 rounded-lg transition-all text-center text-sm">
                     <i class="bi bi-archive icon-sm mr-1"></i>
                     View Location Hub
@@ -107,72 +103,5 @@
     L.marker([{{ snapshot.latitude }}, {{ snapshot.longitude }}], {icon: customIcon}).addTo(map)
         .bindPopup('<b>{{ snapshot.location_name }}</b>')
         .openPopup();
-    
-    document.getElementById('shareBtn').addEventListener('click', async function() {
-        const shareUrl = window.location.href;
-        const shareData = {
-            title: 'Environmental Report: {{ snapshot.location_name }}, {{ snapshot.country }}',
-            text: 'Check out this environmental analysis for {{ snapshot.location_name }}, {{ snapshot.country }} from {{ snapshot.timestamp|date:"F d, Y" }}. Flood Risk: {{ snapshot.risk_scores.flood }}/10, Air Quality: {{ snapshot.risk_scores.air }}/10, Land Health: {{ snapshot.risk_scores.land_health }}/10',
-            url: shareUrl
-        };
-        
-        if (navigator.share) {
-            try {
-                await navigator.share(shareData);
-            } catch (err) {
-                if (err.name !== 'AbortError') {
-                    copyToClipboard(shareUrl);
-                }
-            }
-        } else {
-            copyToClipboard(shareUrl);
-        }
-    });
-    
-    function copyToClipboard(url) {
-        const btn = document.getElementById('shareBtn');
-        
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(url).then(function() {
-                const originalHTML = btn.innerHTML;
-                btn.innerHTML = '<i class="bi bi-check-circle icon-sm mr-2"></i> Link Copied!';
-                setTimeout(function() {
-                    btn.innerHTML = originalHTML;
-                }, 2000);
-            }).catch(function() {
-                fallbackCopy(url);
-            });
-        } else {
-            fallbackCopy(url);
-        }
-    }
-    
-    function fallbackCopy(text) {
-        const btn = document.getElementById('shareBtn');
-        const textArea = document.createElement('textarea');
-        textArea.value = text;
-        textArea.style.position = 'fixed';
-        textArea.style.opacity = '0';
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        
-        try {
-            const successful = document.execCommand('copy');
-            if (successful) {
-                const originalHTML = btn.innerHTML;
-                btn.innerHTML = '<i class="bi bi-check-circle icon-sm mr-2"></i> Link Copied!';
-                setTimeout(function() {
-                    btn.innerHTML = originalHTML;
-                }, 2000);
-            } else {
-                alert('Link: ' + text);
-            }
-        } catch (err) {
-            alert('Link: ' + text);
-        }
-        
-        document.body.removeChild(textArea);
-    }
 </script>
 {% endblock %}

@@ -120,11 +120,10 @@
         .openPopup();
     
     document.getElementById('shareBtn').addEventListener('click', async function() {
-        const shareUrl = window.location.origin + '/archive/{{ location_slug }}/';
         const shareData = {
             title: 'Environmental Analysis: {{ location_name }}, {{ country }}',
             text: 'Check out this environmental risk analysis for {{ location_name }}, {{ country }}. Flood Risk: {{ flood_risk }}/10, Air Quality: {{ air_quality }}/10, Land Health: {{ land_health }}/10',
-            url: shareUrl
+            url: window.location.href
         };
         
         if (navigator.share) {
@@ -142,7 +141,7 @@
     
     function copyToClipboard() {
         const btn = document.getElementById('shareBtn');
-        const url = window.location.origin + '/archive/{{ location_slug }}/';
+        const url = window.location.href;
         
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(url).then(function() {
@@ -162,7 +161,7 @@
     function fallbackCopy(text) {
         const btn = document.getElementById('shareBtn');
         const textArea = document.createElement('textarea');
-        textArea.value = text || (window.location.origin + '/archive/{{ location_slug }}/');
+        textArea.value = text;
         textArea.style.position = 'fixed';
         textArea.style.opacity = '0';
         document.body.appendChild(textArea);

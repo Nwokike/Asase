@@ -61,14 +61,14 @@
                 </a>
                 
                 <div class="hidden md:flex items-center space-x-8">
-                    <a href="/archive/" class="text-gray-800 hover:text-navy transition-colors font-medium text-sm" style="text-shadow: 0 1px 2px rgba(255,255,255,0.5);">
-                        <i class="bi bi-building icon-sm mr-1"></i> Location Hub
-                    </a>
                     <a href="/" class="text-gray-800 hover:text-navy transition-colors font-medium text-sm" style="text-shadow: 0 1px 2px rgba(255,255,255,0.5);">
                         <i class="bi bi-search icon-sm mr-1"></i> Search
                     </a>
                     <a href="/map/" class="text-gray-800 hover:text-navy transition-colors font-medium text-sm" style="text-shadow: 0 1px 2px rgba(255,255,255,0.5);">
                         <i class="bi bi-map icon-sm mr-1"></i> Map
+                    </a>
+                    <a href="/archive/" class="text-gray-800 hover:text-navy transition-colors font-medium text-sm" style="text-shadow: 0 1px 2px rgba(255,255,255,0.5);">
+                        <i class="bi bi-archive icon-sm mr-1"></i> Archive
                     </a>
                     <a href="/about/" class="text-gray-800 hover:text-navy transition-colors font-medium text-sm" style="text-shadow: 0 1px 2px rgba(255,255,255,0.5);">
                         <i class="bi bi-info-circle icon-sm mr-1"></i> About
@@ -116,17 +116,17 @@
 
     <div class="bg-white/10 backdrop-blur-lg border-t border-white/20 fixed bottom-0 left-0 right-0 md:hidden z-[1100]">
         <div class="flex justify-around items-center py-1">
-            <a href="/archive/" class="flex flex-col items-center py-1 px-1 {% if 'location' in request.path or request.path == '/archive/' %}text-navy{% else %}text-gray-800{% endif %}" style="text-shadow: 0 1px 2px rgba(255,255,255,0.5);">
-                <i class="bi bi-building text-lg"></i>
-                <span class="text-xs">Locations</span>
-            </a>
-            <a href="/" class="flex flex-col items-center py-1 px-1 {% if request.path == '/' %}text-navy{% else %}text-gray-800{% endif %}" style="text-shadow: 0 1px 2px rgba(255,255,255,0.5);">
+            <a href="/" class="flex flex-col items-center py-1 px-2 {% if request.path == '/' %}text-navy{% else %}text-gray-800{% endif %}" style="text-shadow: 0 1px 2px rgba(255,255,255,0.5);">
                 <i class="bi bi-search text-lg"></i>
                 <span class="text-xs">Search</span>
             </a>
-            <a href="/map/" class="flex flex-col items-center py-1 px-1 {% if request.path == '/map/' %}text-navy{% else %}text-gray-800{% endif %}" style="text-shadow: 0 1px 2px rgba(255,255,255,0.5);">
+            <a href="/map/" class="flex flex-col items-center py-1 px-2 {% if request.path == '/map/' %}text-navy{% else %}text-gray-800{% endif %}" style="text-shadow: 0 1px 2px rgba(255,255,255,0.5);">
                 <i class="bi bi-map text-lg"></i>
                 <span class="text-xs">Map</span>
+            </a>
+            <a href="/archive/" class="flex flex-col items-center py-1 px-2 {% if request.path == '/archive/' %}text-navy{% else %}text-gray-800{% endif %}" style="text-shadow: 0 1px 2px rgba(255,255,255,0.5);">
+                <i class="bi bi-archive text-lg"></i>
+                <span class="text-xs">Archive</span>
             </a>
         </div>
     </div>
