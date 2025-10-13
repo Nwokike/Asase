@@ -39,12 +39,22 @@
                 </div>
             </div>
             
-            <div class="text-center">
-                <a href="/" class="inline-flex items-center bg-navy hover:bg-opacity-90 text-white font-medium py-4 px-10 rounded-xl transition-all text-base">
-                    <i class="bi bi-bar-chart text-xl mr-3"></i>
-                    Get Latest Full Analysis
-                </a>
+            <div class="text-center flex flex-col sm:flex-row gap-4 justify-center">
+                <button id="shareBtn" class="inline-flex items-center justify-center bg-green-leaf hover:bg-opacity-90 text-white font-medium py-4 px-10 rounded-xl transition-all text-base">
+                    <i class="bi bi-share text-xl mr-3"></i>
+                    Share Location Hub
+                </button>
+                <form action="/analysis/live-report/" method="POST" id="analysisForm" hx-post="/analysis/live-report/" hx-target="#analysis-results" hx-swap="innerHTML">
+                    {% csrf_token %}
+                    <input type="hidden" name="location" value="{{ location_name }}">
+                    <input type="hidden" name="country" value="{{ country }}">
+                    <button type="submit" class="inline-flex items-center bg-navy hover:bg-opacity-90 text-white font-medium py-4 px-10 rounded-xl transition-all text-base">
+                        <i class="bi bi-bar-chart text-xl mr-3"></i>
+                        Get Latest Full Analysis
+                    </button>
+                </form>
             </div>
+            <div id="analysis-results" class="mt-8"></div>
         </div>
 
         <h3 class="text-2xl font-semibold text-navy mb-8 flex items-center">
@@ -94,4 +104,75 @@
         {% endif %}
     </div>
 </div>
+
+{% block extra_scripts %}
+<script>
+    document.getElementById('shareBtn').addEventListener('click', async function() {
+        const shareUrl = window.location.href;
+        const shareData = {
+            title: '{{ location_name }}, {{ country }} - Environmental Hub',
+            text: 'Check out environmental data and historical reports for {{ location_name }}, {{ country }} on ASASE Earth Intelligence.',
+            url: shareUrl
+        };
+        
+        if (navigator.share) {
+            try {
+                await navigator.share(shareData);
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    copyToClipboard(shareUrl);
+                }
+            }
+        } else {
+            copyToClipboard(shareUrl);
+        }
+    });
+    
+    function copyToClipboard(url) {
+        const btn = document.getElementById('shareBtn');
+        
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(function() {
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = '<i class="bi bi-check-circle text-xl mr-3"></i> Link Copied!';
+                setTimeout(function() {
+                    btn.innerHTML = originalHTML;
+                }, 2000);
+            }).catch(function() {
+                fallbackCopy(url);
+            });
+        } else {
+            fallbackCopy(url);
+        }
+    }
+    
+    function fallbackCopy(text) {
+        const btn = document.getElementById('shareBtn');
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = '<i class="bi bi-check-circle text-xl mr-3"></i> Link Copied!';
+                setTimeout(function() {
+                    btn.innerHTML = originalHTML;
+                }, 2000);
+            } else {
+                alert('Link: ' + text);
+            }
+        } catch (err) {
+            alert('Link: ' + text);
+        }
+        
+        document.body.removeChild(textArea);
+    }
+</script>
 {% endblock %}
+
