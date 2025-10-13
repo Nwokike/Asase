@@ -1,200 +1,85 @@
-# ASASE - Environmental Intelligence Platform
+# 🌍 ASASE – Environmental Intelligence Platform
 
-## Overview
+**ASASE (Earth Intelligence)** is a Django-based platform providing real-time, AI-powered environmental risk analysis for African communities.  
+It focuses on **flood risk**, **air quality**, and **land health**, aligned with **UN SDG 15: Life on Land**.
 
-ASASE (Earth Intelligence) is a Django-based environmental intelligence platform focused on providing real-time, AI-driven risk analysis for African communities. The platform analyzes three critical environmental factors: flood risk, air quality, and land health (aligned with UN SDG 15: Life on Land). Users can search for any location and receive comprehensive environmental assessments powered by satellite data, weather APIs, and Google Gemini AI analysis. The platform also maintains a historical archive of all generated reports, creating a public environmental intelligence database.
+🔗 **Live Demo:** [asase-app.onrender.com](https://asase-app.onrender.com)
 
-## Recent Updates (October 2025)
+---
 
-### Mobile & UX Enhancements (Latest)
-- **PWA Install Button**: Repositioned to avoid mobile navigation blocking (bottom-20 on mobile, bottom-6 on desktop)
-- **Auto-Scroll**: Results automatically scroll into view when analysis completes
-- **Share Functionality**: Added share button with Web Share API and robust clipboard fallback for all platforms
-- **SEO Optimization**: Complete Open Graph and Twitter Card meta tags for proper social media sharing
-- **Logo Enhancement**: Increased logo size to fill header height (h-full max-h-16) for better visibility
-- **Professional Footer**: Added comprehensive footer with quick links, legal pages, copyright, and SDG 15 branding
-- **Loading Messages**: Updated to "may take up to 30 seconds" for better user expectations
-- **Map Page Improvements**: 
-  - Results positioned in front of map with proper z-index layering
-  - Responsive design with max-h-[70vh] for better mobile viewing
-  - Visual and browser notifications when analysis completes
-  - Auto-scroll to results after generation
+## 🚀 Key Features
 
-### Major UI/UX Overhaul
-- **Redesigned Search Interface**: Two-input design with dedicated location text field and African country dropdown (54 countries)
-- **Glassmorphism Design**: Applied modern glassmorphism aesthetic to navigation, cards, and all UI elements
-- **Icon Enhancement**: Significantly larger icons (text-2xl to text-5xl) with proper positioning using flexbox
-- **Typography & Spacing**: Premium feel with generous padding, larger fonts (text-base to text-xl), and cleaner layout
-- **Radial Progress Bar**: Beautiful SVG radial progress visualization for Land Health Score
-- **Historical Trends**: Land Health trend tracking across all reports for each location
+- **AI Environmental Reports** – Synthesizes satellite, weather, and terrain data using Google Gemini.  
+- **Real-Time Risk Analysis** – Generates instant environmental scores for any African location.  
+- **Historical Archive** – Stores and displays past environmental reports.  
+- **Progressive Web App (PWA)** – Installable and usable offline.  
+- **Interactive Map Interface** – Built with Leaflet.js for intuitive visualization.  
+- **Optimized Performance** – Caching reduces API costs and response times.  
 
-### Backend Improvements
-- **Advanced Caching**: Upgraded from `@lru_cache` to Django's robust cache framework with configurable timeouts
-  - Geocoding: 12 hours
-  - Weather data: 30 minutes  
-  - Elevation & NDVI: 12 hours
-- **Error Handling**: User-friendly error messages for location not found and missing inputs
-- **Performance**: Optimized data retrieval with proper cache management
+---
 
-### Features Added
-- **African Countries List**: Complete list of all 54 African countries in search dropdown
-- **Better Validation**: Improved form validation with clear error feedback
-- **Enhanced Cards**: All report cards now feature glassmorphism with larger, well-positioned icons
+## 🧠 Tech Stack
 
-## User Preferences
+**Backend:** Django, PostgreSQL  
+**Frontend:** Django Templates, Tailwind CSS, HTMX, Leaflet.js  
+**AI & Data Sources:**  
+- Google Gemini (AI synthesis)  
+- OpenStreetMap (Geocoding)  
+- OpenWeatherMap (Weather data)  
+- Open-Meteo (Elevation data)  
+- NASA GIBS / Sentinel Hub (NDVI satellite data)  
 
-Preferred communication style: Simple, everyday language.
+---
 
-## System Architecture
+## ⚙️ Environment Variables
 
-### Application Structure
-
-**Problem**: Need to organize environmental analysis features into logical, maintainable modules
-**Solution**: Django app-based architecture with three main apps (core, analysis, archive)
-**Rationale**: Separates concerns between user interface (core), real-time analysis (analysis), and historical data (archive)
-
-The project uses Django's app pattern:
-- **core**: Handles homepage search interface and static pages (about, privacy)
-- **analysis**: Performs live environmental risk calculations and AI-powered analysis
-- **archive**: Manages historical report storage and location-based data hubs
-
-### Frontend Architecture
-
-**Problem**: Need modern, responsive UI without complex build processes
-**Solution**: Server-rendered templates with HTMX for dynamic interactions, Tailwind CSS via CDN
-**Rationale**: Eliminates build step complexity while providing modern SPA-like user experience
-
-Key technologies:
-- Django templates for server-side rendering
-- HTMX for AJAX form submissions without page reloads
-- Tailwind CSS for utility-first styling
-- Leaflet.js for interactive maps
-- Progressive Web App (PWA) support with service workers
-
-### Data Processing Pipeline
-
-**Problem**: Need to aggregate data from multiple environmental data sources into unified risk scores
-**Solution**: Multi-stage data pipeline combining geocoding, weather, elevation, satellite imagery, and AI analysis
-**Rationale**: Each data source provides unique environmental indicators that combine to create comprehensive risk assessment
-
-Pipeline stages:
-1. **Geocoding**: Convert location names to coordinates using OpenStreetMap Nominatim
-2. **Weather Data**: Fetch precipitation forecasts and historical trends from OpenWeatherMap
-3. **Elevation Data**: Retrieve terrain elevation from Open-Meteo API
-4. **NDVI Analysis**: Get vegetation health data from NASA GIBS/Sentinel Hub satellites
-5. **AI Synthesis**: Google Gemini 2.5 Flash analyzes all data to produce professional environmental reports
-6. **Risk Scoring**: Calculate numerical risk scores (1-10 scale) for flood, air quality, and land health
-
-### Caching Strategy
-
-**Problem**: External API calls are expensive and slow
-**Solution**: LRU caching with `@lru_cache` decorator on utility functions
-**Rationale**: Frequently requested locations get instant responses, reduces API costs
-
-The `get_coords_from_location` and `get_weather_data` functions use `@lru_cache(maxsize=100)` to cache results in memory.
-
-### Data Persistence
-
-**Problem**: Need to preserve historical environmental data for trend analysis and public archive
-**Solution**: PostgreSQL-backed Django ORM with JSONField for flexible data storage
-**Rationale**: Structured relational data for core fields, JSON flexibility for variable analysis results
-
-**ReportSnapshot Model**:
-- Stores location metadata (name, country, coordinates)
-- JSONField for risk scores (allows schema evolution)
-- TextField for formatted AI analysis
-- JSONField for raw data from external APIs
-- Auto-generated slugs for SEO-friendly URLs
-- Timestamp-based ordering for chronological archives
-
-### AI Integration
-
-**Problem**: Raw environmental data needs expert interpretation for non-technical users
-**Solution**: Google Gemini 2.5 Flash processes all data sources to generate professional environmental reports
-**Rationale**: Large language models can synthesize multiple data streams into coherent, actionable insights aligned with SDG 15 compliance
-
-The AI receives structured data about precipitation, elevation, NDVI, and location context, then produces formatted reports with risk assessments, SDG 15 compliance analysis, and actionable recommendations.
-
-### URL Routing Architecture
-
-**Problem**: Need clean, semantic URLs for both live reports and historical archives
-**Solution**: Namespaced URL patterns with slug-based routing
-**Rationale**: Enables SEO-friendly URLs and logical URL hierarchy
-
-URL structure:
-- `/` - Homepage search interface
-- `/analysis/live-report/` - Real-time environmental analysis (POST)
-- `/archive/<slug>/` - Individual historical report
-- `/archive/location/<location_slug>/` - Location hub with all reports for specific location
-
-### Progressive Web App Design
-
-**Problem**: Users in areas with limited connectivity need offline access
-**Solution**: Service worker caching and PWA manifest for installable app experience
-**Rationale**: Makes platform accessible as standalone app with offline capabilities
-
-PWA features:
-- Service worker caches static assets
-- Manifest.json enables "Add to Home Screen"
-- Offline fallback for previously viewed content
-
-## External Dependencies
-
-### Third-Party APIs
-
-1. **OpenStreetMap Nominatim** (Geocoding)
-   - Purpose: Convert location names to latitude/longitude coordinates
-   - No API key required
-   - Rate-limited, requires User-Agent header
-
-2. **OpenWeatherMap One Call API** (Weather Data)
-   - Purpose: Real-time precipitation forecasts and weather trends
-   - Requires: `OPENWEATHER_API_KEY` environment variable
-   - Provides: Precipitation forecasts, temperature, humidity
-
-3. **Open-Meteo** (Elevation Data)
-   - Purpose: Terrain elevation for flood risk assessment
-   - No API key required
-   - Returns elevation in meters above sea level
-
-4. **NASA GIBS / Sentinel Hub** (Satellite Imagery)
-   - Purpose: NDVI (Normalized Difference Vegetation Index) for land health
-   - Used to assess vegetation cover and ecosystem health
-   - Aligns with SDG 15 (Life on Land) metrics
-
-5. **Google Gemini 2.5 Flash** (AI Analysis)
-   - Purpose: Synthesize all environmental data into professional reports
-   - Requires: `GEMINI_API_KEY` environment variable
-   - Generates structured analysis with SDG 15 compliance assessment
-
-### Database
-
-**PostgreSQL** (via Django ORM)
-- Primary data store for ReportSnapshot model
-- JSONField support for flexible schema (requires PostgreSQL 9.4+)
-- Default Django migrations handle schema management
-
-Note: The application uses Django's ORM layer, allowing flexibility to use SQLite for development or other database backends, though PostgreSQL is recommended for production due to JSONField support.
-
-### Frontend Libraries (CDN)
-
-- **Tailwind CSS** - Utility-first styling framework
-- **HTMX** - Dynamic HTML interactions without JavaScript
-- **Leaflet.js** - Interactive map rendering
-- **Google Fonts (Inter)** - Typography
-
-### Python Dependencies
-
-- **Django 5.2.7** - Web framework
-- **python-dotenv** - Environment variable management
-- **requests** - HTTP client for external APIs
-- **google-generativeai** - Google Gemini SDK
-
-### Environment Variables Required
-
-```
+```bash
 GEMINI_API_KEY=<Google Gemini API key>
 OPENWEATHER_API_KEY=<OpenWeatherMap API key>
 SECRET_KEY=<Django secret key>
 DEBUG=<True/False>
-```
+
+
+---
+
+🧩 Project Structure
+
+asase_project/
+├── core/        # UI, routing, and static pages
+├── analysis/    # Real-time environmental analysis
+├── archive/     # Historical reports and data storage
+├── static/      # CSS, JS, images
+├── templates/   # Django templates
+
+
+---
+
+🗄️ Database
+
+PostgreSQL for production (supports JSONField for flexible storage)
+
+SQLite for local development
+
+
+
+---
+
+💡 Development
+
+# Clone repository
+git clone https://github.com/Nwokike/Asase.git
+cd Asase
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run migrations and start server
+python manage.py migrate
+python manage.py runserver
+
+
+---
+
+🧭 License
+
+MIT License © 2025 Nwokike
