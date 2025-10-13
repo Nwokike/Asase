@@ -10,9 +10,14 @@
                     {{ timestamp }}
                 </p>
             </div>
-            <a href="/location/{{ location_slug }}/" class="inline-flex items-center bg-navy hover:bg-opacity-90 text-white font-medium px-4 py-2 rounded-xl transition-colors text-sm">
-                <i class="bi bi-archive text-base mr-2"></i> Location Hub
-            </a>
+            <div class="flex gap-2">
+                <button id="shareBtn" class="inline-flex items-center bg-green-leaf hover:bg-opacity-90 text-white font-medium px-4 py-2 rounded-xl transition-colors text-sm">
+                    <i class="bi bi-share text-base mr-2"></i> Share
+                </button>
+                <a href="/location/{{ location_slug }}/" class="inline-flex items-center bg-navy hover:bg-opacity-90 text-white font-medium px-4 py-2 rounded-xl transition-colors text-sm">
+                    <i class="bi bi-archive text-base mr-2"></i> Location Hub
+                </a>
+            </div>
         </div>
 
         <div id="map" class="rounded-2xl mb-6 border border-white/20" style="height: 250px;"></div>
@@ -113,4 +118,36 @@
     L.marker([{{ latitude }}, {{ longitude }}], {icon: customIcon}).addTo(map)
         .bindPopup('<b>{{ location_name }}</b>')
         .openPopup();
+    
+    document.getElementById('shareBtn').addEventListener('click', async function() {
+        const shareData = {
+            title: 'Environmental Analysis: {{ location_name }}, {{ country }}',
+            text: 'Check out this environmental risk analysis for {{ location_name }}, {{ country }}. Flood Risk: {{ flood_risk }}/10, Air Quality: {{ air_quality }}/10, Land Health: {{ land_health }}/10',
+            url: window.location.href
+        };
+        
+        if (navigator.share) {
+            try {
+                await navigator.share(shareData);
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    copyToClipboard();
+                }
+            }
+        } else {
+            copyToClipboard();
+        }
+    });
+    
+    function copyToClipboard() {
+        const url = window.location.href;
+        navigator.clipboard.writeText(url).then(function() {
+            const btn = document.getElementById('shareBtn');
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="bi bi-check-circle text-base mr-2"></i> Link Copied!';
+            setTimeout(function() {
+                btn.innerHTML = originalHTML;
+            }, 2000);
+        });
+    }
 </script>
