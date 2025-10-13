@@ -14,10 +14,15 @@
         </div>
 
         <div class="bg-white/10 backdrop-blur-lg rounded-3xl border border-white/20 p-10 md:p-12 mb-12">
-            <h3 class="text-2xl font-semibold text-navy mb-8 flex items-center">
-                <i class="bi bi-activity text-3xl mr-3"></i>
-                Live Environmental Data
-            </h3>
+            <div class="flex items-center justify-between mb-8">
+                <h3 class="text-2xl font-semibold text-navy flex items-center">
+                    <i class="bi bi-activity text-3xl mr-3"></i>
+                    Live Environmental Data
+                </h3>
+                <button id="shareBtn" class="inline-flex items-center bg-green-leaf hover:bg-opacity-90 text-white font-medium py-2 px-4 rounded-xl transition-colors text-sm">
+                    <i class="bi bi-share text-base mr-2"></i> Share
+                </button>
+            </div>
             
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
                 <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-8 text-center border border-white/20">
@@ -94,4 +99,73 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+    document.getElementById('shareBtn').addEventListener('click', async function() {
+        const shareData = {
+            title: 'Environmental Hub: {{ location_name }}, {{ country }}',
+            text: 'Check out the environmental intelligence hub for {{ location_name }}, {{ country }}. Latest scores - Flood Risk: {{ live_data.flood }}/10, Air Quality: {{ live_data.air }}/10, Land Health: {{ live_data.land_health }}/10',
+            url: window.location.href
+        };
+        
+        if (navigator.share) {
+            try {
+                await navigator.share(shareData);
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    copyToClipboard();
+                }
+            }
+        } else {
+            copyToClipboard();
+        }
+    });
+    
+    function copyToClipboard() {
+        const btn = document.getElementById('shareBtn');
+        const url = window.location.href;
+        
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(function() {
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = '<i class="bi bi-check-circle text-base mr-2"></i> Copied!';
+                setTimeout(function() {
+                    btn.innerHTML = originalHTML;
+                }, 2000);
+            }).catch(function() {
+                fallbackCopy(url);
+            });
+        } else {
+            fallbackCopy(url);
+        }
+    }
+    
+    function fallbackCopy(text) {
+        const btn = document.getElementById('shareBtn');
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = '<i class="bi bi-check-circle text-base mr-2"></i> Copied!';
+                setTimeout(function() {
+                    btn.innerHTML = originalHTML;
+                }, 2000);
+            } else {
+                alert('Link: ' + text);
+            }
+        } catch (err) {
+            alert('Link: ' + text);
+        }
+        
+        document.body.removeChild(textArea);
+    }
+</script>
 {% endblock %}
