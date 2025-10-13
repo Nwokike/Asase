@@ -13,30 +13,33 @@ def get_risk_color(score):
 
 def locations_hub_list(request):
     from django.db.models import Max
+    from django.db.models.functions import Lower, Trim
     
     locations_data = []
-    unique_locations = ReportSnapshot.objects.values('location_name', 'country').distinct()
+    seen_locations = set()
     
-    for loc in unique_locations:
-        latest_snapshot = ReportSnapshot.objects.filter(
-            location_name=loc['location_name'],
-            country=loc['country']
-        ).order_by('-timestamp').first()
+    # Get all snapshots ordered by timestamp descending
+    all_snapshots = ReportSnapshot.objects.all().order_by('-timestamp')
+    
+    for snapshot in all_snapshots:
+        # Create a normalized key to prevent duplicates (case-insensitive, trimmed)
+        location_key = (snapshot.location_name.strip().lower(), snapshot.country.strip().lower())
         
-        if latest_snapshot:
+        # Only add if we haven't seen this location yet
+        if location_key not in seen_locations:
+            seen_locations.add(location_key)
+            
             locations_data.append({
-                'location_name': latest_snapshot.location_name,
-                'country': latest_snapshot.country,
-                'slug': slugify(latest_snapshot.location_name),
-                'latest_timestamp': latest_snapshot.timestamp,
-                'risk_scores': latest_snapshot.risk_scores,
+                'location_name': snapshot.location_name,
+                'country': snapshot.country,
+                'slug': slugify(snapshot.location_name),
+                'latest_timestamp': snapshot.timestamp,
+                'risk_scores': snapshot.risk_scores,
                 'report_count': ReportSnapshot.objects.filter(
-                    location_name=loc['location_name'],
-                    country=loc['country']
+                    location_name__iexact=snapshot.location_name.strip(),
+                    country__iexact=snapshot.country.strip()
                 ).count()
             })
-    
-    locations_data.sort(key=lambda x: x['latest_timestamp'], reverse=True)
     
     context = {
         'locations': locations_data,
