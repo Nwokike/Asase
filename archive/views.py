@@ -21,7 +21,7 @@ def locations_hub_list(request):
         latest_snapshot = ReportSnapshot.objects.filter(
             location_name=loc['location_name'],
             country=loc['country']
-        ).first()
+        ).order_by('-timestamp').first()
         
         if latest_snapshot:
             locations_data.append({
