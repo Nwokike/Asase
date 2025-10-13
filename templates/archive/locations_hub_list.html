@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block title %}Location Hubs - ASASE{% endblock %}
+
+{% block content %}
+<div class="min-h-screen py-16 px-6 pb-28 md:pb-16">
+    <div class="max-w-7xl mx-auto">
+        <div class="mb-12">
+            <h1 class="text-4xl md:text-5xl font-light text-navy mb-4 tracking-tight flex items-center">
+                <i class="bi bi-geo-alt text-4xl mr-4"></i>
+                Location Hubs
+            </h1>
+            <p class="text-xl text-gray-600 font-light ml-16">Environmental Intelligence Hubs for African Locations</p>
+        </div>
+
+        {% if locations %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {% for location in locations %}
+                <a href="/location/{{ location.slug }}/" class="block hover-lift">
+                    <div class="bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 p-8 h-full">
+                        <div class="mb-6">
+                            <h3 class="text-2xl font-semibold text-navy mb-2 flex items-center">
+                                <i class="bi bi-pin-map-fill text-2xl mr-3"></i>
+                                {{ location.location_name }}
+                            </h3>
+                            <p class="text-sm text-gray-600 ml-11">{{ location.country }}</p>
+                        </div>
+                        
+                        <div class="grid grid-cols-3 gap-3 mb-6">
+                            <div class="text-center">
+                                <p class="text-xs text-gray-600 mb-1">Flood</p>
+                                <h5 class="text-xl font-bold text-navy">{{ location.risk_scores.flood }}</h5>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-xs text-gray-600 mb-1">Air</p>
+                                <h5 class="text-xl font-bold text-navy">{{ location.risk_scores.air }}</h5>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-xs text-gray-600 mb-1">Land</p>
+                                <h5 class="text-xl font-bold text-navy">{{ location.risk_scores.land_health }}</h5>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between text-sm text-gray-600">
+                            <span class="flex items-center">
+                                <i class="bi bi-clock-history text-base mr-1"></i>
+                                {{ location.report_count }} report{{ location.report_count|pluralize }}
+                            </span>
+                            <span class="text-xs">
+                                {{ location.latest_timestamp|date:"M d, Y" }}
+                            </span>
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="bg-white/10 backdrop-blur-lg rounded-3xl border border-white/20 p-16 text-center">
+                <i class="bi bi-inbox text-6xl text-gray-300 mb-6 block"></i>
+                <h3 class="text-2xl font-semibold text-navy mb-3">No location hubs available yet</h3>
+                <p class="text-gray-600 mb-8">Start by analyzing a location to create the first hub!</p>
+                <a href="/search/" class="inline-flex items-center bg-navy hover:bg-opacity-90 text-white font-medium py-3 px-8 rounded-xl transition-all">
+                    <i class="bi bi-search text-lg mr-2"></i>
+                    Analyze a Location
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

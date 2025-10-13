@@ -11,6 +11,39 @@ def get_risk_color(score):
     else:
         return '#EF5350'
 
+def locations_hub_list(request):
+    from django.db.models import Max
+    
+    locations_data = []
+    unique_locations = ReportSnapshot.objects.values('location_name', 'country').distinct()
+    
+    for loc in unique_locations:
+        latest_snapshot = ReportSnapshot.objects.filter(
+            location_name=loc['location_name'],
+            country=loc['country']
+        ).first()
+        
+        if latest_snapshot:
+            locations_data.append({
+                'location_name': latest_snapshot.location_name,
+                'country': latest_snapshot.country,
+                'slug': slugify(latest_snapshot.location_name),
+                'latest_timestamp': latest_snapshot.timestamp,
+                'risk_scores': latest_snapshot.risk_scores,
+                'report_count': ReportSnapshot.objects.filter(
+                    location_name=loc['location_name'],
+                    country=loc['country']
+                ).count()
+            })
+    
+    locations_data.sort(key=lambda x: x['latest_timestamp'], reverse=True)
+    
+    context = {
+        'locations': locations_data,
+    }
+    
+    return render(request, 'archive/locations_hub_list.html', context)
+
 def archive_main(request):
     reports = ReportSnapshot.objects.all()
     
