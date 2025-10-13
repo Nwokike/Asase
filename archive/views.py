@@ -2,6 +2,7 @@ from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
 from archive.models import ReportSnapshot
 from django.utils.text import slugify
+from django.db.models import Max
 
 def get_risk_color(score):
     if score <= 3:
@@ -10,6 +11,40 @@ def get_risk_color(score):
         return '#FFA726'
     else:
         return '#EF5350'
+
+def location_hub_main(request):
+    """Main Location Hub page showing all unique locations"""
+    # Get unique locations with their latest report
+    locations = []
+    unique_locations = ReportSnapshot.objects.values('location_name', 'country').distinct()
+    
+    for loc in unique_locations:
+        latest_report = ReportSnapshot.objects.filter(
+            location_name=loc['location_name'],
+            country=loc['country']
+        ).first()
+        
+        if latest_report:
+            location_slug = slugify(f"{loc['location_name']}-{loc['country']}")
+            locations.append({
+                'name': loc['location_name'],
+                'country': loc['country'],
+                'slug': location_slug,
+                'latest_data': latest_report.risk_scores,
+                'report_count': ReportSnapshot.objects.filter(
+                    location_name=loc['location_name'],
+                    country=loc['country']
+                ).count(),
+                'flood_color': get_risk_color(latest_report.risk_scores.get('flood', 5)),
+                'air_color': get_risk_color(latest_report.risk_scores.get('air', 5)),
+                'land_color': get_risk_color(latest_report.risk_scores.get('land_health', 5)),
+            })
+    
+    context = {
+        'locations': locations,
+    }
+    
+    return render(request, 'archive/location_hub_main.html', context)
 
 def archive_main(request):
     reports = ReportSnapshot.objects.all()

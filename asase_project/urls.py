@@ -20,8 +20,9 @@ from archive import views as archive_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('core.urls')),
+    path('', archive_views.location_hub_main, name='home'),
     path('analysis/', include('analysis.urls')),
     path('archive/', include('archive.urls')),
     path('location/<slug:location_slug>/', archive_views.location_hub, name='location_hub'),
+    path('', include('core.urls')),
 ]
