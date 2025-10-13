@@ -5,6 +5,7 @@ __pycache__/
 *.so
 .Python
 env/
+staticfiles/
 venv/
 ENV/
 .pythonlibs/
