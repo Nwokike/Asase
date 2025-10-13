@@ -67,7 +67,7 @@
                             {{ report.timestamp|date:"M d, Y - H:i" }} WAT
                         </div>
                         
-                        <div class="grid grid-cols-3 gap-4 text-center">
+                        <div class="grid grid-cols-3 gap-4 text-center mb-4">
                             <div class="bg-white/20 backdrop-blur-sm rounded-xl py-3">
                                 <p class="text-gray-700 text-xs mb-1">Flood</p>
                                 <p class="text-2xl font-bold text-navy">{{ report.risk_scores.flood }}</p>
@@ -80,6 +80,14 @@
                                 <p class="text-gray-700 text-xs mb-1">Land</p>
                                 <p class="text-2xl font-bold text-navy">{{ report.risk_scores.land_health }}</p>
                             </div>
+                        </div>
+                        <div class="flex justify-between items-center pt-3 border-t border-white/20">
+                            <a href="/location/{{ report.location_name|slugify }}/" onclick="event.stopPropagation();" class="text-sm text-navy hover:text-opacity-80 font-medium flex items-center">
+                                <i class="bi bi-building text-base mr-1"></i> Location Hub
+                            </a>
+                            <span class="text-xs text-gray-600">
+                                <i class="bi bi-arrow-right"></i>
+                            </span>
                         </div>
                     </div>
                 </a>
