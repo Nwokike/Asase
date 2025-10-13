@@ -45,12 +45,34 @@
             </div>
             
             <div class="text-center">
-                <a href="/" class="inline-flex items-center bg-navy hover:bg-opacity-90 text-white font-medium py-4 px-10 rounded-xl transition-all text-base">
-                    <i class="bi bi-bar-chart text-xl mr-3"></i>
-                    Get Latest Full Analysis
-                </a>
+                <form hx-post="/analysis/live-report/" 
+                      hx-target="#analysis-results" 
+                      hx-swap="innerHTML" 
+                      hx-indicator="#loading"
+                      class="inline-block">
+                    {% csrf_token %}
+                    <input type="hidden" name="location" value="{{ location_name }}">
+                    <input type="hidden" name="country" value="{{ country }}">
+                    <button type="submit" id="analyzeBtn" class="inline-flex items-center bg-navy hover:bg-opacity-90 text-white font-medium py-4 px-10 rounded-xl transition-all text-base">
+                        <i class="bi bi-bar-chart text-xl mr-3"></i>
+                        <span>Get Latest Full Analysis</span>
+                    </button>
+                </form>
+                
+                <div id="loading" class="htmx-indicator mt-6">
+                    <div class="text-center py-8 bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20">
+                        <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-navy mb-3"></div>
+                        <p class="text-navy text-base font-semibold mb-1 flex items-center justify-center">
+                            <i class="bi bi-cloud-download text-lg mr-2"></i>
+                            Analyzing environmental data...
+                        </p>
+                        <p class="text-gray-600 text-sm">May take up to 30 seconds</p>
+                    </div>
+                </div>
             </div>
         </div>
+
+        <div id="analysis-results" class="mb-12"></div>
 
         <h3 class="text-2xl font-semibold text-navy mb-8 flex items-center">
             <i class="bi bi-clock-history text-3xl mr-3"></i>
