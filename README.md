@@ -42,7 +42,7 @@ DEBUG=<True/False>
 ```
 
 
-# 🧩 Project Structure
+## 🧩 Project Structure
 ```
 asase_project/
 ├── core/        # UI, routing, and static pages
@@ -54,7 +54,7 @@ asase_project/
 
 ```
 
-# 🗄️ Database
+## 🗄️ Database
 
 PostgreSQL for production (supports JSONField for flexible storage)
 
@@ -64,7 +64,7 @@ SQLite for local development
 
 
 
-# 💡 Development
+## 💡 Development
 
 Clone repository
 ```
