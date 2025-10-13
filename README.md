@@ -39,11 +39,11 @@ OPENWEATHER_API_KEY=<OpenWeatherMap API key>
 SECRET_KEY=<Django secret key>
 DEBUG=<True/False>
 
+```
 
----
 
 🧩 Project Structure
-
+```
 asase_project/
 ├── core/        # UI, routing, and static pages
 ├── analysis/    # Real-time environmental analysis
@@ -52,9 +52,9 @@ asase_project/
 ├── templates/   # Django templates
 
 
----
+```
 
-🗄️ Database
+# 🗄️ Database
 
 PostgreSQL for production (supports JSONField for flexible storage)
 
@@ -62,23 +62,26 @@ SQLite for local development
 
 
 
----
 
-💡 Development
 
-# Clone repository
+# 💡 Development
+
+Clone repository
+```
 git clone https://github.com/Nwokike/Asase.git
 cd Asase
-
-# Install dependencies
+```
+Install dependencies
+```
 pip install -r requirements.txt
-
-# Run migrations and start server
+```
+Run migrations and start server
+```
 python manage.py migrate
 python manage.py runserver
 
 
----
+```
 
 🧭 License
 
