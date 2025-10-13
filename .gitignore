@@ -5,7 +5,6 @@ __pycache__/
 *.so
 .Python
 env/
-staticfiles/
 venv/
 ENV/
 .pythonlibs/
@@ -17,7 +16,6 @@ build/
 *.log
 db.sqlite3
 db.sqlite3-journal
-/static_root/
 /media/
 
 # Environment variables
