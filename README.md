@@ -9,7 +9,7 @@ It focuses on **flood risk**, **air quality**, and **land health**, aligned with
 
 ## 🚀 Key Features
 
-- **AI Environmental Reports** – Synthesizes satellite, weather, and terrain data using Google Gemini.  
+- **AI Environmental Reports** – Synthesizes satellite, weather, and terrain data from Open Weather API using Google Gemini.  
 - **Real-Time Risk Analysis** – Generates instant environmental scores for any African location.  
 - **Historical Archive** – Stores and displays past environmental reports.  
 - **Progressive Web App (PWA)** – Installable and usable offline.  
