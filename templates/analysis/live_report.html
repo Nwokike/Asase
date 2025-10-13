@@ -140,14 +140,49 @@
     });
     
     function copyToClipboard() {
+        const btn = document.getElementById('shareBtn');
         const url = window.location.href;
-        navigator.clipboard.writeText(url).then(function() {
-            const btn = document.getElementById('shareBtn');
-            const originalHTML = btn.innerHTML;
-            btn.innerHTML = '<i class="bi bi-check-circle text-base mr-2"></i> Link Copied!';
-            setTimeout(function() {
-                btn.innerHTML = originalHTML;
-            }, 2000);
-        });
+        
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(function() {
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = '<i class="bi bi-check-circle text-base mr-2"></i> Link Copied!';
+                setTimeout(function() {
+                    btn.innerHTML = originalHTML;
+                }, 2000);
+            }).catch(function() {
+                fallbackCopy(url);
+            });
+        } else {
+            fallbackCopy(url);
+        }
+    }
+    
+    function fallbackCopy(text) {
+        const btn = document.getElementById('shareBtn');
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = '<i class="bi bi-check-circle text-base mr-2"></i> Link Copied!';
+                setTimeout(function() {
+                    btn.innerHTML = originalHTML;
+                }, 2000);
+            } else {
+                alert('Link: ' + text);
+            }
+        } catch (err) {
+            alert('Link: ' + text);
+        }
+        
+        document.body.removeChild(textArea);
     }
 </script>

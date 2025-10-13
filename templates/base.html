@@ -57,7 +57,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-20">
                 <a href="/" class="flex items-center py-2">
-                    <img src="{% static 'images/logo.png' %}" alt="ASASE" class="h-16 sm:h-18 w-auto object-contain">
+                    <img src="{% static 'images/logo.png' %}" alt="ASASE" class="h-full max-h-16 w-auto object-contain">
                 </a>
                 
                 <div class="hidden md:flex items-center space-x-8">
@@ -163,7 +163,7 @@
                     }
                     const btnText = submitBtn.querySelector('span');
                     if (btnText) {
-                        btnText.textContent = 'Processing... (up to 30 sec)';
+                        btnText.textContent = 'Processing... (may take up to 30 seconds)';
                     }
                 }
             }

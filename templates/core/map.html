@@ -35,13 +35,20 @@
                 </div>
                 <div id="map-loading" class="htmx-indicator text-center py-2">
                     <div class="inline-block animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-navy"></div>
-                    <span class="text-gray-600 text-xs ml-2">Analyzing... (may take 30 sec)</span>
+                    <span class="text-gray-600 text-xs ml-2">Analyzing... (may take up to 30 seconds)</span>
                 </div>
             </form>
         </div>
     </div>
     
-    <div id="map-analysis-results" class="absolute bottom-16 md:bottom-8 left-4 right-4 z-[1001] max-h-96 overflow-y-auto"></div>
+    <div id="map-analysis-results" class="absolute bottom-16 md:bottom-8 left-4 right-4 md:left-8 md:right-8 z-[1001] max-h-[70vh] overflow-y-auto"></div>
+    
+    <div id="notification" class="hidden fixed top-24 right-4 z-[1100] bg-green-leaf text-white px-6 py-3 rounded-xl shadow-lg transition-all">
+        <div class="flex items-center gap-2">
+            <i class="bi bi-check-circle-fill text-lg"></i>
+            <span class="font-medium">Analysis Complete!</span>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -71,5 +78,34 @@
             }
         });
     });
+    
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+        if (evt.detail.target.id === 'map-analysis-results') {
+            const resultsEl = document.getElementById('map-analysis-results');
+            if (resultsEl && resultsEl.children.length > 0) {
+                setTimeout(function() {
+                    resultsEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                    
+                    const notification = document.getElementById('notification');
+                    notification.classList.remove('hidden');
+                    
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                        new Notification('Analysis Complete!', {
+                            body: 'Your environmental analysis is ready to view.',
+                            icon: '/static/images/logo.png'
+                        });
+                    }
+                    
+                    setTimeout(function() {
+                        notification.classList.add('hidden');
+                    }, 4000);
+                }, 100);
+            }
+        }
+    });
+    
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
 </script>
 {% endblock %}
