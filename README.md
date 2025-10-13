@@ -42,7 +42,7 @@ DEBUG=<True/False>
 ```
 
 
-🧩 Project Structure
+# 🧩 Project Structure
 ```
 asase_project/
 ├── core/        # UI, routing, and static pages
