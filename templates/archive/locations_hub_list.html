@@ -6,11 +6,21 @@
 <div class="min-h-screen py-16 px-6 pb-28 md:pb-16">
     <div class="max-w-7xl mx-auto">
         <div class="mb-12">
-            <h1 class="text-4xl md:text-5xl font-light text-navy mb-4 tracking-tight flex items-center">
-                <i class="bi bi-geo-alt text-4xl mr-4"></i>
-                Location Hubs
-            </h1>
-            <p class="text-xl text-gray-600 font-light ml-16">Environmental Intelligence Hubs for African Locations</p>
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+                <div>
+                    <h1 class="text-4xl md:text-5xl font-light text-navy mb-4 tracking-tight flex items-center">
+                        <i class="bi bi-geo-alt text-4xl mr-4"></i>
+                        Location Hubs
+                    </h1>
+                    <p class="text-xl text-gray-600 font-light ml-16">Environmental Intelligence Hubs for African Locations</p>
+                </div>
+                <div class="mt-6 md:mt-0">
+                    <a href="/search/" class="inline-flex items-center bg-green-leaf hover:bg-opacity-90 text-white font-medium py-3 px-8 rounded-xl transition-all shadow-lg hover:shadow-xl">
+                        <i class="bi bi-search text-lg mr-2"></i>
+                        Analyze Your Location
+                    </a>
+                </div>
+            </div>
         </div>
 
         {% if locations %}
