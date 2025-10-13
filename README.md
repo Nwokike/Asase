@@ -6,6 +6,20 @@ ASASE (Earth Intelligence) is a Django-based environmental intelligence platform
 
 ## Recent Updates (October 2025)
 
+### Mobile & UX Enhancements (Latest)
+- **PWA Install Button**: Repositioned to avoid mobile navigation blocking (bottom-20 on mobile, bottom-6 on desktop)
+- **Auto-Scroll**: Results automatically scroll into view when analysis completes
+- **Share Functionality**: Added share button with Web Share API and robust clipboard fallback for all platforms
+- **SEO Optimization**: Complete Open Graph and Twitter Card meta tags for proper social media sharing
+- **Logo Enhancement**: Increased logo size to fill header height (h-full max-h-16) for better visibility
+- **Professional Footer**: Added comprehensive footer with quick links, legal pages, copyright, and SDG 15 branding
+- **Loading Messages**: Updated to "may take up to 30 seconds" for better user expectations
+- **Map Page Improvements**: 
+  - Results positioned in front of map with proper z-index layering
+  - Responsive design with max-h-[70vh] for better mobile viewing
+  - Visual and browser notifications when analysis completes
+  - Auto-scroll to results after generation
+
 ### Major UI/UX Overhaul
 - **Redesigned Search Interface**: Two-input design with dedicated location text field and African country dropdown (54 countries)
 - **Glassmorphism Design**: Applied modern glassmorphism aesthetic to navigation, cards, and all UI elements
