@@ -20,9 +20,3 @@ services:
         sync: false
       - key: OPENWEATHER_API_KEY
         sync: false
-
-databases:
-  - name: asase-postgres
-    databaseName: asase_db
-    user: asase_user
-    plan: free
