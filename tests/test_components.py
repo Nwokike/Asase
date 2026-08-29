@@ -18,6 +18,13 @@ def test_section_header():
     assert len(texts) == 1
     assert texts[0].value == "PLANETARY DEFENSE"
 
+    # With action
+    sh_action = SectionHeader("Radar", action_text="Expand", on_action=lambda _: None)
+    assert isinstance(sh_action, ft.Container)
+    texts_act = [t.value for t in walk_texts(sh_action)]
+    assert "RADAR" in texts_act
+    assert "EXPAND" in texts_act
+
 
 def test_severity_badge():
     for sev in ["low", "moderate", "high", "critical", "unknown"]:
