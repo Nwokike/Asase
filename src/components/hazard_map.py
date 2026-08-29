@@ -147,9 +147,10 @@ def HazardMap(
     )
     markers.append(user_marker)
 
-    # CartoDB Dark Matter tile template
+    # CartoDB Dark Matter tile template with OpenStreetMap fallback
     tile_layer = map.TileLayer(
         url_template="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+        fallback_url="https://tile.openstreetmap.org/{z}/{x}/{y}.png",
         subdomains=["a", "b", "c", "d"],
         user_agent_package_name="ng.kiri.asase",
         keep_buffer=2,
