@@ -117,7 +117,7 @@ def HazardMap(
     expand: bool = True,
     height: float | None = None,
 ) -> ft.Control:
-    """Builds the interactive multi-layer planetary map with CircleLayer shockwaves."""
+    """Builds the interactive multi-layer planetary map with 100% auth-free, watermark-free tiles."""
     markers: list[map.Marker] = []
     circle_markers: list[map.CircleMarker] = []
 
@@ -147,11 +147,10 @@ def HazardMap(
     )
     markers.append(user_marker)
 
-    # CartoDB Dark Matter tile template with OpenStreetMap fallback
+    # 100% Auth-Free & Watermark-Free Esri Dark Gray Canvas tiles with OSM fallback
     tile_layer = map.TileLayer(
-        url_template="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+        url_template="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
         fallback_url="https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-        subdomains=["a", "b", "c", "d"],
         user_agent_package_name="ng.kiri.asase",
         keep_buffer=2,
         pan_buffer=1,
