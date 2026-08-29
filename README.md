@@ -7,6 +7,7 @@
 </p>
 
 <p align="center">
+  <a href="https://asase.kiri.ng"><img src="https://img.shields.io/badge/Web_App-asase.kiri.ng-00B0FF?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Live Web App" /></a>
   <a href="https://play.google.com/store/apps/details?id=ng.kiri.asase"><img src="https://img.shields.io/badge/Google_Play-Android-3DDC84?style=for-the-badge&logo=google-play&logoColor=white" alt="Google Play Store" /></a>
   <a href="#download"><img src="https://img.shields.io/badge/Download_Windows_EXE-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows EXE" /></a>
   <a href="#download"><img src="https://img.shields.io/badge/Download_Linux_DEB-FCC624?style=for-the-badge&logo=linux&logoColor=black" alt="Linux DEB" /></a>
@@ -21,11 +22,12 @@
 
 | Platform | Package | Description |
 | :---: | :---: | :--- |
+| 🌐 **Web App** | [![Live Web App](https://img.shields.io/badge/Launch-asase.kiri.ng-00B0FF?style=flat-square&logo=google-chrome&logoColor=white)](https://asase.kiri.ng) | Live progressive web application running directly in your browser |
 | 🤖 **Android** | [![Play Store](https://img.shields.io/badge/Google_Play-414141?style=flat-square&logo=google-play&logoColor=white)](https://play.google.com/store/apps/details?id=ng.kiri.asase) | Recommended for Android mobile and tablet devices |
-| 🪟 **Windows** | [![Windows Release](https://img.shields.io/badge/Download_Windows_Release-0078D6?style=flat-square&logo=windows&logoColor=white)](https://github.com/Nwokike/Asase/releases/latest/download/Asase.exe) | Standalone desktop installer with taskbar & shortcut integration |
-| 🐧 **Linux (Debian/Ubuntu)** | [![Linux DEB](https://img.shields.io/badge/Download_Linux_DEB-FCC624?style=flat-square&logo=linux&logoColor=black)](https://github.com/Nwokike/Asase/releases/latest/download/Asase.deb) | Native desktop package for Ubuntu, Debian, Linux Mint & Pop!_OS |
-| 🎩 **Linux (Fedora/RHEL)** | [![Linux RPM](https://img.shields.io/badge/Download_Linux_RPM-E91E63?style=flat-square&logo=redhat&logoColor=white)](https://github.com/Nwokike/Asase/releases/latest/download/Asase.rpm) | Native package for Fedora, openSUSE, RHEL & CentOS |
-| 📦 **Linux (Portable)** | [![Linux TAR.GZ](https://img.shields.io/badge/Download_Linux_TAR.GZ-9C27B0?style=flat-square&logo=linux&logoColor=white)](https://github.com/Nwokike/Asase/releases/latest/download/Asase.tar.gz) | Standalone portable archive for Arch, Alpine, Steam Deck & all distros |
+| 🪟 **Windows** | [![Windows Release](https://img.shields.io/badge/Download_Windows_Installer-0078D6?style=flat-square&logo=windows&logoColor=white)](https://github.com/Nwokike/Asase/releases/latest/download/Asase_Setup.exe) | Standalone Inno Setup installer with taskbar & desktop integration |
+| 🐧 **Linux (Debian/Ubuntu)** | [![Linux DEB](https://img.shields.io/badge/Download_Linux_DEB-FCC624?style=flat-square&logo=linux&logoColor=black)](https://github.com/Nwokike/Asase/releases/latest/download/Asase_amd64.deb) | Native desktop package for Ubuntu, Debian, Linux Mint & Pop!_OS |
+| 🎩 **Linux (Fedora/RHEL)** | [![Linux RPM](https://img.shields.io/badge/Download_Linux_RPM-E91E63?style=flat-square&logo=redhat&logoColor=white)](https://github.com/Nwokike/Asase/releases/latest/download/Asase_x86_64.rpm) | Native package for Fedora, openSUSE, RHEL & CentOS |
+| 📦 **Linux (Universal)** | [![Linux TAR.GZ](https://img.shields.io/badge/Download_Linux_TAR.GZ-9C27B0?style=flat-square&logo=linux&logoColor=white)](https://github.com/Nwokike/Asase/releases/latest/download/Asase_linux_x86_64.tar.gz) | Standalone portable archive for Arch, Alpine, Steam Deck & all distros |
 
 ### Android Architecture Build Splits
 
@@ -56,7 +58,7 @@
 
 - **100% Free & Auth-Free** — Zero API keys required. Direct client connections to official open public domain planetary telemetry endpoints.
 - **Watermark-Free Esri Dark Gray Map** — Auth-free Esri Dark Gray Canvas tiles with OpenStreetMap fallback and interactive shockwave circles.
-- **Segmented Theme Mode Switcher** — Instant switching between **Light** ☀️, **Dark** 🌙, and **System** 🖥️ modes matching DDGS & Sherlock UX.
+- **Instant Reactive Theme Mode Switcher** — Real-time switching between **Light** ☀️, **Dark** 🌙, and **System** 🖥️ modes across all screens with transparent vector branding.
 - **Hardware-Accelerated Charts** — Live geomagnetic curves and multi-axis planetary threat radar charts with `flet-charts`.
 - **Proximity Geodesic Engine** — Haversine distance engine warning users of nearest active hazards (e.g. *"142 km from you"*).
 - **Offline Telemetry Caching** — L1 LRU Memory + L2 Gzip Disk caching (`.json.gz`) with atomic swaps and corruption recovery.
@@ -76,7 +78,7 @@ uv sync --dev
 uv run ruff check . --fix
 uv run ruff format .
 
-# Run comprehensive test suite (50 tests)
+# Run comprehensive test suite (51 tests)
 uv run pytest -v
 
 # Start local desktop development server
