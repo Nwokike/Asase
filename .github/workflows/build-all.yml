@@ -366,16 +366,74 @@ jobs:
           cp src/assets/favicon.png build/web/icons/Icon-192.png
           cp src/assets/favicon.png build/web/icons/apple-touch-icon-192.png
           python3 -c "
-          with open('build/web/index.html', 'r') as f:
+          with open('build/web/index.html', 'r', encoding='utf-8') as f:
               html = f.read()
-          preloads = '''
-            <link rel=\"preload\" href=\"python.js\" as=\"script\">
-            <link rel=\"preload\" href=\"flutter_bootstrap.js\" as=\"script\">
-            <link rel=\"preload\" href=\"assets/app/app.zip\" as=\"fetch\" crossorigin=\"anonymous\">
+          splash_html = '''
+          <div id=\"asase-splash\">
+            <style>
+              body {
+                margin: 0;
+                padding: 0;
+                background-color: #0B0F17;
+                overflow: hidden;
+              }
+              #asase-splash {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background-color: #0B0F17;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 22px;
+                z-index: 999999;
+                transition: opacity 0.3s ease-out;
+              }
+              #asase-splash img {
+                width: 80px;
+                height: 80px;
+                border-radius: 18px;
+              }
+              .asase-spinner {
+                width: 26px;
+                height: 26px;
+                border: 2.5px solid rgba(16, 185, 129, 0.2);
+                border-top-color: #10B981;
+                border-radius: 50%;
+                animation: asase-spin 0.8s linear infinite;
+              }
+              @keyframes asase-spin {
+                to { transform: rotate(360deg); }
+              }
+              .fade-out {
+                opacity: 0 !important;
+                pointer-events: none;
+              }
+            </style>
+            <img src=\"favicon.png\" alt=\"Asase\" />
+            <div class=\"asase-spinner\"></div>
+          </div>
           '''
-          html = html.replace('<head>', '<head>' + preloads)
-          with open('build/web/index.html', 'w') as f:
+          html = html.replace('<body>', '<body>' + splash_html)
+          with open('build/web/index.html', 'w', encoding='utf-8') as f:
               f.write(html)
+
+          with open('build/web/python.js', 'r', encoding='utf-8') as f:
+              pjs = f.read()
+          pjs = pjs.replace(
+              'app.dartOnMessage(event.data);',
+              '''var splash = document.getElementById(\"asase-splash\");
+                      if (splash) {
+                          splash.classList.add(\"fade-out\");
+                          setTimeout(function() { splash.remove(); }, 350);
+                      }
+                      app.dartOnMessage(event.data);'''
+          )
+          with open('build/web/python.js', 'w', encoding='utf-8') as f:
+              f.write(pjs)
           "
       - name: Package Web Release Archive
         run: |

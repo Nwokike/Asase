@@ -26,6 +26,13 @@ path = "src"
 [tool.flet.app.boot_screen]
 startup_message = "Initializing Asase Earth Telemetry..."
 
+[tool.flet.web]
+base_url = "/"
+route_url_strategy = "path"
+pwa_background_color = "#0B0F17"
+pwa_theme_color = "#10B981"
+dependencies = []
+
 [tool.flet.android]
 bundle_id = "ng.kiri.asase"
 min_sdk_version = 24
