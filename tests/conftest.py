@@ -9,6 +9,7 @@ import pytest
 @pytest.fixture
 def mock_page():
     page = MagicMock(spec=ft.Page)
+    page.web = False
     page.client_storage = MagicMock()
     page.client_storage.get.return_value = None
     page.client_storage.set.return_value = None

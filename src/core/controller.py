@@ -95,11 +95,13 @@ class AppController:
 
         self.storage = StorageService(self.page)
         self.ad_service = AdService(self.page)
+        state.ad_service = self.ad_service
 
         # Load Saved Settings
         await self._load_saved_state()
 
-        # Preload Interstitial Ads & Consent on mobile
+        # UMP GDPR Consent & Preload Interstitial Ads on mobile
+        self.page.run_task(self.ad_service.gather_consent)
         self.page.run_task(self.ad_service.preload_interstitial)
 
         # Initial Telemetry Load
@@ -114,6 +116,7 @@ class AppController:
             locate_user=self.locate_user,
             save_setting=self.save_setting,
             toggle_bookmark=self.toggle_bookmark,
+            open_report=self.open_report,
             share_text=self.share_text,
             launch_url=self.launch_external_url,
         )
@@ -274,6 +277,10 @@ class AppController:
         state.current_location_name = name
         state.current_country = country
 
+        if self.ad_service:
+            with contextlib.suppress(Exception):
+                await self.ad_service.show_interstitial(min_interval_seconds=120.0)
+
         if self.haptics:
             with contextlib.suppress(Exception):
                 await self.haptics.selection_click()
@@ -291,6 +298,14 @@ class AppController:
             self.page.update()
 
         await self.refresh_all()
+
+    async def open_report(self) -> None:
+        """Open Situation Report with strategic interstitial transition on mobile."""
+        if self.ad_service:
+            with contextlib.suppress(Exception):
+                await self.ad_service.show_interstitial(min_interval_seconds=60.0)
+        if self._controller_methods and self._controller_methods.show_report:
+            self._controller_methods.show_report()
 
     async def toggle_bookmark(self, location: dict) -> None:
         """Toggle bookmark for a location dictionary with haptic feedback."""

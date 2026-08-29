@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
 import flet as ft
 
@@ -47,6 +48,7 @@ class AppState:
     selected_marker: dict | None = None
     telemetry_version: int = 0
     theme_version: int = 0
+    ad_service: Any = None
 
 
 state = AppState()

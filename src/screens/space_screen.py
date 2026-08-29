@@ -6,6 +6,7 @@ import flet as ft
 from flet import Control
 
 from components.app_header import build_app_header
+from components.banner_ad import build_banner_ad
 from components.section_header import SectionHeader
 from components.sparkline_chart import TelemetryLineChart
 from core import tokens
@@ -243,6 +244,8 @@ def SpaceScreen() -> Control:
                     tokens.SPACE_LG, 0, tokens.SPACE_LG, tokens.SPACE_SM
                 ),
             ),
+            ft.Container(height=tokens.SPACE_MD),
+            build_banner_ad(page),
             ft.Container(height=tokens.SPACE_XXXL),
         ],
         spacing=0,

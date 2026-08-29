@@ -9,6 +9,7 @@ import flet as ft
 from flet import Control
 
 from components.app_header import build_app_header
+from components.banner_ad import build_banner_ad
 from components.report.air_quality_section import build_air_quality_section
 from components.report.hydrology_marine_section import (
     build_hydrology_section,
@@ -321,6 +322,8 @@ def ReportScreen() -> Control:
             air_quality_sec,
             SectionHeader("ATMOSPHERIC DYNAMICS & CONVECTIVE STORM INDEX"),
             weather_sec,
+            ft.Container(height=tokens.SPACE_MD),
+            build_banner_ad(page),
             ft.Container(height=tokens.SPACE_XXXL),
         ],
         spacing=0,

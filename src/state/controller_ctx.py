@@ -21,6 +21,8 @@ class ControllerMethods:
     show_map: Callable[[], None] | None = None
     dismiss_onboarding: Callable[[], None] | None = None
     set_theme_mode: Callable[[ft.ThemeMode], None] | None = None
+    show_report: Callable[[], None] | None = None
+    open_report: Callable[[], Coroutine[Any, Any, None]] | None = None
     share_text: Callable[[str, str], Coroutine[Any, Any, None]] | None = None
     launch_url: Callable[[str], Coroutine[Any, Any, None]] | None = None
 

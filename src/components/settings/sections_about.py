@@ -1,12 +1,13 @@
 """Settings About and Diagnostic Terminal section."""
 
-from __future__ import annotations
+import asyncio
 
 import flet as ft
 
 from components.activity_terminal import show_activity_terminal_dialog
 from core import tokens
 from core.constants import APP_NAME, APP_SUBTITLE, APP_VERSION
+from core.state import state
 from core.theme import AppColors, AppStyles, is_dark_mode
 
 
@@ -106,6 +107,24 @@ def build_about_card(page: ft.Page) -> ft.Container:
                             tokens.OPACITY_DIM, ft.Colors.ON_SURFACE
                         ),
                         text_align=ft.TextAlign.CENTER,
+                    ),
+                    *(
+                        [
+                            ft.Container(height=tokens.SPACE_XS),
+                            ft.TextButton(
+                                "Ad Privacy Preferences (GDPR)",
+                                icon=ft.Icons.PRIVACY_TIP_OUTLINED,
+                                on_click=lambda _: (
+                                    asyncio.create_task(
+                                        state.ad_service.show_privacy_options()
+                                    )
+                                    if hasattr(state, "ad_service") and state.ad_service
+                                    else None
+                                ),
+                            ),
+                        ]
+                        if not getattr(page, "web", False)
+                        else []
                     ),
                 ],
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
