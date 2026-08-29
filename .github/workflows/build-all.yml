@@ -140,6 +140,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
+      - name: Install libgl1 (Linux headless graphical asset processing)
+        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-glx libglib2.0-0
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -348,13 +350,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # ─── 6. Web App Build & Deploy to asase.kiri.ng (GitHub Pages) ───
-  deploy-web:
+  # ─── 6. Web App Build (Release Archive & Pages Staging) ──────
+  build-web:
     needs: [prepare-release]
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -382,7 +381,16 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: 'build/web'
-      - name: Deploy to GitHub Pages (asase.kiri.ng)
-        if: github.event_name != 'pull_request'
+
+  # ─── 7. Deploy to asase.kiri.ng (GitHub Pages) ────────────────
+  deploy-pages:
+    needs: [build-web]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
