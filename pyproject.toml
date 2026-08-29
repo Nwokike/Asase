@@ -1,0 +1,62 @@
+[project]
+name = "asase-app"
+version = "1.0.0"
+description = "Asase — Global Earth Intelligence & Multi-Hazard Planetary Defense Platform"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "flet>=0.86.5",
+    "flet-ads>=0.86.5",
+    "flet-map>=0.86.5",
+    "flet-geolocator>=0.86.5",
+    "httpx>=0.28.1",
+    "pydantic>=2.10.0",
+]
+
+[tool.flet]
+org = "ng.kiri"
+product = "Asase"
+company = "Kiri Research Labs"
+build_number = 1
+
+[tool.flet.app]
+path = "src"
+
+[tool.flet.app.boot_screen]
+startup_message = "Initializing Asase Earth Telemetry..."
+
+[tool.flet.android]
+bundle_id = "ng.kiri.asase"
+min_sdk_version = 24
+target_sdk_version = 35
+target_arch = ["arm64-v8a", "armeabi-v7a"]
+
+[tool.flet.android.manifest_application]
+usesCleartextTraffic = "true"
+
+[tool.flet.android.permission]
+"android.permission.INTERNET" = true
+"android.permission.ACCESS_NETWORK_STATE" = true
+"android.permission.ACCESS_FINE_LOCATION" = true
+"android.permission.ACCESS_COARSE_LOCATION" = true
+
+[tool.flet.android.meta_data]
+"com.google.android.gms.ads.APPLICATION_ID" = "ca-app-pub-5679949845754640~2413783608"
+
+[tool.flet.android.signing]
+key_store = "../../../../kiri_keystore.jks"
+key_alias = "upload"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=0.24.0",
+    "ruff>=0.16.4",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+lint.extend-ignore = ["BLE001", "S110", "ASYNC230"]

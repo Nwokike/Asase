@@ -1,0 +1,31 @@
+# Virtual environment
+.venv/
+
+# Caching & Linters
+.ruff_cache/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Build artifacts
+build/
+dist/
+*.spec
+installer.iss
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# User data & storage
+storage/
+.env
+.env.*
+
+# Signing keys
+*.jks
+*.keystore
+
+# Local release tracking
+release_notes.md
+.zcode/
