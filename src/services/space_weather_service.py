@@ -18,7 +18,7 @@ class SpaceWeatherService:
         kp_val = 0.0
         status = "Quiet (Normal)"
         solar = "Normal"
-        raw_kp: list[list] = []
+        raw_kp: list = []
 
         client = NetworkManager.get_client()
 
@@ -29,7 +29,15 @@ class SpaceWeatherService:
                 kp_data = res.json()
                 if isinstance(kp_data, list) and len(kp_data) >= 1:
                     latest = kp_data[-1]
-                    kp_val = float(latest[1]) if len(latest) > 1 else 0.0
+                    if isinstance(latest, dict):
+                        kp_val = float(
+                            latest.get("estimated_kp", latest.get("kp_index", 0.0))
+                        )
+                    elif isinstance(latest, list) and len(latest) > 1:
+                        kp_val = float(latest[1])
+                    else:
+                        kp_val = 0.0
+
                     raw_kp = kp_data[-12:]
 
                     if kp_val < 3.0:
@@ -44,6 +52,7 @@ class SpaceWeatherService:
                         status = "G3 Strong Geomagnetic Storm"
                     else:
                         status = "G4/G5 Severe Geomagnetic Storm"
+                    logger.info("NOAA SWPC: Validated Kp %.2f (%s)", kp_val, status)
         except Exception as e:
             logger.warning("NOAA Kp-index fetch failed: %s", e)
 
@@ -61,7 +70,7 @@ class SpaceWeatherService:
             kp_index=kp_val,
             geomagnetic_status=status,
             solar_activity=solar,
-            raw_kp=raw_kp,
+            raw_kp=raw_kp if isinstance(raw_kp, list) else [],
         )
 
         return telemetry.model_dump()

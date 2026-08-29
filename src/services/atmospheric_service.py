@@ -58,7 +58,7 @@ class AtmosphericService:
         # 3. GloFAS River Flood Forecasting
         flood_url = (
             f"{OPEN_METEO_FLOOD}?latitude={lat}&longitude={lon}"
-            "&daily=river_discharge,river_discharge_mean,river_discharge_median,river_discharge_max,river_discharge_min,river_discharge_threshold_2y,river_discharge_threshold_5y,river_discharge_threshold_20y"
+            "&daily=river_discharge,river_discharge_mean,river_discharge_median,river_discharge_max,river_discharge_min"
             "&forecast_days=7"
         )
         try:

@@ -29,3 +29,8 @@ def build_banner_ad(page: ft.Page | None = None) -> ft.Control:
     except Exception as e:
         logger.debug("Banner ad unsupported: %s", e)
         return ft.Container(height=0)
+
+
+# Aliases for flexible imports
+AdMobBanner = build_banner_ad
+BannerAd = build_banner_ad
