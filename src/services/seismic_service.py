@@ -1,16 +1,15 @@
-"""USGS Earthquake Hazards Program client (100% Free & No-Auth)."""
+"""USGS Earthquake Hazards Program client with FDSN and GeoJSON stream support."""
 
 from __future__ import annotations
 
-import datetime
 import logging
-
-import httpx
 
 from core.constants import (
     USGS_EARTHQUAKES_DAY,
     USGS_EARTHQUAKES_SIGNIFICANT,
 )
+from core.network import NetworkManager
+from models.seismic import EarthquakeFeatureCollection
 
 logger = logging.getLogger("asase.seismic")
 
@@ -18,7 +17,7 @@ logger = logging.getLogger("asase.seismic")
 class SeismicService:
     @staticmethod
     async def fetch_earthquakes(min_magnitude: float = 2.5) -> list[dict]:
-        """Fetch live global earthquakes from USGS GeoJSON feed."""
+        """Fetch live global earthquakes using connection-pooled HTTPX client & Pydantic v2."""
         url = (
             USGS_EARTHQUAKES_DAY
             if min_magnitude <= 4.0
@@ -26,49 +25,49 @@ class SeismicService:
         )
         events: list[dict] = []
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                res = await client.get(url)
-                if res.status_code == 200:
-                    data = res.json()
-                    features = data.get("features", [])
-                    for f in features:
-                        props = f.get("properties", {})
-                        geom = f.get("geometry", {})
-                        coords = geom.get("coordinates", [0.0, 0.0, 0.0])
-                        mag = float(props.get("mag") or 0.0)
-
-                        if mag < min_magnitude:
-                            continue
-
-                        timestamp_ms = props.get("time") or 0
-                        time_str = datetime.datetime.fromtimestamp(
-                            timestamp_ms / 1000.0, tz=datetime.UTC
-                        ).strftime("%Y-%m-%d %H:%M UTC")
-
-                        events.append(
-                            {
-                                "id": f.get("id", ""),
-                                "title": props.get("title", "Earthquake"),
-                                "place": props.get("place", "Unknown location"),
-                                "magnitude": mag,
-                                "depth_km": float(coords[2])
-                                if len(coords) > 2
-                                else 0.0,
-                                "longitude": float(coords[0]),
-                                "latitude": float(coords[1]),
-                                "tsunami": bool(props.get("tsunami", 0)),
-                                "alert": props.get("alert") or "green",
-                                "mmi": props.get("mmi") or 0.0,
-                                "time_str": time_str,
-                                "url": props.get("url", ""),
-                                "type": "earthquake",
-                            }
-                        )
-                    logger.info(
-                        "USGS: Loaded %d seismic events (min M%.1f)",
-                        len(events),
-                        min_magnitude,
-                    )
+            client = NetworkManager.get_client()
+            res = await client.get(url)
+            if res.status_code == 200:
+                # Fast zero-copy Rust-accelerated parsing
+                collection = EarthquakeFeatureCollection.model_validate_json(
+                    res.content
+                )
+                for feat in collection.features:
+                    if feat.properties.mag >= min_magnitude:
+                        events.append(feat.to_map_dict())
+                logger.info(
+                    "USGS: Validated %d seismic events (min M%.1f)",
+                    len(events),
+                    min_magnitude,
+                )
         except Exception as ex:
             logger.warning("USGS Earthquake fetch failed: %s", ex)
+        return events
+
+    @staticmethod
+    async def fetch_radius_history(
+        lat: float, lon: float, radius_km: float = 500.0, min_magnitude: float = 3.0
+    ) -> list[dict]:
+        """Fetch local earthquake history within radius using USGS FDSN Web Services."""
+        url = (
+            f"https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson"
+            f"&latitude={lat}&longitude={lon}&maxradiuskm={radius_km}"
+            f"&minmagnitude={min_magnitude}&orderby=time&limit=50"
+        )
+        events: list[dict] = []
+        try:
+            client = NetworkManager.get_client()
+            res = await client.get(url)
+            if res.status_code == 200:
+                collection = EarthquakeFeatureCollection.model_validate_json(
+                    res.content
+                )
+                events = [feat.to_map_dict() for feat in collection.features]
+                logger.info(
+                    "USGS FDSN: Found %d historical events within %d km",
+                    len(events),
+                    int(radius_km),
+                )
+        except Exception as ex:
+            logger.warning("USGS FDSN radial query failed: %s", ex)
         return events

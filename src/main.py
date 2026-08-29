@@ -8,6 +8,7 @@ import logging
 from typing import Any
 
 import flet as ft
+from flet_geolocator import Geolocator
 
 from core.constants import (
     APP_NAME,
@@ -23,6 +24,7 @@ from core.constants import (
     STORAGE_TEMP_UNIT,
     STORAGE_THEME,
 )
+from core.network import NetworkManager
 from core.notify import show_snack
 from core.state import state
 from core.theme import AppColors, AppTheme
@@ -46,7 +48,8 @@ class AppController:
         self.storage: StorageService | None = None
         self.ad_service: AdService | None = None
         self.connectivity: ft.Connectivity | None = None
-        self.geolocator: ft.Geolocator | None = None
+        self.geolocator: Geolocator | None = None
+        self.haptics: ft.HapticFeedback | None = None
         self._controller_methods: ControllerMethods | None = None
 
     async def init(self) -> None:
@@ -77,8 +80,11 @@ class AppController:
         self.page.run_task(self._init_connectivity)
         self.page.on_app_lifecycle_state_change = self._on_lifecycle_change
 
-        self.geolocator = ft.Geolocator()
+        self.geolocator = Geolocator()
         self.page.services.append(self.geolocator)
+
+        self.haptics = ft.HapticFeedback()
+        self.page.services.append(self.haptics)
 
         self.storage = StorageService(self.page)
         self.ad_service = AdService(self.page)
@@ -161,9 +167,28 @@ class AppController:
             return
 
         state.is_loading = True
-        logger.info("Refreshing all planetary telemetry feeds...")
+        logger.info(
+            "Refreshing all planetary telemetry feeds via NetworkManager pool..."
+        )
 
         try:
+            # Check cached telemetry first
+            cache_key = f"telemetry_{state.current_lat:.2f}_{state.current_lon:.2f}"
+            cached = None
+            if self.storage:
+                cached = await self.storage.get_cached_telemetry(cache_key)
+
+            if cached:
+                logger.info(
+                    "Using fresh cached telemetry envelope for (%s, %s)",
+                    state.current_lat,
+                    state.current_lon,
+                )
+                state.weather_data = cached.get("weather", {})
+                state.air_quality_data = cached.get("air_quality", {})
+                state.flood_data = cached.get("flood", {})
+                state.marine_data = cached.get("marine", {})
+
             # Fetch all global data concurrently
             eq_task = SeismicService.fetch_earthquakes(state.min_magnitude_filter)
             dis_task = DisasterService.fetch_active_disasters()
@@ -180,11 +205,15 @@ class AppController:
                 state.earthquakes = eqs
             if isinstance(disasters, list):
                 state.disasters = disasters
-            if isinstance(atm, dict):
+            if isinstance(atm, dict) and atm.get("weather"):
                 state.weather_data = atm.get("weather", {})
                 state.air_quality_data = atm.get("air_quality", {})
                 state.flood_data = atm.get("flood", {})
                 state.marine_data = atm.get("marine", {})
+                if self.storage:
+                    await self.storage.set_cached_telemetry(
+                        cache_key, atm, ttl_seconds=900.0
+                    )
             if isinstance(space, dict):
                 state.space_weather = space
 
@@ -204,6 +233,10 @@ class AppController:
         state.current_lon = lon
         state.current_location_name = name
         state.current_country = country
+
+        if self.haptics:
+            with contextlib.suppress(Exception):
+                await self.haptics.selection_click()
 
         # Fetch elevation
         elev = await GeocodingService.get_elevation(lat, lon)
@@ -228,17 +261,20 @@ class AppController:
         await self.refresh_all()
 
     async def toggle_bookmark(self, location: dict) -> None:
-        """Toggle bookmark for a location dictionary."""
+        """Toggle bookmark for a location dictionary with haptic feedback."""
         name = location.get("name")
         if not name:
             return
+
+        if self.haptics:
+            with contextlib.suppress(Exception):
+                await self.haptics.selection_click()
+
         exists = any(b.get("name") == name for b in state.bookmarks)
         if exists:
             state.bookmarks = [b for b in state.bookmarks if b.get("name") != name]
             show_snack(
-                self.page,
-                f"Removed '{name}' from bookmarks",
-                bgcolor=AppColors.SECONDARY,
+                self.page, f"Removed '{name}' from bookmarks", bgcolor=AppColors.GREY
             )
         else:
             state.bookmarks.append(location)
@@ -251,7 +287,7 @@ class AppController:
         state.telemetry_version += 1
 
     async def locate_user(self) -> None:
-        """Locate user using device GPS coordinates."""
+        """Locate user using native device GPS coordinates."""
         if not self.geolocator:
             return
         try:
@@ -331,6 +367,8 @@ async def main(page: ft.Page) -> None:
         with contextlib.suppress(Exception):
             if controller.ad_service:
                 await controller.ad_service.close()
+        with contextlib.suppress(Exception):
+            await NetworkManager.close()
 
     page.on_close = _on_close
     page.on_disconnect = _on_close

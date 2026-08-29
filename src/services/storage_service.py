@@ -1,13 +1,18 @@
-"""Platform-resilient key-value storage service for Asase.
+"""Platform-resilient key-value storage & Gzip telemetry cache service for Asase.
 
-Combines Sherlock's web client_storage persistence with KTV Player's
-atomic crash-proof local JSON storage and backup rotation.
+Combines:
+1. Sherlock's web client_storage persistence
+2. KTV Player's atomic crash-proof local JSON storage (.tmp + .bak + .corrupted)
+3. L1 Memory LRU Cache + L2 Disk Gzip (.json.gz) telemetry cache with TTL
 """
 
 from __future__ import annotations
 
 import asyncio
+import collections
 import contextlib
+import gzip
+import hashlib
 import json
 import logging
 import os
@@ -19,18 +24,28 @@ import flet as ft
 
 logger = logging.getLogger("asase.storage")
 
-storage_env = os.getenv("FLET_APP_STORAGE_DATA")
-if storage_env:
-    _STORAGE_DIR = Path(storage_env) / "asase"
-else:
-    _STORAGE_DIR = Path.home() / ".asase"
-
-_STORAGE_FILE = _STORAGE_DIR / "storage.json"
 _WRITE_DEBOUNCE_SEC = 1.0
 
 
+def get_storage_dir() -> Path:
+    storage_env = os.getenv("FLET_APP_STORAGE_DATA")
+    if storage_env:
+        return Path(storage_env) / "asase"
+    return Path.home() / ".asase"
+
+
+def get_storage_file() -> Path:
+    return get_storage_dir() / "storage.json"
+
+
+def get_cache_dir() -> Path:
+    d = get_storage_dir() / "cache" / "telemetry"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
 class StorageService:
-    """Universal persistent storage engine for Web, Android, and Desktop."""
+    """Universal persistent storage & multi-tier cache engine for Web, Android, and Desktop."""
 
     def __init__(self, page: ft.Page):
         self._page = page
@@ -40,6 +55,12 @@ class StorageService:
         self._last_write: float = 0.0
         self._pending_write_task: asyncio.Task | None = None
         self._is_web = bool(getattr(page, "session_id", None))
+
+        # L1 Memory LRU Cache
+        self._l1_cache: collections.OrderedDict[str, dict[str, Any]] = (
+            collections.OrderedDict()
+        )
+        self._max_l1_items = 50
 
         if self._is_web:
             self._load_web()
@@ -56,20 +77,22 @@ class StorageService:
             self._data = {}
 
     def _load(self) -> None:
-        _STORAGE_DIR.mkdir(parents=True, exist_ok=True)
-        if _STORAGE_FILE.exists():
+        storage_dir = get_storage_dir()
+        storage_file = get_storage_file()
+        storage_dir.mkdir(parents=True, exist_ok=True)
+        if storage_file.exists():
             try:
-                raw = _STORAGE_FILE.read_bytes()
+                raw = storage_file.read_bytes()
                 if raw:
                     self._data = json.loads(raw.decode("utf-8"))
                     return
             except Exception:
                 logger.warning("Storage file corrupted. Attempting recovery.")
-                bak = _STORAGE_FILE.with_suffix(".json.corrupted")
+                bak = storage_file.with_suffix(".json.corrupted")
                 with contextlib.suppress(Exception):
-                    _STORAGE_FILE.replace(bak)
+                    storage_file.replace(bak)
 
-        bak_file = _STORAGE_FILE.with_suffix(".json.bak")
+        bak_file = storage_file.with_suffix(".json.bak")
         if bak_file.exists():
             try:
                 raw = bak_file.read_bytes()
@@ -85,20 +108,22 @@ class StorageService:
             self._save_now_web()
             return
         try:
-            _STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+            storage_dir = get_storage_dir()
+            storage_file = get_storage_file()
+            storage_dir.mkdir(parents=True, exist_ok=True)
             data_bytes = json.dumps(self._data, ensure_ascii=False, indent=2).encode(
                 "utf-8"
             )
-            tmp_path = _STORAGE_FILE.with_suffix(".json.tmp")
-            bak_path = _STORAGE_FILE.with_suffix(".json.bak")
+            tmp_path = storage_file.with_suffix(".json.tmp")
+            bak_path = storage_file.with_suffix(".json.bak")
 
-            if _STORAGE_FILE.exists():
-                old = _STORAGE_FILE.read_bytes()
+            if storage_file.exists():
+                old = storage_file.read_bytes()
                 if old != data_bytes:
                     bak_path.write_bytes(old)
 
             tmp_path.write_bytes(data_bytes)
-            tmp_path.replace(_STORAGE_FILE)
+            tmp_path.replace(storage_file)
             self._dirty = False
             self._last_write = time.monotonic()
         except Exception as e:
@@ -151,3 +176,65 @@ class StorageService:
         async with self._lock:
             if self._dirty:
                 self._save_now()
+
+    # ── Gzip Telemetry Cache Subsystem ──
+
+    def _cache_path(self, key: str) -> Path:
+        h = hashlib.sha256(key.encode("utf-8")).hexdigest()[:16]
+        return get_cache_dir() / f"{h}.json.gz"
+
+    async def get_cached_telemetry(self, key: str) -> Any | None:
+        """Retrieve telemetry from L1 Memory or L2 Disk Gzip Cache."""
+        now = time.time()
+        # 1. L1 Memory
+        if key in self._l1_cache:
+            item = self._l1_cache[key]
+            if now < item["expires_at"]:
+                self._l1_cache.move_to_end(key)
+                return item["data"]
+            del self._l1_cache[key]
+
+        # 2. L2 Disk Gzip
+        if not self._is_web:
+            path = self._cache_path(key)
+            if path.exists():
+                try:
+                    raw = gzip.decompress(path.read_bytes())
+                    envelope = json.loads(raw.decode("utf-8"))
+                    if now < envelope.get("expires_at", 0):
+                        data = envelope.get("data")
+                        self._l1_cache[key] = {
+                            "data": data,
+                            "expires_at": envelope["expires_at"],
+                        }
+                        return data
+                    path.unlink(missing_ok=True)
+                except Exception as e:
+                    logger.debug("Cache read error for %s: %s", key, e)
+                    path.unlink(missing_ok=True)
+        return None
+
+    async def set_cached_telemetry(
+        self, key: str, data: Any, ttl_seconds: float = 900.0
+    ) -> None:
+        """Store telemetry in L1 Memory and L2 Disk Gzip Cache."""
+        expires_at = time.time() + ttl_seconds
+        if len(self._l1_cache) >= self._max_l1_items:
+            self._l1_cache.popitem(last=False)
+        self._l1_cache[key] = {"data": data, "expires_at": expires_at}
+
+        if not self._is_web:
+            try:
+                envelope = {
+                    "key": key,
+                    "expires_at": expires_at,
+                    "data": data,
+                }
+                raw = json.dumps(envelope, ensure_ascii=False).encode("utf-8")
+                compressed = gzip.compress(raw, compresslevel=6)
+                path = self._cache_path(key)
+                tmp_path = path.with_suffix(".tmp")
+                tmp_path.write_bytes(compressed)
+                tmp_path.replace(path)
+            except Exception as e:
+                logger.debug("Cache write error for %s: %s", key, e)

@@ -1,4 +1,4 @@
-"""Sparkline and Trend LineChart component for telemetry progression."""
+"""Multi-series hardware-accelerated telemetry charting components."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ def TelemetryLineChart(
     curved: bool = True,
     show_points: bool = True,
 ) -> ft.Control:
-    """Builds a lightweight, sleek trend line chart."""
+    """Builds a hardware-accelerated trend line chart with below-line gradient."""
     if not values or len(values) < 2:
         return ft.Container(
             content=ft.Text(
@@ -64,4 +64,52 @@ def TelemetryLineChart(
         padding=ft.Padding(
             tokens.SPACE_XS, tokens.SPACE_XS, tokens.SPACE_XS, tokens.SPACE_XS
         ),
+    )
+
+
+def PlanetaryThreatRadar(
+    seismic_risk: float = 20.0,
+    storm_risk: float = 30.0,
+    flood_risk: float = 15.0,
+    pollution_risk: float = 45.0,
+    geomagnetic_risk: float = 10.0,
+    height: float = 200,
+) -> ft.Control:
+    """Builds a 5-axis RadarChart assessing multi-hazard planetary threat distribution."""
+    entries = [
+        fc.RadarDataSetEntry(min(100.0, max(5.0, seismic_risk))),
+        fc.RadarDataSetEntry(min(100.0, max(5.0, storm_risk))),
+        fc.RadarDataSetEntry(min(100.0, max(5.0, flood_risk))),
+        fc.RadarDataSetEntry(min(100.0, max(5.0, pollution_risk))),
+        fc.RadarDataSetEntry(min(100.0, max(5.0, geomagnetic_risk))),
+    ]
+
+    dataset = fc.RadarDataSet(
+        entries=entries,
+        fill_color=ft.Colors.with_opacity(0.25, AppColors.PRIMARY),
+        border_color=AppColors.PRIMARY,
+        border_width=2.0,
+        entry_radius=4.0,
+    )
+
+    titles = [
+        fc.RadarChartTitle(text="Seismic"),
+        fc.RadarChartTitle(text="Storm"),
+        fc.RadarChartTitle(text="Flood"),
+        fc.RadarChartTitle(text="AQI"),
+        fc.RadarChartTitle(text="Solar"),
+    ]
+
+    return ft.Container(
+        content=fc.RadarChart(
+            data_sets=[dataset],
+            titles=titles,
+            radar_shape=fc.RadarShape.POLYGON,
+            tick_count=3,
+            interactive=True,
+            expand=True,
+        ),
+        height=height,
+        padding=tokens.SPACE_SM,
+        alignment=ft.Alignment.CENTER,
     )

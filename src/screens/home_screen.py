@@ -271,7 +271,7 @@ def HomeScreen() -> Control:
         ),
         ft.Container(
             content=TelemetryCard(
-                icon=ft.Icons.PULSE_ALERT_ROUNDED,
+                icon=ft.Icons.WAVES_ROUNDED,
                 title="Active Earthquakes",
                 value=f"{eq_count} Events",
                 subtitle="USGS Real-time global seismic sensors",

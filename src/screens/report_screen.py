@@ -1,4 +1,4 @@
-"""ReportScreen — Deep-dive Location Risk Dossier and Multi-Hazard Analysis."""
+"""ReportScreen — Deep-dive Location Risk Dossier, Multi-Hazard Analysis & Radar Assessment."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import flet as ft
 from flet import Control
 
 from components.section_header import SectionHeader
-from components.sparkline_chart import TelemetryLineChart
+from components.sparkline_chart import PlanetaryThreatRadar, TelemetryLineChart
 from core import tokens
 from core.notify import show_snack
 from core.theme import (
@@ -101,7 +101,7 @@ def ReportScreen() -> Control:
     o3 = aqi_data.get("ozone", 0)
     dust = aqi_data.get("dust", 0)
 
-    # Extract AQI Hourly Trend (48 hours)
+    # Extract AQI Hourly Trend (24 hours)
     hourly_aqi = state.air_quality_data.get("hourly", {}).get("us_aqi", [])
     aqi_trend = [float(v) for v in hourly_aqi if v is not None][-24:]
 
@@ -127,6 +127,18 @@ def ReportScreen() -> Control:
     wind_gust = weather_data.get("wind_gusts_10m", "--")
     cape = weather_data.get("cape", 0)
     uv = weather_data.get("uv_index", "--")
+
+    # Space Weather
+    kp_val = state.space_weather.get("kp_index", 0.0)
+
+    # Overall Threat Dimensions (0 - 100 for Radar Chart)
+    seismic_risk_val = min(100.0, len(state.earthquakes) * 2.5)
+    storm_risk_val = min(
+        100.0, (float(cape or 0) / 30.0) + (float(wind_gust or 0) * 0.8)
+    )
+    flood_risk_val = min(100.0, float(max_discharge) * 0.15) if max_discharge else 10.0
+    pollution_risk_val = min(100.0, float(us_aqi or 0) * 0.5)
+    geomagnetic_risk_val = min(100.0, float(kp_val) * 11.0)
 
     # Overall Safety Score Computation (0 - 100)
     risk_deductions = 0
@@ -343,6 +355,35 @@ Asase Earth Intelligence © 2026 Kiri Research Labs
                 ),
                 padding=ft.Padding(
                     tokens.SPACE_LG, tokens.SPACE_SM, tokens.SPACE_LG, 0
+                ),
+            ),
+            # Planetary Threat Radar Assessment
+            SectionHeader("PLANETARY THREAT RADAR PROFILE"),
+            ft.Container(
+                content=AppStyles.glass_card(
+                    ft.Column(
+                        [
+                            ft.Text(
+                                "5-Axis Multi-Hazard Vulnerability Index",
+                                size=tokens.FONT_XS,
+                                color=ft.Colors.ON_SURFACE_VARIANT,
+                                font_family="Outfit",
+                            ),
+                            PlanetaryThreatRadar(
+                                seismic_risk=seismic_risk_val,
+                                storm_risk=storm_risk_val,
+                                flood_risk=flood_risk_val,
+                                pollution_risk=pollution_risk_val,
+                                geomagnetic_risk=geomagnetic_risk_val,
+                                height=200,
+                            ),
+                        ],
+                        spacing=tokens.SPACE_XS,
+                    ),
+                    padding=tokens.SPACE_MD,
+                ),
+                padding=ft.Padding(
+                    tokens.SPACE_LG, 0, tokens.SPACE_LG, tokens.SPACE_SM
                 ),
             ),
             # GloFAS Hydrology & River Discharge Section

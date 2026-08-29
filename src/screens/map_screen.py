@@ -1,6 +1,8 @@
-"""MapScreen — Full-Screen Planetary Hazard Radar with real-time filters."""
+"""MapScreen — Full-Screen Planetary Hazard Radar with real-time filters and tap-to-inspect."""
 
 from __future__ import annotations
+
+import asyncio
 
 import flet as ft
 from flet import Control
@@ -9,19 +11,16 @@ from components.hazard_map import HazardMap
 from core import tokens
 from core.theme import AppColors
 from state.app_state import AppStateCtx
+from state.controller_ctx import ControllerMethodsCtx
 
 
 @ft.component
 def MapScreen() -> Control:
     state = ft.use_context(AppStateCtx)
+    controller = ft.use_context(ControllerMethodsCtx)
 
     active_filter, set_active_filter = ft.use_state("all")
     selected_event, set_selected_event = ft.use_state(None)
-
-    from flet import context as flet_context
-
-    def _get_page():
-        return flet_context.page
 
     # Filter events based on active chip
     filtered_earthquakes = (
@@ -45,13 +44,21 @@ def MapScreen() -> Control:
     def _close_event_sheet(e=None):
         set_selected_event(None)
 
+    def _on_map_tap(lat: float, lon: float):
+        if controller.select_coordinates:
+            asyncio.create_task(
+                controller.select_coordinates(
+                    lat, lon, f"Coord ({lat:.2f}, {lon:.2f})", ""
+                )
+            )
+
     # Filter Chips
     chips = [
         ("all", "All Hazards", ft.Icons.PUBLIC_ROUNDED, AppColors.PRIMARY),
         (
             "earthquake",
             f"Seismic ({len(state.earthquakes)})",
-            ft.Icons.PULSE_ALERT_ROUNDED,
+            ft.Icons.WAVES_ROUNDED,
             AppColors.SEVERITY_HIGH,
         ),
         (
@@ -114,7 +121,7 @@ def MapScreen() -> Control:
 
     return ft.Stack(
         controls=[
-            # Full Map Layer
+            # Full Map Layer with CircleLayer shockwaves & map tap
             HazardMap(
                 lat=state.current_lat,
                 lon=state.current_lon,
@@ -122,6 +129,7 @@ def MapScreen() -> Control:
                 earthquakes=filtered_earthquakes,
                 disasters=filtered_disasters,
                 on_marker_click=_on_marker_click,
+                on_map_tap=_on_map_tap,
                 expand=True,
             ),
             # Floating Top Filter Bar

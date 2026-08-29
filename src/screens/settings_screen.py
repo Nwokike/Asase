@@ -227,7 +227,7 @@ def SettingsScreen() -> Control:
         ft.Column(
             [
                 _setting_row(
-                    ft.Icons.PULSE_ALERT_ROUNDED,
+                    ft.Icons.WAVES_ROUNDED,
                     "Min Seismic Magnitude",
                     "Filter out minor tremors below this Richter scale threshold",
                     ft.Dropdown(

@@ -25,16 +25,14 @@ class AdService:
         if not self._is_mobile:
             return
         try:
-            # Dynamically imported so desktop/web run without errors
             import flet_ads as ads
 
             self.interstitial = ads.InterstitialAd(
                 unit_id=INTERSTITIAL_AD_UNIT_ID,
-                on_loaded=lambda _: logger.info("Interstitial ad loaded"),
+                on_load=lambda _: logger.info("Interstitial ad loaded"),
                 on_error=lambda e: logger.warning("Interstitial ad error: %s", e),
             )
             self.page.services.append(self.interstitial)
-            await self.interstitial.load()
         except Exception as e:
             logger.debug("AdMob interstitial preload unavailable: %s", e)
 
