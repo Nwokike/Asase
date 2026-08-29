@@ -25,10 +25,17 @@ def SpaceScreen() -> Control:
     solar = sw.get("solar_activity", "Normal")
     raw_kp = sw.get("raw_kp", [])
 
-    # Extract historical Kp values
+    # Extract historical Kp values (handling both dict and list schemas from NOAA SWPC)
     kp_history: list[float] = []
     for item in raw_kp:
-        if isinstance(item, list) and len(item) > 1:
+        if isinstance(item, dict):
+            val = item.get("estimated_kp", item.get("kp_index"))
+            if val is not None:
+                try:
+                    kp_history.append(float(val))
+                except Exception:
+                    pass
+        elif isinstance(item, list) and len(item) > 1:
             try:
                 kp_history.append(float(item[1]))
             except Exception:

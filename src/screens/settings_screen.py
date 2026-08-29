@@ -1,12 +1,13 @@
-"""SettingsScreen — Telemetry parameters, theme, and diagnostics terminal.
+"""SettingsScreen — Telemetry parameters, theme switching, and diagnostics terminal.
 
-Follows the Sherlock & KTV Player structured card layout.
+Follows DDGS & Sherlock design standards with segmented color mode switcher.
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Callable
 
 import flet as ft
 from flet import Control
@@ -28,11 +29,104 @@ from core.notify import show_snack
 from core.theme import (
     AppColors,
     AppStyles,
+    adaptive_glass_bg,
+    adaptive_glass_border,
 )
 from state.app_state import AppStateCtx
 from state.controller_ctx import ControllerMethodsCtx
 
 logger = logging.getLogger("asase.settings")
+
+
+def build_theme_section(
+    page: ft.Page, current_theme: str, change_theme_fn: Callable
+) -> ft.Container:
+    """Builds a 3-way segmented color mode card (Light / Dark / System) matching DDGS."""
+
+    def create_theme_card(mode: str, label: str, icon: ft.IconData):
+        is_sel = current_theme == mode
+        return ft.Container(
+            content=ft.Row(
+                [
+                    ft.Icon(
+                        icon,
+                        color=(
+                            AppColors.PRIMARY
+                            if is_sel
+                            else ft.Colors.ON_SURFACE_VARIANT
+                        ),
+                        size=tokens.ICON_MD,
+                    ),
+                    ft.Text(
+                        label,
+                        size=12,
+                        weight=ft.FontWeight.W_600 if is_sel else ft.FontWeight.NORMAL,
+                        color=AppColors.PRIMARY if is_sel else ft.Colors.ON_SURFACE,
+                        font_family="Outfit",
+                    ),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                spacing=6,
+            ),
+            padding=ft.Padding(12, 10, 12, 10),
+            border_radius=tokens.RADIUS_MD,
+            border=(
+                ft.Border.all(2, AppColors.PRIMARY)
+                if is_sel
+                else ft.Border.all(1, ft.Colors.with_opacity(0.1, ft.Colors.ON_SURFACE))
+            ),
+            bgcolor=(
+                ft.Colors.with_opacity(0.12, AppColors.PRIMARY)
+                if is_sel
+                else ft.Colors.with_opacity(0.04, ft.Colors.ON_SURFACE)
+            ),
+            expand=True,
+            animate=ft.Animation(150, "easeOut"),
+            on_click=lambda _: asyncio.create_task(change_theme_fn(mode)),
+        )
+
+    light_btn = create_theme_card("light", "Light", ft.Icons.LIGHT_MODE_ROUNDED)
+    dark_btn = create_theme_card("dark", "Dark", ft.Icons.DARK_MODE_ROUNDED)
+    system_btn = create_theme_card(
+        "system", "System", ft.Icons.SETTINGS_SYSTEM_DAYDREAM_ROUNDED
+    )
+
+    return ft.Container(
+        content=ft.Column(
+            [
+                ft.Row(
+                    [
+                        ft.Icon(
+                            ft.Icons.COLOR_LENS_ROUNDED,
+                            color=AppColors.PRIMARY,
+                            size=18,
+                        ),
+                        ft.Text(
+                            "Display Theme",
+                            size=14,
+                            weight=ft.FontWeight.W_600,
+                            font_family="Outfit",
+                        ),
+                    ],
+                    spacing=10,
+                ),
+                ft.Divider(
+                    height=1,
+                    color=ft.Colors.with_opacity(0.08, ft.Colors.ON_SURFACE),
+                ),
+                ft.Row(
+                    [light_btn, dark_btn, system_btn],
+                    spacing=8,
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                ),
+            ],
+            spacing=12,
+        ),
+        padding=16,
+        border_radius=tokens.RADIUS_LG,
+        bgcolor=adaptive_glass_bg(page),
+        border=ft.Border.all(1, adaptive_glass_border(page)),
+    )
 
 
 def _setting_row(
@@ -99,6 +193,13 @@ def SettingsScreen() -> Control:
 
     page = _get_page()
 
+    def _current_theme_str() -> str:
+        if page.theme_mode == ft.ThemeMode.DARK:
+            return "dark"
+        if page.theme_mode == ft.ThemeMode.LIGHT:
+            return "light"
+        return "system"
+
     async def _on_theme_change(val: str):
         if val == "system":
             new_mode = ft.ThemeMode.SYSTEM
@@ -110,6 +211,7 @@ def SettingsScreen() -> Control:
         state.theme_mode = new_mode
         if controller.save_setting:
             await controller.save_setting(STORAGE_THEME, val)
+        page.update()
 
     def _on_magnitude_change(val: str):
         try:
@@ -160,43 +262,10 @@ def SettingsScreen() -> Control:
         )
         page.show_dialog(dlg)
 
-    # ── Cards ──
-
-    # Preferences
-    preferences_card = AppStyles.glass_card(
+    # Unit Preferences
+    units_card = AppStyles.glass_card(
         ft.Column(
             [
-                _setting_row(
-                    ft.Icons.COLOR_LENS_ROUNDED,
-                    "Theme Mode",
-                    "Choose between System, Dark, or Light",
-                    ft.Dropdown(
-                        value=(
-                            state.theme_mode.value.capitalize()
-                            if isinstance(state.theme_mode, ft.ThemeMode)
-                            else "System"
-                        ),
-                        options=[
-                            ft.DropdownOption("System", "System"),
-                            ft.DropdownOption("Dark", "Dark"),
-                            ft.DropdownOption("Light", "Light"),
-                        ],
-                        width=110,
-                        height=44,
-                        text_size=tokens.FONT_SM,
-                        border_radius=tokens.RADIUS_SM,
-                        focused_border_color=AppColors.PRIMARY,
-                        on_select=lambda e: asyncio.create_task(
-                            _on_theme_change(e.control.value)
-                        ),
-                    ),
-                ),
-                ft.Divider(
-                    height=1,
-                    color=ft.Colors.with_opacity(
-                        tokens.OPACITY_SUBTLE, ft.Colors.OUTLINE
-                    ),
-                ),
                 _setting_row(
                     ft.Icons.THERMOSTAT_ROUNDED,
                     "Temperature Unit",
@@ -214,6 +283,29 @@ def SettingsScreen() -> Control:
                         text_size=tokens.FONT_SM,
                         border_radius=tokens.RADIUS_SM,
                         on_select=lambda e: _on_temp_unit_change(e.control.value),
+                    ),
+                ),
+                ft.Divider(
+                    height=1,
+                    color=ft.Colors.with_opacity(
+                        tokens.OPACITY_SUBTLE, ft.Colors.OUTLINE
+                    ),
+                ),
+                _setting_row(
+                    ft.Icons.SPEED_ROUNDED,
+                    "Wind Speed Unit",
+                    "Choose Kilometers per hour (km/h) or Miles per hour (mph)",
+                    ft.Dropdown(
+                        value="km/h" if state.speed_unit == "kmh" else "mph",
+                        options=[
+                            ft.DropdownOption("kmh", "km/h"),
+                            ft.DropdownOption("mph", "mph"),
+                        ],
+                        width=140,
+                        height=44,
+                        text_size=tokens.FONT_SM,
+                        border_radius=tokens.RADIUS_SM,
+                        on_select=lambda e: _on_speed_unit_change(e.control.value),
                     ),
                 ),
             ],
@@ -376,9 +468,18 @@ def SettingsScreen() -> Control:
     return ft.ListView(
         controls=[
             ft.Container(height=tokens.SPACE_SM),
-            SectionHeader("PREFERENCES"),
+            SectionHeader("DISPLAY THEME"),
             ft.Container(
-                content=preferences_card,
+                content=build_theme_section(
+                    page, _current_theme_str(), _on_theme_change
+                ),
+                padding=ft.Padding(
+                    tokens.SPACE_LG, 0, tokens.SPACE_LG, tokens.SPACE_SM
+                ),
+            ),
+            SectionHeader("UNITS & PREFERENCES"),
+            ft.Container(
+                content=units_card,
                 padding=ft.Padding(
                     tokens.SPACE_LG, 0, tokens.SPACE_LG, tokens.SPACE_SM
                 ),

@@ -31,7 +31,7 @@ def show_activity_terminal_dialog(page: ft.Page) -> None:
         selectable=True,
     )
 
-    async def _copy_logs(e):
+    async def _copy_logs(e=None):
         try:
             cb = ft.Clipboard()
             await cb.set(logs_str)

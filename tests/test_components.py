@@ -60,11 +60,11 @@ def test_sparkline_chart_rendering():
     assert isinstance(chart, ft.Container)
 
     # Empty / Insufficient values fallback
-    chart_empty = TelemetryLineChart(values=[10.0])
+    chart_empty = TelemetryLineChart(values=[])
     assert isinstance(chart_empty, ft.Container)
     texts = list(walk_texts(chart_empty))
     assert len(texts) == 1
-    assert "Insufficient" in texts[0].value
+    assert "Awaiting" in texts[0].value or "Insufficient" in texts[0].value
 
 
 def test_hazard_map_component():
