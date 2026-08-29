@@ -75,13 +75,12 @@ jobs:
           tag_name: ${{ steps.tag_info.outputs.TAG_NAME }}
           name: ${{ steps.tag_info.outputs.RELEASE_NAME }}
           prerelease: ${{ steps.tag_info.outputs.IS_PRERELEASE }}
+          body_path: release_notes.md
           make_latest: true
-          body: |
-            Automated multi-platform build generated from commit `${{ github.sha }}`.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # ─── 2. Android APK (split per ABI: arm64-v8a, armeabi-v7a) ──
+  # ─── 2. Android APK (split per ABI: arm64-v8a, armeabi-v7a, x86_64) ──
   build-apk-split:
     needs: [prepare-release]
     runs-on: ubuntu-latest
@@ -117,7 +116,11 @@ jobs:
           (cd build/flutter/android && ./gradlew assembleRelease)
           rm -rf build/apk
           mkdir -p build/apk
-          find build/flutter -name "*.apk" -not -path "*/intermediates/*" -exec cp {} build/apk/ \;
+          find build/flutter -name "*arm64-v8a*.apk" -not -path "*/intermediates/*" -exec cp {} build/apk/asase-arm64-v8a.apk \;
+          find build/flutter -name "*armeabi-v7a*.apk" -not -path "*/intermediates/*" -exec cp {} build/apk/asase-armeabi-v7a.apk \;
+          find build/flutter -name "*x86_64*.apk" -not -path "*/intermediates/*" -exec cp {} build/apk/asase-x86_64.apk \;
+          # Fallback if specific ABI filename format differs
+          find build/flutter -name "*.apk" -not -path "*/intermediates/*" -not -path "*/build/apk/*" -exec cp -u {} build/apk/ \;
           ls -lh build/apk/
       - name: Verify 16 KB page alignment (Google Play requirement)
         run: python scripts/check_elf_alignment.py build/apk/*.apk
@@ -166,7 +169,7 @@ jobs:
           (cd build/flutter/android && ./gradlew bundleRelease)
           rm -rf build/aab
           mkdir -p build/aab
-          find build/flutter -name "*.aab" -not -path "*/intermediates/*" -exec cp {} build/aab/ \;
+          find build/flutter -name "*.aab" -not -path "*/intermediates/*" -exec cp {} build/aab/asase-release.aab \;
           ls -lh build/aab/
       - name: Verify 16 KB page alignment (Google Play requirement)
         run: python scripts/check_elf_alignment.py build/aab/*.aab
