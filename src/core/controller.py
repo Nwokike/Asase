@@ -219,7 +219,7 @@ class AppController:
             atmo_task = AtmosphericService.fetch_location_telemetry(
                 state.current_lat, state.current_lon
             )
-            space_task = SpaceWeatherService.fetch_space_weather_summary()
+            space_task = SpaceWeatherService.fetch_space_weather()
 
             results = await asyncio.gather(
                 eq_task,

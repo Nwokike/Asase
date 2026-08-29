@@ -19,11 +19,20 @@ def OnboardingScreen() -> Control:
     state = ft.use_context(AppStateCtx)
     controller = ft.use_context(ControllerMethodsCtx)
 
+    from flet import context as flet_context
+
+    page = flet_context.page
+
     async def _accept():
         state.has_accepted_terms = True
         state.is_first_launch = False
+        state.telemetry_version += 1
         if controller.save_setting:
             await controller.save_setting(STORAGE_ONBOARDING_DONE, "true")
+        if controller.go_home:
+            controller.go_home()
+        if page:
+            page.update()
 
     return ft.Container(
         content=ft.Column(

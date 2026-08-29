@@ -133,11 +133,17 @@ def AppShell() -> Control:
 
     ft.use_effect(
         _sync_chrome,
-        [active_tab, active_view, state.has_accepted_terms, state.theme_version],
+        [
+            active_tab,
+            active_view,
+            state.has_accepted_terms,
+            state.theme_version,
+            state.telemetry_version,
+        ],
     )
 
-    # ── Branch Screen (Depends on state.theme_version for immediate theme switching) ──
-    _ = state.theme_version
+    # ── Branch Screen (Depends on state reactivity hooks) ──
+    _ = (state.theme_version, state.telemetry_version, state.has_accepted_terms)
     if _should_show_onboarding(state):
         screen = OnboardingScreen()
     elif active_view == "report":
