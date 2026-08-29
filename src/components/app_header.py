@@ -19,7 +19,7 @@ def build_app_header(
     on_settings: Callable | None = None,
     save_setting_fn: Callable | None = None,
 ) -> ft.Container:
-    """Builds a standardized top header bar with adaptive SVG icon and theme switcher."""
+    """Builds a standardized top header bar with transparent adaptive SVG icon and theme switcher."""
     is_dark = is_dark_mode(page)
 
     def _toggle_theme(e):
@@ -46,22 +46,14 @@ def build_app_header(
             return ft.Icons.LIGHT_MODE_ROUNDED
         return ft.Icons.SETTINGS_SYSTEM_DAYDREAM_ROUNDED
 
-    # Left: Adaptive SVG Branding
+    # Left: Clean Transparent Adaptive SVG Branding (no container padding or filler color)
     branding = ft.Row(
         [
-            ft.Container(
-                content=ft.Image(
-                    src="/icon.svg",
-                    width=28,
-                    height=28,
-                    color=ft.Colors.WHITE if is_dark else None,
-                ),
-                padding=4,
-                border_radius=tokens.RADIUS_SM,
-                bgcolor=ft.Colors.with_opacity(
-                    0.12,
-                    ft.Colors.WHITE if is_dark else AppColors.PRIMARY,
-                ),
+            ft.Image(
+                src="/icon.svg",
+                width=32,
+                height=32,
+                color=ft.Colors.WHITE if is_dark else None,
             ),
             ft.Column(
                 [

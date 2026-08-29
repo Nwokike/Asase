@@ -430,19 +430,11 @@ def SettingsScreen() -> Control:
         ft.Container(
             content=ft.Column(
                 [
-                    ft.Container(
-                        content=ft.Image(
-                            src="/icon.svg",
-                            width=52,
-                            height=52,
-                            color=ft.Colors.WHITE if is_dark else None,
-                        ),
-                        padding=tokens.SPACE_MD,
-                        border_radius=tokens.RADIUS_LG,
-                        bgcolor=ft.Colors.with_opacity(
-                            0.12,
-                            ft.Colors.WHITE if is_dark else AppColors.PRIMARY,
-                        ),
+                    ft.Image(
+                        src="/icon.svg",
+                        width=56,
+                        height=56,
+                        color=ft.Colors.WHITE if is_dark else None,
                     ),
                     ft.Container(height=tokens.SPACE_XS),
                     ft.Text(
