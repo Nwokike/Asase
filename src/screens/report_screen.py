@@ -218,13 +218,20 @@ OVERALL SAFETY INDEX: {safety_score}/100
 ====================================================
 Asase Earth Intelligence © 2026 Kiri Research Labs
 """
-        try:
-            cb = ft.Clipboard()
-            await cb.set(report_text)
-            show_snack(page, "Dossier copied to clipboard!", bgcolor=AppColors.SUCCESS)
-        except Exception as ex:
-            logger.warning("Export dossier failed: %s", ex)
-            show_snack(page, "Failed to copy dossier.", bgcolor=AppColors.ERROR)
+        if controller.share_text:
+            await controller.share_text(
+                report_text, f"Planetary Dossier: {state.current_location_name}"
+            )
+        else:
+            try:
+                cb = ft.Clipboard()
+                await cb.set(report_text)
+                show_snack(
+                    page, "Dossier copied to clipboard!", bgcolor=AppColors.SUCCESS
+                )
+            except Exception as ex:
+                logger.warning("Export dossier failed: %s", ex)
+                show_snack(page, "Failed to copy dossier.", bgcolor=AppColors.ERROR)
 
     return ft.ListView(
         controls=[
@@ -314,12 +321,12 @@ Asase Earth Intelligence © 2026 Kiri Research Labs
                             content=ft.Row(
                                 [
                                     ft.Icon(
-                                        ft.Icons.COPY_ROUNDED,
+                                        ft.Icons.SHARE_ROUNDED,
                                         size=tokens.ICON_SM,
                                         color=ft.Colors.WHITE,
                                     ),
                                     ft.Text(
-                                        "Copy Full Dossier",
+                                        "Share Full Dossier",
                                         size=tokens.FONT_SM,
                                         weight=ft.FontWeight.W_600,
                                         color=ft.Colors.WHITE,

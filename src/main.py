@@ -8,7 +8,10 @@ import logging
 from typing import Any
 
 import flet as ft
-from flet_geolocator import Geolocator
+from flet_geolocator import (
+    Geolocator,
+    GeolocatorPermissionStatus,
+)
 
 from core.constants import (
     APP_NAME,
@@ -50,6 +53,9 @@ class AppController:
         self.connectivity: ft.Connectivity | None = None
         self.geolocator: Geolocator | None = None
         self.haptics: ft.HapticFeedback | None = None
+        self.share: ft.Share | None = None
+        self.url_launcher: ft.UrlLauncher | None = None
+        self.storage_paths: ft.StoragePaths | None = None
         self._controller_methods: ControllerMethods | None = None
 
     async def init(self) -> None:
@@ -73,7 +79,7 @@ class AppController:
         self.page.window.min_width = 360
         self.page.window.min_height = 600
 
-        # Register Services
+        # Register Native Ecosystem Services
         self.connectivity = ft.Connectivity()
         self.connectivity.on_change = self._on_connectivity_change
         self.page.services.append(self.connectivity)
@@ -86,13 +92,22 @@ class AppController:
         self.haptics = ft.HapticFeedback()
         self.page.services.append(self.haptics)
 
+        self.share = ft.Share()
+        self.page.services.append(self.share)
+
+        self.url_launcher = ft.UrlLauncher()
+        self.page.services.append(self.url_launcher)
+
+        self.storage_paths = ft.StoragePaths()
+        self.page.services.append(self.storage_paths)
+
         self.storage = StorageService(self.page)
         self.ad_service = AdService(self.page)
 
         # Load Saved Settings
         await self._load_saved_state()
 
-        # Preload Interstitial Ads on mobile
+        # Preload Interstitial Ads & Consent on mobile
         self.page.run_task(self.ad_service.preload_interstitial)
 
         # Initial Telemetry Load
@@ -107,6 +122,8 @@ class AppController:
             locate_user=self.locate_user,
             save_setting=self.save_setting,
             toggle_bookmark=self.toggle_bookmark,
+            share_text=self.share_text,
+            launch_url=self.launch_external_url,
         )
         self._controller_methods = methods
         self.page.render(lambda: ControllerMethodsCtx(methods, lambda: AppShell()))
@@ -287,18 +304,67 @@ class AppController:
         state.telemetry_version += 1
 
     async def locate_user(self) -> None:
-        """Locate user using native device GPS coordinates."""
+        """Locate user using native device GPS with permission handling."""
         if not self.geolocator:
             return
         try:
-            logger.info("Requesting device GPS location...")
+            # 1. Check if location services are enabled on device
+            is_enabled = await self.geolocator.is_location_service_enabled()
+            if not is_enabled:
+                show_snack(
+                    self.page,
+                    "Location services are disabled on device.",
+                    bgcolor=AppColors.WARNING,
+                )
+                with contextlib.suppress(Exception):
+                    await self.geolocator.open_location_settings()
+                return
+
+            # 2. Check permission status
+            status = await self.geolocator.get_permission_status()
+            if status in (
+                GeolocatorPermissionStatus.DENIED,
+                GeolocatorPermissionStatus.UNABLE_TO_DETERMINE,
+            ):
+                status = await self.geolocator.request_permission()
+
+            if status == GeolocatorPermissionStatus.DENIED_FOREVER:
+                show_snack(
+                    self.page,
+                    "Location permission is permanently denied.",
+                    bgcolor=AppColors.ERROR,
+                )
+                with contextlib.suppress(Exception):
+                    await self.geolocator.open_app_settings()
+                return
+
+            if status not in (
+                GeolocatorPermissionStatus.WHILE_IN_USE,
+                GeolocatorPermissionStatus.ALWAYS,
+            ):
+                show_snack(
+                    self.page,
+                    "Location permission not granted.",
+                    bgcolor=AppColors.WARNING,
+                )
+                return
+
+            # 3. Retrieve High-Accuracy GPS Fix
+            logger.info("Requesting high-accuracy device GPS position...")
             pos = await self.geolocator.get_current_position()
+            if not pos:
+                pos = await self.geolocator.get_last_known_position()
+
             if pos:
                 lat = float(pos.latitude)
                 lon = float(pos.longitude)
-                logger.info("GPS Coordinates resolved: (%s, %s)", lat, lon)
+                logger.info("GPS Fix successfully resolved: (%s, %s)", lat, lon)
                 await self.select_coordinates(lat, lon, "My GPS Location", "")
                 show_snack(self.page, "GPS Location Updated", bgcolor=AppColors.SUCCESS)
+            else:
+                show_snack(
+                    self.page, "Could not obtain GPS lock.", bgcolor=AppColors.WARNING
+                )
         except Exception as ex:
             logger.warning("GPS Geolocation failed: %s", ex)
             show_snack(
@@ -307,6 +373,29 @@ class AppController:
                 bgcolor=AppColors.WARNING,
             )
 
+    async def share_text(self, text: str, subject: str = "Planetary Alert") -> None:
+        """Share text or report using native OS Share sheet."""
+        if self.share:
+            try:
+                await self.share.share_text(text, title=subject, subject=subject)
+            except Exception as ex:
+                logger.warning("Native share failed: %s", ex)
+                # Fallback to clipboard
+                with contextlib.suppress(Exception):
+                    cb = ft.Clipboard()
+                    await cb.set(text)
+                    show_snack(
+                        self.page, "Copied to clipboard!", bgcolor=AppColors.SUCCESS
+                    )
+
+    async def launch_external_url(self, url: str) -> None:
+        """Launch web link in external browser or custom tab."""
+        if self.url_launcher and url:
+            try:
+                await self.url_launcher.launch_url(url)
+            except Exception as ex:
+                logger.warning("UrlLauncher failed for %s: %s", url, ex)
+
     # ── Connectivity & Lifecycle ──
 
     async def _init_connectivity(self) -> None:
@@ -314,14 +403,16 @@ class AppController:
             return
         try:
             res = await self.connectivity.get_connectivity()
-            state.is_online = ft.ConnectivityType.NONE not in res
+            types = res if isinstance(res, list) else [res]
+            state.is_online = ft.ConnectivityType.NONE not in types
         except Exception:
             pass
 
     def _on_connectivity_change(self, e) -> None:
         was_online = state.is_online
         try:
-            types = getattr(e, "connectivity", None) or [e.data]
+            raw = getattr(e, "connectivity", None) or getattr(e, "data", None)
+            types = raw if isinstance(raw, list) else [raw]
             state.is_online = ft.ConnectivityType.NONE not in types
         except Exception:
             return
@@ -340,7 +431,8 @@ class AppController:
         ):
             try:
                 res = await self.connectivity.get_connectivity()
-                state.is_online = ft.ConnectivityType.NONE not in res
+                types = res if isinstance(res, list) else [res]
+                state.is_online = ft.ConnectivityType.NONE not in types
             except Exception:
                 pass
 

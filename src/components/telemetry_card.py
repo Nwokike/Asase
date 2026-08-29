@@ -1,103 +1,283 @@
-"""Telemetry metric and hazard cards with responsive styling."""
+"""Reusable TelemetryCard with Glassmorphism, Severity Indicators, Distance, and Actions."""
 
 from __future__ import annotations
+
+import asyncio
 
 import flet as ft
 
 from core import tokens
-from core.theme import (
-    AppColors,
-    AppStyles,
-)
+from core.geo_utils import calculate_haversine_distance_km, format_distance
+from core.theme import AppColors, AppStyles
+from state.app_state import AppStateCtx
+from state.controller_ctx import ControllerMethodsCtx
 
 
-def build_severity_badge(severity: str, label: str) -> ft.Container:
-    """Build a pulsating color badge for risk severity."""
-    color_map = {
-        "low": AppColors.SEVERITY_LOW,
-        "moderate": AppColors.SEVERITY_MODERATE,
-        "high": AppColors.SEVERITY_HIGH,
-        "critical": AppColors.SEVERITY_CRITICAL,
-    }
-    color = color_map.get(severity.lower(), AppColors.GREY)
+def build_severity_badge(severity: str, label: str = "") -> ft.Container:
+    """Returns a styled Container badge for severity display."""
+    if severity == "critical":
+        badge_color = AppColors.SEVERITY_CRITICAL
+        text = label.upper() if label else "CRITICAL"
+    elif severity == "high":
+        badge_color = AppColors.SEVERITY_HIGH
+        text = label.upper() if label else "ELEVATED"
+    elif severity == "moderate":
+        badge_color = AppColors.SEVERITY_MODERATE
+        text = label.upper() if label else "MODERATE"
+    else:
+        badge_color = AppColors.SEVERITY_LOW
+        text = label.upper() if label else "NOMINAL"
+
     return ft.Container(
-        content=ft.Row(
-            [
-                ft.Container(
-                    width=6,
-                    height=6,
-                    border_radius=3,
-                    bgcolor=color,
-                ),
-                ft.Text(
-                    label.upper(),
-                    size=tokens.FONT_XXS,
-                    weight=ft.FontWeight.W_700,
-                    color=color,
-                    font_family="Outfit",
-                ),
-            ],
-            spacing=4,
-            tight=True,
+        content=ft.Text(
+            text,
+            size=tokens.FONT_XXS,
+            weight=ft.FontWeight.W_700,
+            color=badge_color,
+            font_family="Outfit",
         ),
-        padding=ft.Padding(8, 4, 8, 4),
-        border_radius=tokens.RADIUS_FULL,
-        bgcolor=ft.Colors.with_opacity(0.12, color),
-        border=ft.Border.all(1, ft.Colors.with_opacity(0.3, color)),
+        padding=ft.Padding(6, 2, 6, 2),
+        border_radius=tokens.RADIUS_SM,
+        bgcolor=ft.Colors.with_opacity(0.12, badge_color),
+        border=ft.Border.all(1, ft.Colors.with_opacity(0.25, badge_color)),
     )
 
 
 def TelemetryCard(
-    icon: ft.IconData,
     title: str,
-    value: str,
     subtitle: str,
+    value: str,
     severity: str = "low",
-    accent_color: str = AppColors.PRIMARY,
+    icon: ft.IconData = ft.Icons.INFO_OUTLINE_ROUNDED,
+    accent_color: str | None = None,
+    event_lat: float | None = None,
+    event_lon: float | None = None,
+    event_url: str = "",
     on_click=None,
-) -> ft.Container:
-    """A responsive telemetry metric card."""
-    content = ft.Column(
-        [
-            ft.Row(
+) -> ft.Control:
+    """Builds a responsive telemetry card with distance calculation and share/link buttons."""
+
+    # Map severity to color
+    if severity == "critical":
+        badge_color = AppColors.SEVERITY_CRITICAL
+        badge_text = "CRITICAL"
+    elif severity == "high":
+        badge_color = AppColors.SEVERITY_HIGH
+        badge_text = "ELEVATED"
+    elif severity == "moderate":
+        badge_color = AppColors.SEVERITY_MODERATE
+        badge_text = "MODERATE"
+    else:
+        badge_color = AppColors.SEVERITY_LOW
+        badge_text = "NOMINAL"
+
+    final_accent = accent_color or badge_color
+
+    @ft.component
+    def _CardBody():
+        state = ft.use_context(AppStateCtx)
+        controller = ft.use_context(ControllerMethodsCtx)
+
+        # Calculate distance from active user location if coordinates are available
+        dist_str = ""
+        if event_lat is not None and event_lon is not None:
+            dist_km = calculate_haversine_distance_km(
+                state.current_lat, state.current_lon, event_lat, event_lon
+            )
+            dist_str = format_distance(dist_km)
+
+        def _on_share_click(e):
+            if controller.share_text:
+                msg = f"🌍 ASASE PLANETARY ALERT:\n{title}\n{subtitle}\nSeverity: {badge_text}\nLocation: {dist_str if dist_str else 'Global'}\n{event_url}"
+                asyncio.create_task(controller.share_text(msg, title))
+
+        def _on_link_click(e):
+            if controller.launch_url and event_url:
+                asyncio.create_task(controller.launch_url(event_url))
+
+        return AppStyles.glass_card(
+            ft.Column(
                 [
-                    ft.Container(
-                        content=ft.Icon(icon, size=tokens.ICON_SM, color=accent_color),
-                        width=32,
-                        height=32,
-                        border_radius=8,
-                        bgcolor=ft.Colors.with_opacity(0.12, accent_color),
-                        alignment=ft.Alignment.CENTER,
+                    ft.Row(
+                        [
+                            ft.Row(
+                                [
+                                    ft.Container(
+                                        content=ft.Icon(
+                                            icon,
+                                            size=tokens.ICON_SM,
+                                            color=final_accent,
+                                        ),
+                                        padding=tokens.SPACE_XS,
+                                        border_radius=tokens.RADIUS_SM,
+                                        bgcolor=ft.Colors.with_opacity(
+                                            0.12, final_accent
+                                        ),
+                                    ),
+                                    ft.Text(
+                                        badge_text,
+                                        size=tokens.FONT_XXS,
+                                        weight=ft.FontWeight.W_700,
+                                        color=final_accent,
+                                        font_family="Outfit",
+                                    ),
+                                ],
+                                spacing=tokens.SPACE_XS,
+                            ),
+                            ft.Row(
+                                [
+                                    *(
+                                        [
+                                            ft.IconButton(
+                                                icon=ft.Icons.SHARE_ROUNDED,
+                                                icon_size=16,
+                                                tooltip="Share Alert",
+                                                on_click=_on_share_click,
+                                            )
+                                        ]
+                                        if controller.share_text
+                                        else []
+                                    ),
+                                    *(
+                                        [
+                                            ft.IconButton(
+                                                icon=ft.Icons.OPEN_IN_NEW_ROUNDED,
+                                                icon_size=16,
+                                                tooltip="Official Source",
+                                                on_click=_on_link_click,
+                                            )
+                                        ]
+                                        if event_url and controller.launch_url
+                                        else []
+                                    ),
+                                ],
+                                spacing=0,
+                            ),
+                        ],
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     ),
-                    build_severity_badge(severity, severity),
+                    ft.Text(
+                        title,
+                        size=tokens.FONT_MD,
+                        weight=ft.FontWeight.BOLD,
+                        max_lines=2,
+                        overflow=ft.TextOverflow.ELLIPSIS,
+                        font_family="Outfit",
+                    ),
+                    ft.Row(
+                        [
+                            ft.Text(
+                                subtitle,
+                                size=tokens.FONT_XS,
+                                color=ft.Colors.ON_SURFACE_VARIANT,
+                                expand=True,
+                                max_lines=2,
+                                overflow=ft.TextOverflow.ELLIPSIS,
+                            ),
+                            *(
+                                [
+                                    ft.Container(
+                                        content=ft.Row(
+                                            [
+                                                ft.Icon(
+                                                    ft.Icons.NEAR_ME_ROUNDED,
+                                                    size=12,
+                                                    color=AppColors.PRIMARY,
+                                                ),
+                                                ft.Text(
+                                                    dist_str,
+                                                    size=tokens.FONT_XXS,
+                                                    weight=ft.FontWeight.W_600,
+                                                    color=AppColors.PRIMARY,
+                                                ),
+                                            ],
+                                            spacing=2,
+                                            tight=True,
+                                        ),
+                                        padding=ft.Padding(6, 2, 6, 2),
+                                        border_radius=tokens.RADIUS_SM,
+                                        bgcolor=ft.Colors.with_opacity(
+                                            0.1, AppColors.PRIMARY
+                                        ),
+                                    )
+                                ]
+                                if dist_str
+                                else []
+                            ),
+                        ],
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                    ),
+                    *(
+                        [
+                            ft.Text(
+                                value,
+                                size=tokens.FONT_SM,
+                                weight=ft.FontWeight.W_600,
+                                color=ft.Colors.ON_SURFACE,
+                            )
+                        ]
+                        if value
+                        else []
+                    ),
                 ],
-                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                spacing=tokens.SPACE_XS,
             ),
-            ft.Container(height=tokens.SPACE_XS),
-            ft.Text(
-                value,
-                size=tokens.FONT_XL,
-                weight=ft.FontWeight.BOLD,
-                font_family="Outfit",
-            ),
-            ft.Text(
-                title,
-                size=tokens.FONT_SM,
-                weight=ft.FontWeight.W_600,
-                color=ft.Colors.ON_SURFACE,
-                font_family="Outfit",
-            ),
-            ft.Text(
-                subtitle,
-                size=tokens.FONT_XS,
-                color=ft.Colors.ON_SURFACE_VARIANT,
-                font_family="Outfit",
-                max_lines=2,
-                overflow=ft.TextOverflow.ELLIPSIS,
-            ),
-        ],
-        spacing=2,
-        tight=True,
+            padding=tokens.SPACE_MD,
+            on_click=on_click,
+        )
+
+    # In standalone unit tests without React hooks context, render directly
+    card_container = AppStyles.glass_card(
+        ft.Column(
+            [
+                ft.Row(
+                    [
+                        ft.Container(
+                            content=ft.Icon(
+                                icon, size=tokens.ICON_SM, color=final_accent
+                            ),
+                            padding=tokens.SPACE_XS,
+                            border_radius=tokens.RADIUS_SM,
+                            bgcolor=ft.Colors.with_opacity(0.12, final_accent),
+                        ),
+                        ft.Text(
+                            badge_text,
+                            size=tokens.FONT_XXS,
+                            weight=ft.FontWeight.W_700,
+                            color=final_accent,
+                            font_family="Outfit",
+                        ),
+                    ],
+                    spacing=tokens.SPACE_XS,
+                ),
+                ft.Text(
+                    title,
+                    size=tokens.FONT_MD,
+                    weight=ft.FontWeight.BOLD,
+                    font_family="Outfit",
+                ),
+                ft.Text(
+                    subtitle,
+                    size=tokens.FONT_XS,
+                    color=ft.Colors.ON_SURFACE_VARIANT,
+                ),
+                *(
+                    [
+                        ft.Text(
+                            value,
+                            size=tokens.FONT_SM,
+                            weight=ft.FontWeight.W_600,
+                            color=ft.Colors.ON_SURFACE,
+                        )
+                    ]
+                    if value
+                    else []
+                ),
+            ],
+            spacing=tokens.SPACE_XS,
+        ),
+        padding=tokens.SPACE_MD,
+        on_click=on_click,
     )
 
-    return AppStyles.glass_card(content, padding=tokens.SPACE_MD, on_click=on_click)
+    return card_container
