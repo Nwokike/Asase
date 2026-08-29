@@ -88,8 +88,112 @@ def HomeScreen() -> Control:
     kp_val = state.space_weather.get("kp_index", "--")
     space_status = state.space_weather.get("geomagnetic_status", "Normal")
 
+    from flet import context as flet_context
+
+    page = flet_context.page
+
+    def _get_page():
+        return page
+
+    def _toggle_theme(e):
+        p = _get_page()
+        if not p:
+            return
+        if p.theme_mode == ft.ThemeMode.DARK:
+            p.theme_mode = ft.ThemeMode.LIGHT
+            mode_str = "light"
+        elif p.theme_mode == ft.ThemeMode.LIGHT:
+            p.theme_mode = ft.ThemeMode.SYSTEM
+            mode_str = "system"
+        else:
+            p.theme_mode = ft.ThemeMode.DARK
+            mode_str = "dark"
+        state.theme_mode = p.theme_mode
+        if controller.save_setting:
+            asyncio.create_task(controller.save_setting("asase.theme", mode_str))
+        p.update()
+
+    def _get_theme_icon():
+        p = _get_page()
+        if not p or p.theme_mode == ft.ThemeMode.DARK:
+            return ft.Icons.DARK_MODE_ROUNDED
+        if p.theme_mode == ft.ThemeMode.LIGHT:
+            return ft.Icons.LIGHT_MODE_ROUNDED
+        return ft.Icons.SETTINGS_SYSTEM_DAYDREAM_ROUNDED
+
+    header_view = ft.Container(
+        content=ft.Row(
+            [
+                ft.Row(
+                    [
+                        ft.Image(
+                            src="icon.png",
+                            width=28,
+                            height=28,
+                            border_radius=6,
+                        ),
+                        ft.Column(
+                            [
+                                ft.Text(
+                                    "Asase",
+                                    size=tokens.FONT_MD,
+                                    weight=ft.FontWeight.BOLD,
+                                    font_family="Outfit",
+                                ),
+                                ft.Text(
+                                    "EARTH INTELLIGENCE",
+                                    size=8,
+                                    weight=ft.FontWeight.W_700,
+                                    color=AppColors.PRIMARY,
+                                ),
+                            ],
+                            spacing=0,
+                        ),
+                    ],
+                    spacing=tokens.SPACE_XS,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                ft.Row(
+                    [
+                        ft.IconButton(
+                            icon=_get_theme_icon(),
+                            icon_size=20,
+                            tooltip="Toggle Color Mode (Dark/Light/System)",
+                            on_click=_toggle_theme,
+                        ),
+                        ft.IconButton(
+                            icon=ft.Icons.REFRESH_ROUNDED,
+                            icon_size=20,
+                            tooltip="Sync Live Telemetry",
+                            on_click=lambda _: (
+                                asyncio.create_task(controller.refresh_all())
+                                if controller.refresh_all
+                                else None
+                            ),
+                        ),
+                        ft.IconButton(
+                            icon=ft.Icons.SETTINGS_OUTLINED,
+                            icon_size=20,
+                            tooltip="Settings",
+                            on_click=lambda _: (
+                                controller.navigate_tab(3)
+                                if controller.navigate_tab
+                                else None
+                            ),
+                        ),
+                    ],
+                    spacing=0,
+                ),
+            ],
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        ),
+        padding=ft.Padding(tokens.SPACE_LG, tokens.SPACE_SM, tokens.SPACE_LG, 0),
+    )
+
     return ft.ListView(
         controls=[
+            header_view,
             # Top Search Bar
             ft.Container(
                 content=ft.Column(
