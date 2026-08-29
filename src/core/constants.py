@@ -43,7 +43,9 @@ OPEN_METEO_FLOOD = "https://flood-api.open-meteo.com/v1/flood"
 OPEN_METEO_MARINE = "https://marine-api.open-meteo.com/v1/marine"
 OPEN_METEO_ELEVATION = "https://api.open-meteo.com/v1/elevation"
 
-NOAA_SWPC_KP_INDEX = "https://services.swpc.noaa.gov/json/planetary_k_index_1m.json"
+NOAA_SWPC_KP_INDEX = (
+    "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json"
+)
 NOAA_SWPC_SOLAR_FLARES = (
     "https://services.swpc.noaa.gov/json/goes/primary/xrays-6-hour.json"
 )

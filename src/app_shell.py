@@ -73,7 +73,14 @@ def AppShell() -> Control:
     controller = ft.use_context(ControllerMethodsCtx)
     state = ft.use_context(AppStateCtx)
 
+    onboarding_done, set_onboarding_done = ft.use_state(state.has_accepted_terms)
+
     # Wire navigation closures
+    controller.dismiss_onboarding = lambda: (
+        set_onboarding_done(True),
+        set_active_view("dashboard"),
+        set_active_tab(0),
+    )
     controller.go_home = lambda: (set_active_view("dashboard"), set_active_tab(0))
     controller.show_map = lambda: (set_active_view("dashboard"), set_active_tab(1))
     controller.show_space = lambda: set_active_view("space")
@@ -93,7 +100,8 @@ def AppShell() -> Control:
         except Exception:
             pass
 
-        if _should_show_onboarding(state):
+        show_onboarding = not onboarding_done and _should_show_onboarding(state)
+        if show_onboarding:
             page.views[0].navigation_bar = None
             try:
                 page.update()
@@ -136,6 +144,7 @@ def AppShell() -> Control:
         [
             active_tab,
             active_view,
+            onboarding_done,
             state.has_accepted_terms,
             state.theme_version,
             state.telemetry_version,
@@ -144,7 +153,7 @@ def AppShell() -> Control:
 
     # ── Branch Screen (Depends on state reactivity hooks) ──
     _ = (state.theme_version, state.telemetry_version, state.has_accepted_terms)
-    if _should_show_onboarding(state):
+    if not onboarding_done and _should_show_onboarding(state):
         screen = OnboardingScreen()
     elif active_view == "report":
         screen = ReportScreen()

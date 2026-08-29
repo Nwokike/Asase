@@ -135,3 +135,28 @@ def test_app_header():
     texts = [t.value for t in walk_texts(hdr)]
     assert "Asase" in texts
     assert "EARTH INTELLIGENCE" in texts
+
+
+def test_location_search_bar():
+    from components.home.location_search_bar import build_location_search_bar
+
+    results = [
+        {
+            "name": "Tokyo",
+            "country": "Japan",
+            "latitude": 35.68,
+            "longitude": 139.69,
+            "elevation": 40,
+        }
+    ]
+    bar = build_location_search_bar(
+        page=None,
+        search_query="Tok",
+        search_results=results,
+        on_search_change=lambda _: None,
+        on_select_city=lambda _: None,
+        on_locate_gps=lambda: None,
+    )
+    assert isinstance(bar, ft.Container)
+    assert isinstance(bar.content, ft.SearchBar)
+    assert len(bar.content.controls) == 1

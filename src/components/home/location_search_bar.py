@@ -8,7 +8,7 @@ from collections.abc import Callable
 import flet as ft
 
 from core import tokens
-from core.theme import AppColors, is_dark_mode
+from core.theme import AppColors
 
 
 def build_location_search_bar(
@@ -19,79 +19,65 @@ def build_location_search_bar(
     on_select_city: Callable,
     on_locate_gps: Callable,
 ) -> ft.Container:
-    """Builds the reactive search bar and suggestions popup list with adaptive theme surfaces."""
-    is_dark = is_dark_mode(page)
+    """Builds the modern Material 3 SearchBar with adaptive surfaces and suggestions."""
+    suggestions = [
+        ft.ListTile(
+            leading=ft.Icon(
+                ft.Icons.LOCATION_CITY_ROUNDED,
+                color=AppColors.PRIMARY,
+                size=tokens.ICON_MD,
+            ),
+            title=ft.Text(
+                f"{c['name']}, {c.get('country', '')}",
+                weight=ft.FontWeight.W_600,
+                size=tokens.FONT_SM,
+                font_family="Outfit",
+            ),
+            subtitle=ft.Text(
+                f"Elevation: {int(c.get('elevation', 0))}m • Lat: {c.get('latitude', 0.0):.2f}°, Lon: {c.get('longitude', 0.0):.2f}°",
+                size=tokens.FONT_XS,
+                color=ft.Colors.ON_SURFACE_VARIANT,
+            ),
+            on_click=lambda _, city=c: on_select_city(city),
+        )
+        for c in search_results
+    ]
 
     return ft.Container(
-        content=ft.Column(
-            [
-                ft.TextField(
-                    value=search_query,
-                    hint_text="Search city, region, or coordinates...",
-                    prefix_icon=ft.Icons.SEARCH_ROUNDED,
-                    suffix=ft.IconButton(
-                        icon=ft.Icons.MY_LOCATION_ROUNDED,
-                        tooltip="Locate via GPS",
-                        icon_color=AppColors.PRIMARY,
-                        on_click=lambda _: (
-                            asyncio.create_task(on_locate_gps())
-                            if on_locate_gps
-                            else None
-                        ),
+        content=ft.SearchBar(
+            value=search_query,
+            bar_hint_text="Search city, coordinates, or region...",
+            bar_leading=ft.Icon(
+                ft.Icons.SEARCH_ROUNDED,
+                color=AppColors.PRIMARY,
+            ),
+            bar_trailing=[
+                ft.IconButton(
+                    icon=ft.Icons.MY_LOCATION_ROUNDED,
+                    tooltip="Locate via GPS",
+                    icon_color=AppColors.PRIMARY,
+                    on_click=lambda _: (
+                        asyncio.create_task(on_locate_gps()) if on_locate_gps else None
                     ),
-                    border_radius=tokens.RADIUS_MD,
-                    filled=True,
-                    bgcolor=(
-                        ft.Colors.with_opacity(0.08, ft.Colors.WHITE)
-                        if is_dark
-                        else ft.Colors.with_opacity(0.06, ft.Colors.BLACK)
-                    ),
-                    border_color=ft.Colors.with_opacity(0.15, ft.Colors.OUTLINE),
-                    on_change=on_search_change,
-                    dense=True,
-                ),
-                *(
-                    [
-                        ft.Container(
-                            content=ft.Column(
-                                [
-                                    ft.ListTile(
-                                        leading=ft.Icon(
-                                            ft.Icons.LOCATION_CITY_ROUNDED,
-                                            color=AppColors.PRIMARY,
-                                        ),
-                                        title=ft.Text(
-                                            f"{c['name']}, {c.get('country', '')}",
-                                            weight=ft.FontWeight.W_600,
-                                        ),
-                                        subtitle=ft.Text(
-                                            f"Elevation: {int(c.get('elevation', 0))}m • {c.get('timezone', 'UTC')}",
-                                            size=tokens.FONT_XS,
-                                        ),
-                                        on_click=lambda _, city=c: on_select_city(city),
-                                    )
-                                    for c in search_results
-                                ],
-                                spacing=0,
-                            ),
-                            bgcolor=AppColors.get_surface(page),
-                            border_radius=tokens.RADIUS_MD,
-                            border=ft.Border.all(
-                                1,
-                                AppColors.get_border(page),
-                            ),
-                            shadow=ft.BoxShadow(
-                                spread_radius=1,
-                                blur_radius=8,
-                                color=ft.Colors.with_opacity(0.15, ft.Colors.BLACK),
-                            ),
-                        )
-                    ]
-                    if search_results
-                    else []
                 ),
             ],
-            spacing=tokens.SPACE_XS,
+            bar_bgcolor=AppColors.get_surface(page),
+            bar_border_side=ft.BorderSide(1, AppColors.get_border(page)),
+            bar_shape=ft.RoundedRectangleBorder(radius=tokens.RADIUS_MD),
+            bar_text_style=ft.TextStyle(
+                size=tokens.FONT_SM,
+                weight=ft.FontWeight.W_500,
+                font_family="Outfit",
+            ),
+            bar_hint_text_style=ft.TextStyle(
+                size=tokens.FONT_SM,
+                weight=ft.FontWeight.W_400,
+                color=ft.Colors.ON_SURFACE_VARIANT,
+                font_family="Outfit",
+            ),
+            controls=suggestions,
+            on_change=on_search_change,
+            on_submit=lambda e: on_search_change(e),
         ),
-        padding=ft.Padding(tokens.SPACE_LG, tokens.SPACE_MD, tokens.SPACE_LG, 0),
+        padding=ft.Padding(tokens.SPACE_LG, tokens.SPACE_SM, tokens.SPACE_LG, 0),
     )

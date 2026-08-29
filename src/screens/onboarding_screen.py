@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
-
 import flet as ft
 from flet import Control
 
@@ -23,14 +21,14 @@ def OnboardingScreen() -> Control:
 
     page = flet_context.page
 
-    async def _accept():
+    async def _accept(e=None):
         state.has_accepted_terms = True
         state.is_first_launch = False
         state.telemetry_version += 1
+        if controller.dismiss_onboarding:
+            controller.dismiss_onboarding()
         if controller.save_setting:
             await controller.save_setting(STORAGE_ONBOARDING_DONE, "true")
-        if controller.go_home:
-            controller.go_home()
         if page:
             page.update()
 
@@ -155,7 +153,7 @@ def OnboardingScreen() -> Control:
                         shape=ft.RoundedRectangleBorder(radius=tokens.RADIUS_MD),
                     ),
                     width=320,
-                    on_click=lambda _: asyncio.create_task(_accept()),
+                    on_click=_accept,
                 ),
                 ft.Container(height=tokens.SPACE_XL),
             ],

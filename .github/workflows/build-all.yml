@@ -365,6 +365,18 @@ jobs:
           cp src/assets/favicon.png build/web/favicon.png
           cp src/assets/favicon.png build/web/icons/Icon-192.png
           cp src/assets/favicon.png build/web/icons/apple-touch-icon-192.png
+          python3 -c "
+          with open('build/web/index.html', 'r') as f:
+              html = f.read()
+          preloads = '''
+            <link rel=\"preload\" href=\"python.js\" as=\"script\">
+            <link rel=\"preload\" href=\"flutter_bootstrap.js\" as=\"script\">
+            <link rel=\"preload\" href=\"assets/app/app.zip\" as=\"fetch\" crossorigin=\"anonymous\">
+          '''
+          html = html.replace('<head>', '<head>' + preloads)
+          with open('build/web/index.html', 'w') as f:
+              f.write(html)
+          "
       - name: Package Web Release Archive
         run: |
           mkdir -p build/dist

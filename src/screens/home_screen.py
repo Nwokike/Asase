@@ -37,7 +37,7 @@ def HomeScreen() -> Control:
     _is_searching, set_is_searching = ft.use_state(False)
 
     async def _on_search_change(e):
-        q = e.control.value
+        q = e.control.value or ""
         set_search_query(q)
         if len(q.strip()) >= 2:
             set_is_searching(True)
@@ -46,6 +46,8 @@ def HomeScreen() -> Control:
             set_is_searching(False)
         else:
             set_search_results([])
+        if page:
+            page.update()
 
     def _select_city(city: dict):
         if controller.select_coordinates:
@@ -59,6 +61,8 @@ def HomeScreen() -> Control:
             )
             set_search_query("")
             set_search_results([])
+            if page:
+                page.update()
 
     # Find closest active hazard to user
     closest_hazard = None
@@ -82,6 +86,15 @@ def HomeScreen() -> Control:
         if d < min_dist_km:
             min_dist_km = d
             closest_hazard = (dis, d, dis.get("type", "hazard"))
+
+    # State dependencies trigger reactive re-render
+    _ = (
+        state.telemetry_version,
+        state.theme_version,
+        len(state.earthquakes),
+        len(state.disasters),
+        len(state.bookmarks),
+    )
 
     # Air Quality Summary
     aqi_current = state.air_quality_data.get("current", {})

@@ -32,7 +32,6 @@ from core.theme import AppColors, AppTheme
 from services.ad_service import AdService
 from services.atmospheric_service import AtmosphericService
 from services.disaster_service import DisasterService
-from services.geocoding_service import GeocodingService
 from services.seismic_service import SeismicService
 from services.space_weather_service import SpaceWeatherService
 from services.storage_service import StorageService
@@ -63,11 +62,7 @@ class AppController:
         self.page.title = f"{APP_NAME} — Earth Intelligence"
         self.page.padding = 0
         self.page.spacing = 0
-        self.page.fonts = {
-            "Outfit": (
-                "https://fonts.gstatic.com/s/outfit/v11/QGYyz_MVcBeNP4NjuGObqx1XmO1I4TC0C4G-EiAou6Y.woff2"
-            )
-        }
+        self.page.fonts = {}
         self.page.theme = AppTheme.get_light_theme()
         self.page.dark_theme = AppTheme.get_dark_theme()
         self.page.theme.font_family = "Outfit"
@@ -153,8 +148,9 @@ class AppController:
                 state.speed_unit = speed_u
 
             onboarding_done = await self.storage.get(STORAGE_ONBOARDING_DONE)
-            if onboarding_done == "true":
+            if onboarding_done == "true" or self.page.web:
                 state.has_accepted_terms = True
+                state.is_first_launch = False
 
             saved_bookmarks = await self.storage.get(STORAGE_BOOKMARKS)
             if isinstance(saved_bookmarks, list):
@@ -250,16 +246,22 @@ class AppController:
                     "flood": state.flood_data,
                     "marine": state.marine_data,
                 }
-                await self.storage.set_cached_telemetry(cache_key, payload, ttl=300)
+                await self.storage.set_cached_telemetry(
+                    cache_key, payload, ttl_seconds=300.0
+                )
 
             state.telemetry_version += 1
             logger.info("All planetary telemetry feeds updated successfully")
+            if self.page:
+                self.page.update()
 
         except Exception:
             logger.exception("Telemetry refresh failed")
             show_snack(self.page, ERR_GENERIC, bgcolor=AppColors.ERROR)
         finally:
             state.is_loading = False
+            if self.page:
+                self.page.update()
 
     async def select_coordinates(
         self, lat: float, lon: float, name: str, country: str = ""
@@ -274,22 +276,17 @@ class AppController:
             with contextlib.suppress(Exception):
                 await self.haptics.selection_click()
 
-        elev = await GeocodingService.get_elevation(lat, lon)
-        state.current_elevation = elev
-
-        entry = {
-            "name": name,
-            "latitude": lat,
-            "longitude": lon,
-            "country": country,
-        }
-        state.recent_searches = [
-            e for e in state.recent_searches if e.get("name") != name
-        ]
-        state.recent_searches.insert(0, entry)
-        state.recent_searches = state.recent_searches[:20]
         if self.storage:
+            recent = list(state.recent_searches)
+            entry = {"name": name, "country": country, "lat": lat, "lon": lon}
+            if entry in recent:
+                recent.remove(entry)
+            recent.insert(0, entry)
+            state.recent_searches = recent[:10]
             await self.storage.set(STORAGE_RECENT_SEARCHES, state.recent_searches)
+
+        if self.page:
+            self.page.update()
 
         await self.refresh_all()
 

@@ -31,7 +31,10 @@ class SpaceWeatherService:
                     latest = kp_data[-1]
                     if isinstance(latest, dict):
                         kp_val = float(
-                            latest.get("estimated_kp", latest.get("kp_index", 0.0))
+                            latest.get(
+                                "Kp",
+                                latest.get("estimated_kp", latest.get("kp_index", 0.0)),
+                            )
                         )
                     elif isinstance(latest, list) and len(latest) > 1:
                         kp_val = float(latest[1])

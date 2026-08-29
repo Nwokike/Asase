@@ -215,10 +215,15 @@ class StorageService:
         return None
 
     async def set_cached_telemetry(
-        self, key: str, data: Any, ttl_seconds: float = 900.0
+        self,
+        key: str,
+        data: Any,
+        ttl_seconds: float = 900.0,
+        ttl: float | None = None,
     ) -> None:
         """Store telemetry in L1 Memory and L2 Disk Gzip Cache."""
-        expires_at = time.time() + ttl_seconds
+        actual_ttl = ttl if ttl is not None else ttl_seconds
+        expires_at = time.time() + actual_ttl
         if len(self._l1_cache) >= self._max_l1_items:
             self._l1_cache.popitem(last=False)
         self._l1_cache[key] = {"data": data, "expires_at": expires_at}
