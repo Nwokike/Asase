@@ -26,3 +26,15 @@ async def test_storage_service_basic_ops(mock_page, tmp_path, monkeypatch):
     # Reload from disk
     storage_reloaded = StorageService(mock_page)
     assert await storage_reloaded.get("num_key") == 12345
+
+
+@pytest.mark.asyncio
+async def test_storage_service_bookmarks(mock_page, tmp_path, monkeypatch):
+    monkeypatch.setenv("FLET_APP_STORAGE_DATA", str(tmp_path))
+    storage = StorageService(mock_page)
+
+    b = [{"name": "Tokyo, Japan", "latitude": 35.6895, "longitude": 139.6917}]
+    await storage.set("asase.bookmarks", b)
+    saved = await storage.get("asase.bookmarks")
+    assert len(saved) == 1
+    assert saved[0]["name"] == "Tokyo, Japan"

@@ -100,6 +100,7 @@ class AppController:
             select_coordinates=self.select_coordinates,
             locate_user=self.locate_user,
             save_setting=self.save_setting,
+            toggle_bookmark=self.toggle_bookmark,
         )
         self._controller_methods = methods
         self.page.render(lambda: ControllerMethodsCtx(methods, lambda: AppShell()))
@@ -225,6 +226,29 @@ class AppController:
 
         # Refresh telemetry for new location
         await self.refresh_all()
+
+    async def toggle_bookmark(self, location: dict) -> None:
+        """Toggle bookmark for a location dictionary."""
+        name = location.get("name")
+        if not name:
+            return
+        exists = any(b.get("name") == name for b in state.bookmarks)
+        if exists:
+            state.bookmarks = [b for b in state.bookmarks if b.get("name") != name]
+            show_snack(
+                self.page,
+                f"Removed '{name}' from bookmarks",
+                bgcolor=AppColors.SECONDARY,
+            )
+        else:
+            state.bookmarks.append(location)
+            show_snack(
+                self.page, f"Saved '{name}' to bookmarks", bgcolor=AppColors.SUCCESS
+            )
+
+        if self.storage:
+            await self.storage.set(STORAGE_BOOKMARKS, state.bookmarks)
+        state.telemetry_version += 1
 
     async def locate_user(self) -> None:
         """Locate user using device GPS coordinates."""

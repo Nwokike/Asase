@@ -9,6 +9,7 @@ import flet as ft
 from flet import Control
 
 from components.section_header import SectionHeader
+from components.sparkline_chart import TelemetryLineChart
 from core import tokens
 from core.notify import show_snack
 from core.theme import (
@@ -100,6 +101,22 @@ def ReportScreen() -> Control:
     o3 = aqi_data.get("ozone", 0)
     dust = aqi_data.get("dust", 0)
 
+    # Extract AQI Hourly Trend (48 hours)
+    hourly_aqi = state.air_quality_data.get("hourly", {}).get("us_aqi", [])
+    aqi_trend = [float(v) for v in hourly_aqi if v is not None][-24:]
+
+    # Extract GloFAS River Discharge Forecast (7 days)
+    flood_daily = state.flood_data.get("daily", {})
+    discharge_series = flood_daily.get("river_discharge", [])
+    discharge_trend = [float(v) for v in discharge_series if v is not None]
+    max_discharge = max(discharge_trend) if discharge_trend else 0.0
+
+    # Extract Marine / Coastal Telemetry
+    marine_data = state.marine_data.get("current", {})
+    wave_height = marine_data.get("wave_height")
+    wave_period = marine_data.get("wave_period")
+    swell_height = marine_data.get("swell_wave_height")
+
     # Extract Weather & Storm Indicators
     weather_data = state.weather_data.get("current", {})
     temp = weather_data.get("temperature_2m", "--")
@@ -119,6 +136,8 @@ def ReportScreen() -> Control:
         risk_deductions += min(20, (wind_gust - 40) * 0.5)
     if cape and cape > 1000:
         risk_deductions += min(20, (cape - 1000) * 0.01)
+    if max_discharge and max_discharge > 500:
+        risk_deductions += min(20, (max_discharge - 500) * 0.02)
 
     safety_score = max(10, int(100 - risk_deductions))
     score_color = (
@@ -130,6 +149,21 @@ def ReportScreen() -> Control:
             else AppColors.SEVERITY_CRITICAL
         )
     )
+
+    # Check if bookmarked
+    is_bookmarked = any(
+        b.get("name") == state.current_location_name for b in state.bookmarks
+    )
+
+    def _toggle_bookmark_click(e):
+        if controller.toggle_bookmark:
+            loc = {
+                "name": state.current_location_name,
+                "latitude": state.current_lat,
+                "longitude": state.current_lon,
+                "country": state.current_country,
+            }
+            asyncio.create_task(controller.toggle_bookmark(loc))
 
     async def _export_dossier():
         page = _get_page()
@@ -153,17 +187,22 @@ OVERALL SAFETY INDEX: {safety_score}/100
    - Ozone (O3): {o3} µg/m³
    - Saharan Dust: {dust} µg/m³
 
-2. ATMOSPHERIC & SEVERE CONVECTIVE STORM METRICS:
+2. HYDROLOGY & GLOFAS RIVER DISCHARGE:
+   - Max 7-Day River Discharge: {max_discharge:.1f} m³/s
+   - Flood Recurrence Risk: {"Elevated Discharge" if max_discharge > 300 else "Normal Flow"}
+
+3. MARINE & COASTAL SWELL:
+   - Wave Height: {f"{wave_height} m" if wave_height is not None else "Inland / Sheltered"}
+   - Wave Period: {f"{wave_period} s" if wave_period is not None else "--"}
+   - Swell Wave Height: {f"{swell_height} m" if swell_height is not None else "--"}
+
+4. ATMOSPHERIC & SEVERE CONVECTIVE STORM METRICS:
    - Temperature: {temp}°C (Apparent: {apparent_temp}°C)
    - Relative Humidity: {humidity}%
    - Surface Pressure: {pressure} hPa
    - Wind Speed: {wind_speed} km/h (Gusts: {wind_gust} km/h)
    - CAPE (Thunderstorm Potential): {cape} J/kg
    - UV Index: {uv}
-
-3. HYDROLOGY & SEISMIC HAZARDS:
-   - GloFAS River Discharge Forecast: Active
-   - Nearest Earthquakes Count: {len(state.earthquakes)} active global events
 ====================================================
 Asase Earth Intelligence © 2026 Kiri Research Labs
 """
@@ -184,11 +223,30 @@ Asase Earth Intelligence © 2026 Kiri Research Labs
                         [
                             ft.Column(
                                 [
-                                    ft.Text(
-                                        state.current_location_name,
-                                        size=tokens.FONT_XL,
-                                        weight=ft.FontWeight.BOLD,
-                                        font_family="Outfit",
+                                    ft.Row(
+                                        [
+                                            ft.Text(
+                                                state.current_location_name,
+                                                size=tokens.FONT_XL,
+                                                weight=ft.FontWeight.BOLD,
+                                                font_family="Outfit",
+                                            ),
+                                            ft.IconButton(
+                                                icon=(
+                                                    ft.Icons.STAR_ROUNDED
+                                                    if is_bookmarked
+                                                    else ft.Icons.STAR_BORDER_ROUNDED
+                                                ),
+                                                icon_color=(
+                                                    AppColors.WARNING
+                                                    if is_bookmarked
+                                                    else ft.Colors.ON_SURFACE_VARIANT
+                                                ),
+                                                tooltip="Bookmark Location",
+                                                on_click=_toggle_bookmark_click,
+                                            ),
+                                        ],
+                                        spacing=tokens.SPACE_XS,
                                     ),
                                     ft.Text(
                                         f"Coordinates: {state.current_lat:.4f}° N, {state.current_lon:.4f}° E • Elevation: {int(state.current_elevation)}m",
@@ -287,6 +345,77 @@ Asase Earth Intelligence © 2026 Kiri Research Labs
                     tokens.SPACE_LG, tokens.SPACE_SM, tokens.SPACE_LG, 0
                 ),
             ),
+            # GloFAS Hydrology & River Discharge Section
+            SectionHeader("HYDROLOGY & GLOFAS RIVER DISCHARGE (7-DAY FORECAST)"),
+            ft.Container(
+                content=AppStyles.glass_card(
+                    ft.Column(
+                        [
+                            _metric_row(
+                                "Peak River Discharge",
+                                f"{max_discharge:.1f} m³/s"
+                                if max_discharge
+                                else "Dry / Minor stream",
+                                "GloFAS Global Hydrological Simulation",
+                                ft.Icons.WATER_DAMAGE_ROUNDED,
+                            ),
+                            *(
+                                [
+                                    ft.Container(
+                                        content=TelemetryLineChart(
+                                            values=discharge_trend,
+                                            accent_color=AppColors.OCEAN,
+                                            height=110,
+                                        ),
+                                        padding=tokens.SPACE_XS,
+                                    )
+                                ]
+                                if discharge_trend
+                                else []
+                            ),
+                        ],
+                        spacing=0,
+                    ),
+                    padding=0,
+                ),
+                padding=ft.Padding(
+                    tokens.SPACE_LG, 0, tokens.SPACE_LG, tokens.SPACE_SM
+                ),
+            ),
+            # Marine & Coastal Swell Section
+            SectionHeader("MARINE DYNAMICS & COASTAL SWELL"),
+            ft.Container(
+                content=AppStyles.glass_card(
+                    ft.Column(
+                        [
+                            _metric_row(
+                                "Significant Wave Height",
+                                f"{wave_height} m"
+                                if wave_height is not None
+                                else "Inland location (N/A)",
+                                "Open-Meteo Global Marine Engine",
+                                ft.Icons.SURFING_ROUNDED,
+                            ),
+                            ft.Divider(
+                                height=1,
+                                color=ft.Colors.with_opacity(0.1, ft.Colors.OUTLINE),
+                            ),
+                            _metric_row(
+                                "Swell Wave Height",
+                                f"{swell_height} m"
+                                if swell_height is not None
+                                else "N/A",
+                                f"Wave period: {wave_period}s" if wave_period else "",
+                            ),
+                        ],
+                        spacing=0,
+                    ),
+                    padding=0,
+                ),
+                padding=ft.Padding(
+                    tokens.SPACE_LG, 0, tokens.SPACE_LG, tokens.SPACE_SM
+                ),
+            ),
             # Air Quality Breakdown
             SectionHeader("AIR QUALITY & POLLUTANTS (OPEN-METEO AQI)"),
             ft.Container(
@@ -298,6 +427,20 @@ Asase Earth Intelligence © 2026 Kiri Research Labs
                                 f"{int(us_aqi)}",
                                 "EPA Standards",
                                 ft.Icons.AIR_ROUNDED,
+                            ),
+                            *(
+                                [
+                                    ft.Container(
+                                        content=TelemetryLineChart(
+                                            values=aqi_trend,
+                                            accent_color=AppColors.PRIMARY,
+                                            height=110,
+                                        ),
+                                        padding=tokens.SPACE_XS,
+                                    )
+                                ]
+                                if aqi_trend
+                                else []
                             ),
                             ft.Divider(
                                 height=1,

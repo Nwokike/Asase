@@ -6,6 +6,7 @@ import flet as ft
 from flet import Control
 
 from components.section_header import SectionHeader
+from components.sparkline_chart import TelemetryLineChart
 from core import tokens
 from core.theme import (
     AppColors,
@@ -22,6 +23,16 @@ def SpaceScreen() -> Control:
     kp = sw.get("kp_index", 0.0)
     status = sw.get("geomagnetic_status", "Quiet (Normal)")
     solar = sw.get("solar_activity", "Normal")
+    raw_kp = sw.get("raw_kp", [])
+
+    # Extract historical Kp values
+    kp_history: list[float] = []
+    for item in raw_kp:
+        if isinstance(item, list) and len(item) > 1:
+            try:
+                kp_history.append(float(item[1]))
+            except Exception:
+                pass
 
     kp_color = (
         AppColors.SEVERITY_LOW
@@ -90,7 +101,8 @@ def SpaceScreen() -> Control:
                                         border_radius=tokens.RADIUS_MD,
                                         bgcolor=ft.Colors.with_opacity(0.12, kp_color),
                                         border=ft.Border.all(
-                                            1, ft.Colors.with_opacity(0.3, kp_color)
+                                            1,
+                                            ft.Colors.with_opacity(0.3, kp_color),
                                         ),
                                     ),
                                     ft.Column(
@@ -120,6 +132,32 @@ def SpaceScreen() -> Control:
                 ),
                 padding=ft.Padding(
                     tokens.SPACE_LG, tokens.SPACE_SM, tokens.SPACE_LG, 0
+                ),
+            ),
+            # Planetary Kp-Index Trend Chart
+            SectionHeader("KP-INDEX 12-READING PROGRESSION"),
+            ft.Container(
+                content=AppStyles.glass_card(
+                    ft.Column(
+                        [
+                            ft.Text(
+                                "Live Geomagnetic Activity Trend (NOAA Primary Sensor)",
+                                size=tokens.FONT_XS,
+                                color=ft.Colors.ON_SURFACE_VARIANT,
+                                font_family="Outfit",
+                            ),
+                            TelemetryLineChart(
+                                values=kp_history,
+                                accent_color=AppColors.ATMOSPHERE,
+                                height=140,
+                            ),
+                        ],
+                        spacing=tokens.SPACE_XS,
+                    ),
+                    padding=tokens.SPACE_MD,
+                ),
+                padding=ft.Padding(
+                    tokens.SPACE_LG, 0, tokens.SPACE_LG, tokens.SPACE_SM
                 ),
             ),
             SectionHeader("SPACE WEATHER INDICES"),

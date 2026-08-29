@@ -30,6 +30,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "flet" },
     { name = "flet-ads" },
+    { name = "flet-charts" },
     { name = "flet-geolocator" },
     { name = "flet-map" },
     { name = "httpx" },
@@ -47,6 +48,7 @@ dev = [
 requires-dist = [
     { name = "flet", specifier = ">=0.86.5" },
     { name = "flet-ads", specifier = ">=0.86.5" },
+    { name = "flet-charts", specifier = ">=0.86.5" },
     { name = "flet-geolocator", specifier = ">=0.86.5" },
     { name = "flet-map", specifier = ">=0.86.5" },
     { name = "httpx", specifier = ">=0.28.1" },
@@ -103,6 +105,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/5f/19/6752bfe2dac7e6d2b40c15aa5c30890660ee6bc616c4b90635cb41fa1ff0/flet_ads-0.86.5.tar.gz", hash = "sha256:4b7af79d95f14ffa36e279ff342f8c15112dc56ba9c11ea790989050c5822df5", size = 16313, upload-time = "2026-08-01T16:51:43.19Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/df/3e/5de6892e16d9a13053dc048c8de199db27f78d76f66987c336719d64f417/flet_ads-0.86.5-py3-none-any.whl", hash = "sha256:b56621262d93e4e4ddafea5ea900fbd7f9dd59b43ee6afca078e2b7423d06478", size = 21393, upload-time = "2026-08-01T16:51:42.207Z" },
+]
+
+[[package]]
+name = "flet-charts"
+version = "0.86.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "flet" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/12/1f/b65bdcab0220434884e9f4aed8393ff719736fcc8c5d16217f4764f14b3e/flet_charts-0.86.5.tar.gz", hash = "sha256:d5bde938d423675a92c6310fb122249226605752a62146f1d4355271707b40d9", size = 53198, upload-time = "2026-08-01T16:51:56.754Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d1/e1/1030e460ae4944c03a206a1c0d6c1b31210a53cb12764a7e054cc0f01593/flet_charts-0.86.5-py3-none-any.whl", hash = "sha256:af3d1f0515607193a4a2880f9d2ed2210a8a064b6326707f6c1b04b202c2396a", size = 74190, upload-time = "2026-08-01T16:51:55.611Z" },
 ]
 
 [[package]]

@@ -1,7 +1,7 @@
 """HomeScreen — Search-first Planetary Telemetry Dashboard.
 
 Combines Sherlock's search-first hero with live telemetry cards, interactive
-map preview, quick filter chips, and recent search history.
+map preview, quick filter chips, recent search history, and saved bookmarks.
 """
 
 from __future__ import annotations
@@ -65,7 +65,7 @@ def HomeScreen() -> Control:
     def _select_city(city: dict):
         lat = city["latitude"]
         lon = city["longitude"]
-        name = f"{city['name']}, {city['country']}"
+        name = f"{city['name']}, {city.get('country', '')}"
         set_search_query("")
         set_search_results([])
         if controller.select_coordinates:
@@ -113,6 +113,22 @@ def HomeScreen() -> Control:
             return ft.Icons.LIGHT_MODE_ROUNDED
         return ft.Icons.SETTINGS_SYSTEM_DAYDREAM_ROUNDED
 
+    # ── Bookmark Handler ──
+
+    is_bookmarked = any(
+        b.get("name") == state.current_location_name for b in state.bookmarks
+    )
+
+    def _toggle_bookmark(e):
+        if controller.toggle_bookmark:
+            loc = {
+                "name": state.current_location_name,
+                "latitude": state.current_lat,
+                "longitude": state.current_lon,
+                "country": state.current_country,
+            }
+            asyncio.create_task(controller.toggle_bookmark(loc))
+
     # ── Computed Telemetry Summary ──
 
     aqi_current = state.air_quality_data.get("current", {})
@@ -134,10 +150,19 @@ def HomeScreen() -> Control:
     wind_gust = weather_curr.get("wind_gusts_10m")
     wind_str = f"{wind_gust} km/h" if wind_gust is not None else "--"
 
+    # River Discharge Max
+    flood_daily = state.flood_data.get("daily", {})
+    discharge_series = flood_daily.get("river_discharge", [])
+    max_discharge = max([v for v in discharge_series if v is not None], default=0.0)
+
+    # Marine Swell
+    marine_data = state.marine_data.get("current", {})
+    wave_height = marine_data.get("wave_height")
+
     eq_count = len(state.earthquakes)
     is_dark = is_dark_mode(_get_page())
 
-    # ── City Search Suggestion Dropdown ──
+    # ── Search Suggestions / Recent Searches Dropdown ──
 
     search_suggestions = []
     if search_results:
@@ -159,7 +184,7 @@ def HomeScreen() -> Control:
                                         weight=ft.FontWeight.W_600,
                                     ),
                                     ft.Text(
-                                        f"{c['country']} • Elev: {int(c['elevation'])}m",
+                                        f"{c.get('country', '')} • Elev: {int(c.get('elevation', 0))}m",
                                         size=tokens.FONT_XS,
                                         color=ft.Colors.ON_SURFACE_VARIANT,
                                     ),
@@ -178,12 +203,40 @@ def HomeScreen() -> Control:
                     padding=tokens.SPACE_SM,
                     border_radius=tokens.RADIUS_MD,
                     bgcolor=ft.Colors.with_opacity(
-                        0.08, ft.Colors.PRIMARY if is_dark else ft.Colors.BLACK
+                        0.08, AppColors.PRIMARY if is_dark else ft.Colors.BLACK
                     ),
                     ink=True,
                     on_click=lambda _, city=c: _select_city(city),
                 )
             )
+
+    # ── Saved Bookmarks & Recent Locations Chips ──
+
+    saved_chips = []
+    for b in state.bookmarks[:6]:
+        saved_chips.append(
+            ft.Container(
+                content=ft.Row(
+                    [
+                        ft.Icon(
+                            ft.Icons.STAR_ROUNDED, size=14, color=AppColors.WARNING
+                        ),
+                        ft.Text(
+                            b.get("name", "Saved").split(",")[0],
+                            size=tokens.FONT_XS,
+                            weight=ft.FontWeight.W_600,
+                        ),
+                    ],
+                    spacing=4,
+                    tight=True,
+                ),
+                padding=ft.Padding(10, 6, 10, 6),
+                border_radius=tokens.RADIUS_FULL,
+                bgcolor=ft.Colors.with_opacity(0.12, AppColors.WARNING),
+                border=ft.Border.all(1, ft.Colors.with_opacity(0.3, AppColors.WARNING)),
+                on_click=lambda _, city=b: _select_city(city),
+            )
+        )
 
     # ── Telemetry Grid (Responsive 4-col / 2-col) ──
 
@@ -205,10 +258,10 @@ def HomeScreen() -> Control:
         ft.Container(
             content=TelemetryCard(
                 icon=ft.Icons.WATER_DAMAGE_ROUNDED,
-                title="Flood Recurrence Risk",
-                value="Active",
-                subtitle="GloFAS 10-day global river discharge modeling",
-                severity="low",
+                title="River Discharge (GloFAS)",
+                value=f"{max_discharge:.1f} m³/s" if max_discharge else "Dry / Normal",
+                subtitle="GloFAS 10-day global hydrological modeling",
+                severity="moderate" if max_discharge > 300 else "low",
                 accent_color=AppColors.OCEAN,
                 on_click=lambda _: (
                     controller.show_report() if controller.show_report else None
@@ -235,7 +288,7 @@ def HomeScreen() -> Control:
                 icon=ft.Icons.WB_SUNNY_ROUNDED,
                 title="Atmospheric Dynamics",
                 value=temp_str,
-                subtitle=f"Wind Gusts: {wind_str} • CAPE: {weather_curr.get('cape', 0)} J/kg",
+                subtitle=f"Wind Gusts: {wind_str} • Wave: {f'{wave_height}m' if wave_height is not None else 'Inland'}",
                 severity="low",
                 accent_color=AppColors.OCEAN_LIGHT,
                 on_click=lambda _: (
@@ -405,6 +458,23 @@ def HomeScreen() -> Control:
                     tokens.SPACE_LG, tokens.SPACE_SM, tokens.SPACE_LG, tokens.SPACE_SM
                 ),
             ),
+            # Saved Bookmarks Bar (if any saved)
+            *(
+                [
+                    ft.Container(
+                        content=ft.Row(
+                            saved_chips,
+                            scroll=ft.ScrollMode.AUTO,
+                            spacing=tokens.SPACE_SM,
+                        ),
+                        padding=ft.Padding(
+                            tokens.SPACE_LG, 0, tokens.SPACE_LG, tokens.SPACE_SM
+                        ),
+                    )
+                ]
+                if saved_chips
+                else []
+            ),
             # Active Location Focus Card
             ft.Container(
                 content=ft.Row(
@@ -424,8 +494,23 @@ def HomeScreen() -> Control:
                                             weight=ft.FontWeight.BOLD,
                                             font_family="Outfit",
                                         ),
+                                        ft.IconButton(
+                                            icon=(
+                                                ft.Icons.STAR_ROUNDED
+                                                if is_bookmarked
+                                                else ft.Icons.STAR_BORDER_ROUNDED
+                                            ),
+                                            icon_size=20,
+                                            icon_color=(
+                                                AppColors.WARNING
+                                                if is_bookmarked
+                                                else ft.Colors.ON_SURFACE_VARIANT
+                                            ),
+                                            tooltip="Bookmark Location",
+                                            on_click=_toggle_bookmark,
+                                        ),
                                     ],
-                                    spacing=tokens.SPACE_XS,
+                                    spacing=tokens.SPACE_XXS,
                                 ),
                                 ft.Text(
                                     f"Coordinates: {state.current_lat:.4f}° N, {state.current_lon:.4f}° E • Elevation: {int(state.current_elevation)}m",
