@@ -20,6 +20,7 @@ class ControllerMethods:
     toggle_bookmark: Callable[[dict], Coroutine[Any, Any, None]] | None = None
     show_map: Callable[[], None] | None = None
     dismiss_onboarding: Callable[[], None] | None = None
+    set_theme_mode: Callable[[ft.ThemeMode], None] | None = None
     share_text: Callable[[str, str], Coroutine[Any, Any, None]] | None = None
     launch_url: Callable[[str], Coroutine[Any, Any, None]] | None = None
 

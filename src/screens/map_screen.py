@@ -144,6 +144,7 @@ def MapScreen() -> Control:
                 on_marker_click=_on_marker_click,
                 on_map_tap=_on_map_tap,
                 expand=True,
+                is_dark=is_dark,
             ),
             # Floating Top Filter Bar
             ft.Container(

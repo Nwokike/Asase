@@ -116,6 +116,7 @@ def HazardMap(
     on_map_tap: Callable[[float, float], None] | None = None,
     expand: bool = True,
     height: float | None = None,
+    is_dark: bool = True,
 ) -> ft.Control:
     """Builds the interactive multi-layer planetary map with 100% auth-free, watermark-free tiles."""
     markers: list[map.Marker] = []
@@ -147,9 +148,12 @@ def HazardMap(
     )
     markers.append(user_marker)
 
-    # 100% Auth-Free & Watermark-Free Esri Dark Gray Canvas tiles with OSM fallback
+    # 100% Auth-Free & Watermark-Free Esri Dark/Light Gray Canvas tiles with OSM fallback
+    dark_tiles = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+    light_tiles = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+
     tile_layer = map.TileLayer(
-        url_template="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+        url_template=dark_tiles if is_dark else light_tiles,
         fallback_url="https://tile.openstreetmap.org/{z}/{x}/{y}.png",
         user_agent_package_name="ng.kiri.asase",
         keep_buffer=2,
@@ -168,13 +172,18 @@ def HazardMap(
             layers=[tile_layer, circle_layer, marker_layer],
             initial_center=map.MapLatitudeLongitude(lat, lon),
             initial_zoom=zoom,
-            bgcolor="#0B0F17",
+            bgcolor="#0B0F17" if is_dark else "#F1F5F9",
             keep_alive=True,
             on_tap=_on_tap_handler,
             expand=expand,
         ),
         border_radius=tokens.RADIUS_LG,
-        border=ft.Border.all(1, ft.Colors.with_opacity(0.12, ft.Colors.WHITE)),
+        border=ft.Border.all(
+            1,
+            ft.Colors.with_opacity(0.12, ft.Colors.WHITE)
+            if is_dark
+            else ft.Colors.with_opacity(0.15, ft.Colors.BLACK),
+        ),
         clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
         expand=expand,
         height=height,

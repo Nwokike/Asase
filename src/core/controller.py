@@ -177,6 +177,8 @@ class AppController:
             state.theme_mode = self.page.theme_mode
             state.theme_version += 1
             state.telemetry_version += 1
+            if self._controller_methods and self._controller_methods.set_theme_mode:
+                self._controller_methods.set_theme_mode(self.page.theme_mode)
             self.page.update()
 
     async def refresh_all(self) -> None:

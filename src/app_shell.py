@@ -67,15 +67,16 @@ def _build_appbar(active_view: str, active_tab: int, controller) -> ft.AppBar | 
 
 @ft.component
 def AppShell() -> Control:
-    active_tab, set_active_tab = ft.use_state(0)
-    active_view, set_active_view = ft.use_state("dashboard")
-
     controller = ft.use_context(ControllerMethodsCtx)
     state = ft.use_context(AppStateCtx)
 
+    active_tab, set_active_tab = ft.use_state(0)
+    active_view, set_active_view = ft.use_state("dashboard")
+    theme_ver, set_theme_ver = ft.use_state(state.theme_version)
     onboarding_done, set_onboarding_done = ft.use_state(state.has_accepted_terms)
 
-    # Wire navigation closures
+    # Wire navigation and theme closures
+    controller.set_theme_mode = lambda mode: set_theme_ver(state.theme_version)
     controller.dismiss_onboarding = lambda: (
         set_onboarding_done(True),
         set_active_view("dashboard"),
@@ -145,6 +146,7 @@ def AppShell() -> Control:
             active_tab,
             active_view,
             onboarding_done,
+            theme_ver,
             state.has_accepted_terms,
             state.theme_version,
             state.telemetry_version,
@@ -152,7 +154,12 @@ def AppShell() -> Control:
     )
 
     # ── Branch Screen (Depends on state reactivity hooks) ──
-    _ = (state.theme_version, state.telemetry_version, state.has_accepted_terms)
+    _ = (
+        theme_ver,
+        state.theme_version,
+        state.telemetry_version,
+        state.has_accepted_terms,
+    )
     if not onboarding_done and _should_show_onboarding(state):
         screen = OnboardingScreen()
     elif active_view == "report":
@@ -169,4 +176,11 @@ def AppShell() -> Control:
         else:
             screen = SettingsScreen()
 
-    return ft.SafeArea(content=screen, expand=True)
+    return ft.SafeArea(
+        content=ft.Container(
+            content=screen,
+            key=f"shell_screen_{active_tab}_{active_view}_{theme_ver}",
+            expand=True,
+        ),
+        expand=True,
+    )

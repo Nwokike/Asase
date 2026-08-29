@@ -20,6 +20,7 @@ from components.skeleton_loader import TelemetrySkeletonCard
 from components.telemetry_card import TelemetryCard
 from core import tokens
 from core.geo_utils import calculate_haversine_distance_km
+from core.theme import is_dark_mode
 from services.geocoding_service import GeocodingService
 from state.app_state import AppStateCtx
 from state.controller_ctx import ControllerMethodsCtx
@@ -168,6 +169,7 @@ def HomeScreen() -> Control:
                     disasters=state.disasters,
                     expand=False,
                     height=240,
+                    is_dark=is_dark_mode(page),
                 ),
                 padding=ft.Padding(tokens.SPACE_LG, 0, tokens.SPACE_LG, 0),
             ),
