@@ -25,6 +25,8 @@ def build_app_header(
     def _toggle_theme(e):
         if not page:
             return
+        from core.state import state
+
         if page.theme_mode == ft.ThemeMode.DARK:
             page.theme_mode = ft.ThemeMode.LIGHT
             mode_str = "light"
@@ -34,6 +36,10 @@ def build_app_header(
         else:
             page.theme_mode = ft.ThemeMode.DARK
             mode_str = "dark"
+
+        state.theme_mode = page.theme_mode
+        state.theme_version += 1
+        state.telemetry_version += 1
 
         if save_setting_fn:
             asyncio.create_task(save_setting_fn("asase.theme", mode_str))

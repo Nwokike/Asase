@@ -46,6 +46,7 @@ class AppState:
     # Detail Selection
     selected_marker: dict | None = None
     telemetry_version: int = 0
+    theme_version: int = 0
 
 
 state = AppState()

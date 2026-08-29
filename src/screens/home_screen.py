@@ -11,12 +11,15 @@ from flet import Control
 from components.app_header import build_app_header
 from components.banner_ad import AdMobBanner
 from components.hazard_map import HazardMap
+from components.home.active_alert_banner import build_active_alert_banner
+from components.home.bookmarks_section import build_bookmarks_section
+from components.home.location_search_bar import build_location_search_bar
+from components.home.summary_cards_row import build_quick_metrics_row
 from components.section_header import SectionHeader
 from components.skeleton_loader import TelemetrySkeletonCard
 from components.telemetry_card import TelemetryCard
 from core import tokens
-from core.geo_utils import calculate_haversine_distance_km, format_distance
-from core.theme import AppColors, AppStyles
+from core.geo_utils import calculate_haversine_distance_km
 from services.geocoding_service import GeocodingService
 from state.app_state import AppStateCtx
 from state.controller_ctx import ControllerMethodsCtx
@@ -104,304 +107,37 @@ def HomeScreen() -> Control:
         save_setting_fn=controller.save_setting,
     )
 
+    search_bar = build_location_search_bar(
+        page,
+        search_query,
+        search_results,
+        _on_search_change,
+        _select_city,
+        controller.locate_user,
+    )
+    bookmarks_bar = build_bookmarks_section(
+        state.bookmarks, controller.select_coordinates
+    )
+    alert_banner = build_active_alert_banner(
+        closest_hazard,
+        lambda: controller.show_map() if controller.show_map else None,
+    )
+    metrics_row = build_quick_metrics_row(
+        len(state.earthquakes),
+        state.min_magnitude_filter,
+        us_aqi,
+        pm25,
+        kp_val,
+        space_status,
+    )
+
     return ft.ListView(
         controls=[
             header_view,
-            # Top Search Bar
-            ft.Container(
-                content=ft.Column(
-                    [
-                        ft.TextField(
-                            value=search_query,
-                            hint_text="Search city, region, or coordinates...",
-                            prefix_icon=ft.Icons.SEARCH_ROUNDED,
-                            suffix=ft.IconButton(
-                                icon=ft.Icons.MY_LOCATION_ROUNDED,
-                                tooltip="Locate via GPS",
-                                icon_color=AppColors.PRIMARY,
-                                on_click=lambda _: (
-                                    asyncio.create_task(controller.locate_user())
-                                    if controller.locate_user
-                                    else None
-                                ),
-                            ),
-                            border_radius=tokens.RADIUS_MD,
-                            filled=True,
-                            bgcolor=ft.Colors.with_opacity(0.08, ft.Colors.ON_SURFACE),
-                            border_color=ft.Colors.with_opacity(
-                                0.15, ft.Colors.OUTLINE
-                            ),
-                            on_change=_on_search_change,
-                            dense=True,
-                        ),
-                        *(
-                            [
-                                ft.Container(
-                                    content=ft.Column(
-                                        [
-                                            ft.ListTile(
-                                                leading=ft.Icon(
-                                                    ft.Icons.LOCATION_CITY_ROUNDED,
-                                                    color=AppColors.PRIMARY,
-                                                ),
-                                                title=ft.Text(
-                                                    f"{c['name']}, {c['country']}",
-                                                    weight=ft.FontWeight.W_600,
-                                                ),
-                                                subtitle=ft.Text(
-                                                    f"Elevation: {int(c.get('elevation', 0))}m • {c.get('timezone', 'UTC')}",
-                                                    size=tokens.FONT_XS,
-                                                ),
-                                                on_click=lambda _, city=c: _select_city(
-                                                    city
-                                                ),
-                                            )
-                                            for c in search_results
-                                        ],
-                                        spacing=0,
-                                    ),
-                                    bgcolor=AppColors.DARK_SURFACE,
-                                    border_radius=tokens.RADIUS_MD,
-                                    border=ft.Border.all(
-                                        1,
-                                        ft.Colors.with_opacity(0.2, ft.Colors.WHITE),
-                                    ),
-                                    shadow=ft.BoxShadow(
-                                        spread_radius=2,
-                                        blur_radius=10,
-                                        color=ft.Colors.BLACK,
-                                    ),
-                                )
-                            ]
-                            if search_results
-                            else []
-                        ),
-                    ],
-                    spacing=tokens.SPACE_XS,
-                ),
-                padding=ft.Padding(
-                    tokens.SPACE_LG, tokens.SPACE_MD, tokens.SPACE_LG, 0
-                ),
-            ),
-            # Saved Bookmarks Chips Bar
-            *(
-                [
-                    ft.Container(
-                        content=ft.Row(
-                            [
-                                ft.Icon(
-                                    ft.Icons.BOOKMARK_ROUNDED,
-                                    size=14,
-                                    color=AppColors.WARNING,
-                                ),
-                                *(
-                                    [
-                                        ft.Container(
-                                            content=ft.Row(
-                                                [
-                                                    ft.Text(
-                                                        b.get("name", "Saved"),
-                                                        size=tokens.FONT_XS,
-                                                        weight=ft.FontWeight.W_600,
-                                                        color=ft.Colors.ON_SURFACE,
-                                                    ),
-                                                ],
-                                                spacing=2,
-                                                tight=True,
-                                            ),
-                                            padding=ft.Padding(8, 4, 8, 4),
-                                            border_radius=tokens.RADIUS_FULL,
-                                            bgcolor=ft.Colors.with_opacity(
-                                                0.12, AppColors.WARNING
-                                            ),
-                                            border=ft.Border.all(
-                                                1,
-                                                ft.Colors.with_opacity(
-                                                    0.25, AppColors.WARNING
-                                                ),
-                                            ),
-                                            on_click=lambda _, loc=b: (
-                                                asyncio.create_task(
-                                                    controller.select_coordinates(
-                                                        loc["latitude"],
-                                                        loc["longitude"],
-                                                        loc["name"],
-                                                        loc.get("country", ""),
-                                                    )
-                                                )
-                                                if controller.select_coordinates
-                                                else None
-                                            ),
-                                        )
-                                        for b in state.bookmarks
-                                    ]
-                                ),
-                            ],
-                            spacing=tokens.SPACE_XS,
-                            scroll=ft.ScrollMode.AUTO,
-                        ),
-                        padding=ft.Padding(
-                            tokens.SPACE_LG, tokens.SPACE_XS, tokens.SPACE_LG, 0
-                        ),
-                    )
-                ]
-                if state.bookmarks
-                else []
-            ),
-            # Closest Threat Warning Banner (if within 500km)
-            *(
-                [
-                    ft.Container(
-                        content=AppStyles.glass_card(
-                            ft.Row(
-                                [
-                                    ft.Icon(
-                                        ft.Icons.WARNING_ROUNDED,
-                                        color=AppColors.SEVERITY_HIGH,
-                                        size=tokens.ICON_MD,
-                                    ),
-                                    ft.Column(
-                                        [
-                                            ft.Text(
-                                                "PROXIMITY WARNING: ACTIVE HAZARD",
-                                                size=tokens.FONT_XXS,
-                                                weight=ft.FontWeight.BOLD,
-                                                color=AppColors.SEVERITY_HIGH,
-                                            ),
-                                            ft.Text(
-                                                f"{closest_hazard[0].get('title', 'Hazard')} ({format_distance(closest_hazard[1])})",
-                                                size=tokens.FONT_SM,
-                                                weight=ft.FontWeight.W_600,
-                                                max_lines=1,
-                                                overflow=ft.TextOverflow.ELLIPSIS,
-                                            ),
-                                        ],
-                                        spacing=0,
-                                        expand=True,
-                                    ),
-                                    ft.IconButton(
-                                        icon=ft.Icons.ARROW_FORWARD_IOS_ROUNDED,
-                                        icon_size=14,
-                                        on_click=lambda _: (
-                                            controller.show_map()
-                                            if controller.show_map
-                                            else None
-                                        ),
-                                    ),
-                                ],
-                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                            ),
-                            padding=tokens.SPACE_MD,
-                            border_color=ft.Colors.with_opacity(
-                                0.4, AppColors.SEVERITY_HIGH
-                            ),
-                        ),
-                        padding=ft.Padding(
-                            tokens.SPACE_LG, tokens.SPACE_SM, tokens.SPACE_LG, 0
-                        ),
-                    )
-                ]
-                if closest_hazard and closest_hazard[1] <= 500.0
-                else []
-            ),
-            # Global Quick Metrics Strip
-            ft.Container(
-                content=ft.Row(
-                    [
-                        ft.Container(
-                            content=AppStyles.glass_card(
-                                ft.Column(
-                                    [
-                                        ft.Text(
-                                            "USGS SEISMIC (24H)",
-                                            size=tokens.FONT_XXS,
-                                            color=ft.Colors.ON_SURFACE_VARIANT,
-                                            weight=ft.FontWeight.W_600,
-                                        ),
-                                        ft.Text(
-                                            f"{len(state.earthquakes)} Quakes",
-                                            size=tokens.FONT_LG,
-                                            weight=ft.FontWeight.BOLD,
-                                            font_family="Outfit",
-                                            color=AppColors.SEVERITY_HIGH,
-                                        ),
-                                        ft.Text(
-                                            f"Min M{state.min_magnitude_filter:.1f}+",
-                                            size=tokens.FONT_XXS,
-                                            color=ft.Colors.ON_SURFACE_VARIANT,
-                                        ),
-                                    ],
-                                    spacing=tokens.SPACE_XXS,
-                                ),
-                                padding=tokens.SPACE_MD,
-                            ),
-                            expand=1,
-                        ),
-                        ft.Container(
-                            content=AppStyles.glass_card(
-                                ft.Column(
-                                    [
-                                        ft.Text(
-                                            "AIR QUALITY (AQI)",
-                                            size=tokens.FONT_XXS,
-                                            color=ft.Colors.ON_SURFACE_VARIANT,
-                                            weight=ft.FontWeight.W_600,
-                                        ),
-                                        ft.Text(
-                                            f"{us_aqi}",
-                                            size=tokens.FONT_LG,
-                                            weight=ft.FontWeight.BOLD,
-                                            font_family="Outfit",
-                                            color=AppColors.PRIMARY,
-                                        ),
-                                        ft.Text(
-                                            f"PM2.5: {pm25} µg/m³",
-                                            size=tokens.FONT_XXS,
-                                            color=ft.Colors.ON_SURFACE_VARIANT,
-                                        ),
-                                    ],
-                                    spacing=tokens.SPACE_XXS,
-                                ),
-                                padding=tokens.SPACE_MD,
-                            ),
-                            expand=1,
-                        ),
-                        ft.Container(
-                            content=AppStyles.glass_card(
-                                ft.Column(
-                                    [
-                                        ft.Text(
-                                            "SPACE WEATHER (Kp)",
-                                            size=tokens.FONT_XXS,
-                                            color=ft.Colors.ON_SURFACE_VARIANT,
-                                            weight=ft.FontWeight.W_600,
-                                        ),
-                                        ft.Text(
-                                            f"Kp {kp_val}",
-                                            size=tokens.FONT_LG,
-                                            weight=ft.FontWeight.BOLD,
-                                            font_family="Outfit",
-                                            color=AppColors.ATMOSPHERE,
-                                        ),
-                                        ft.Text(
-                                            f"{space_status[:12]}...",
-                                            size=tokens.FONT_XXS,
-                                            color=ft.Colors.ON_SURFACE_VARIANT,
-                                        ),
-                                    ],
-                                    spacing=tokens.SPACE_XXS,
-                                ),
-                                padding=tokens.SPACE_MD,
-                            ),
-                            expand=1,
-                        ),
-                    ],
-                    spacing=tokens.SPACE_SM,
-                ),
-                padding=ft.Padding(
-                    tokens.SPACE_LG, tokens.SPACE_SM, tokens.SPACE_LG, 0
-                ),
-            ),
+            search_bar,
+            *([bookmarks_bar] if bookmarks_bar else []),
+            *([alert_banner] if alert_banner else []),
+            metrics_row,
             # Embedded Planetary Map Widget
             SectionHeader(
                 "GLOBAL HAZARD RADAR",
