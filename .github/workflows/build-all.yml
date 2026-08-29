@@ -361,6 +361,10 @@ jobs:
         run: |
           uv run flet build web --yes --project asase --product "Asase" --org ng.kiri --build-version ${{ env.BUILD_VERSION }} --build-number ${{ env.BUILD_NUMBER }} --base-url "/" -v
           echo "asase.kiri.ng" > build/web/CNAME
+          touch build/web/.nojekyll
+          cp src/assets/favicon.png build/web/favicon.png
+          cp src/assets/favicon.png build/web/icons/Icon-192.png
+          cp src/assets/favicon.png build/web/icons/apple-touch-icon-192.png
       - name: Package Web Release Archive
         run: |
           mkdir -p build/dist

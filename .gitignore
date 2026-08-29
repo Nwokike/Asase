@@ -10,6 +10,7 @@ __pycache__/
 # Build artifacts
 build/
 dist/
+build_study/
 *.spec
 installer.iss
 

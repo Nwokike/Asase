@@ -65,8 +65,7 @@ class AppController:
         self.page.spacing = 0
         self.page.fonts = {
             "Outfit": (
-                "https://fonts.googleapis.com/css2?"
-                "family=Outfit:wght@300;400;500;600;700&display=swap"
+                "https://fonts.gstatic.com/s/outfit/v11/QGYyz_MVcBeNP4NjuGObqx1XmO1I4TC0C4G-EiAou6Y.woff2"
             )
         }
         self.page.theme = AppTheme.get_light_theme()
@@ -217,16 +216,7 @@ class AppController:
             # Fetch all global data concurrently
             eq_task = SeismicService.fetch_earthquakes(state.min_magnitude_filter)
             dis_task = DisasterService.fetch_active_disasters()
-            weather_task = AtmosphericService.fetch_weather_forecast(
-                state.current_lat, state.current_lon
-            )
-            aq_task = AtmosphericService.fetch_air_quality(
-                state.current_lat, state.current_lon
-            )
-            flood_task = AtmosphericService.fetch_river_discharge(
-                state.current_lat, state.current_lon
-            )
-            marine_task = AtmosphericService.fetch_marine_forecast(
+            atmo_task = AtmosphericService.fetch_location_telemetry(
                 state.current_lat, state.current_lon
             )
             space_task = SpaceWeatherService.fetch_space_weather_summary()
@@ -234,10 +224,7 @@ class AppController:
             results = await asyncio.gather(
                 eq_task,
                 dis_task,
-                weather_task,
-                aq_task,
-                flood_task,
-                marine_task,
+                atmo_task,
                 space_task,
                 return_exceptions=True,
             )
@@ -247,15 +234,13 @@ class AppController:
             if isinstance(results[1], list):
                 state.disasters = results[1]
             if isinstance(results[2], dict) and results[2]:
-                state.weather_data = results[2]
+                atmo = results[2]
+                state.weather_data = atmo.get("weather", {})
+                state.air_quality_data = atmo.get("air_quality", {})
+                state.flood_data = atmo.get("flood", {})
+                state.marine_data = atmo.get("marine", {})
             if isinstance(results[3], dict) and results[3]:
-                state.air_quality_data = results[3]
-            if isinstance(results[4], dict) and results[4]:
-                state.flood_data = results[4]
-            if isinstance(results[5], dict) and results[5]:
-                state.marine_data = results[5]
-            if isinstance(results[6], dict) and results[6]:
-                state.space_weather = results[6]
+                state.space_weather = results[3]
 
             # Cache local telemetry envelope
             if self.storage:
