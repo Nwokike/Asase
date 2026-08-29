@@ -119,3 +119,19 @@ def test_build_hazard_marker():
 def test_banner_ad():
     ad = build_banner_ad(None)
     assert isinstance(ad, ft.Container)
+
+
+def test_app_header():
+    from components.app_header import build_app_header
+
+    hdr = build_app_header(
+        page=None,
+        title="Asase",
+        subtitle="EARTH INTELLIGENCE",
+        on_refresh=lambda: None,
+        on_settings=lambda: None,
+    )
+    assert isinstance(hdr, ft.Container)
+    texts = [t.value for t in walk_texts(hdr)]
+    assert "Asase" in texts
+    assert "EARTH INTELLIGENCE" in texts

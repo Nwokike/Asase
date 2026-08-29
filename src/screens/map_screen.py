@@ -9,7 +9,7 @@ from flet import Control
 
 from components.hazard_map import HazardMap
 from core import tokens
-from core.theme import AppColors
+from core.theme import AppColors, is_dark_mode
 from state.app_state import AppStateCtx
 from state.controller_ctx import ControllerMethodsCtx
 
@@ -70,6 +70,11 @@ def MapScreen() -> Control:
         ("storm", "Storms", ft.Icons.CYCLONE_ROUNDED, AppColors.OCEAN),
     ]
 
+    from flet import context as flet_context
+
+    page = flet_context.page
+    is_dark = is_dark_mode(page)
+
     chip_controls = [
         ft.Container(
             content=ft.Row(
@@ -102,16 +107,24 @@ def MapScreen() -> Control:
             padding=ft.Padding(10, 6, 10, 6),
             border_radius=tokens.RADIUS_FULL,
             bgcolor=(
-                ft.Colors.with_opacity(0.15, color)
+                ft.Colors.with_opacity(0.18, color)
                 if active_filter == f_key
-                else ft.Colors.with_opacity(0.6, AppColors.DARK_SURFACE)
+                else (
+                    ft.Colors.with_opacity(0.85, AppColors.DARK_SURFACE)
+                    if is_dark
+                    else ft.Colors.with_opacity(0.92, AppColors.LIGHT_SURFACE)
+                )
             ),
             border=ft.Border.all(
                 1,
                 (
                     color
                     if active_filter == f_key
-                    else ft.Colors.with_opacity(0.2, ft.Colors.WHITE)
+                    else (
+                        ft.Colors.with_opacity(0.2, ft.Colors.WHITE)
+                        if is_dark
+                        else ft.Colors.with_opacity(0.15, ft.Colors.BLACK)
+                    )
                 ),
             ),
             on_click=lambda _, key=f_key: set_active_filter(key),

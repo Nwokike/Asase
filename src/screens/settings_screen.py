@@ -13,6 +13,7 @@ import flet as ft
 from flet import Control
 
 from components.activity_terminal import show_activity_terminal_dialog
+from components.app_header import build_app_header
 from components.banner_ad import build_banner_ad
 from components.section_header import SectionHeader
 from core import tokens
@@ -31,6 +32,7 @@ from core.theme import (
     AppStyles,
     adaptive_glass_bg,
     adaptive_glass_border,
+    is_dark_mode,
 )
 from state.app_state import AppStateCtx
 from state.controller_ctx import ControllerMethodsCtx
@@ -423,22 +425,39 @@ def SettingsScreen() -> Control:
     )
 
     # About
+    is_dark = is_dark_mode(page)
     about_card = AppStyles.glass_card(
         ft.Container(
             content=ft.Column(
                 [
-                    ft.Image(
-                        src="icon.png",
-                        width=48,
-                        height=48,
-                        border_radius=tokens.RADIUS_MD,
+                    ft.Container(
+                        content=ft.Image(
+                            src="/icon.svg",
+                            width=52,
+                            height=52,
+                            color=ft.Colors.WHITE if is_dark else None,
+                        ),
+                        padding=tokens.SPACE_MD,
+                        border_radius=tokens.RADIUS_LG,
+                        bgcolor=ft.Colors.with_opacity(
+                            0.12,
+                            ft.Colors.WHITE if is_dark else AppColors.PRIMARY,
+                        ),
                     ),
                     ft.Container(height=tokens.SPACE_XS),
-                    ft.Text(APP_NAME, size=tokens.FONT_LG, weight=ft.FontWeight.BOLD),
+                    ft.Text(
+                        APP_NAME,
+                        size=tokens.FONT_LG,
+                        weight=ft.FontWeight.BOLD,
+                        font_family="Outfit",
+                    ),
                     ft.Text(
                         f"Version {APP_VERSION}",
                         size=tokens.FONT_SM,
-                        color=ft.Colors.ON_SURFACE_VARIANT,
+                        color=AppColors.PRIMARY
+                        if not is_dark
+                        else AppColors.PRIMARY_LIGHT,
+                        weight=ft.FontWeight.W_600,
                     ),
                     ft.Container(height=tokens.SPACE_XS),
                     ft.Text(
@@ -465,8 +484,17 @@ def SettingsScreen() -> Control:
         padding=0,
     )
 
+    header_view = build_app_header(
+        page,
+        title="Settings",
+        subtitle="CONFIGURATION & DIAGNOSTICS",
+        on_refresh=controller.refresh_all,
+        save_setting_fn=controller.save_setting,
+    )
+
     return ft.ListView(
         controls=[
+            header_view,
             ft.Container(height=tokens.SPACE_SM),
             SectionHeader("DISPLAY THEME"),
             ft.Container(

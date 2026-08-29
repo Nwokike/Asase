@@ -5,6 +5,7 @@ from __future__ import annotations
 import flet as ft
 from flet import Control
 
+from components.app_header import build_app_header
 from components.section_header import SectionHeader
 from components.sparkline_chart import TelemetryLineChart
 from core import tokens
@@ -13,6 +14,7 @@ from core.theme import (
     AppStyles,
 )
 from state.app_state import AppStateCtx
+from state.controller_ctx import ControllerMethodsCtx
 
 
 @ft.component
@@ -47,8 +49,26 @@ def SpaceScreen() -> Control:
         else (AppColors.SEVERITY_MODERATE if kp < 6.0 else AppColors.SEVERITY_CRITICAL)
     )
 
+    from flet import context as flet_context
+
+    page = flet_context.page
+    controller = ft.use_context(ControllerMethodsCtx)
+
+    header_view = build_app_header(
+        page,
+        title="Magnetosphere",
+        subtitle="NOAA SPACE WEATHER PREDICTION",
+        on_refresh=controller.refresh_all,
+        on_settings=lambda: (
+            controller.navigate_tab(3) if controller.navigate_tab else None
+        ),
+        save_setting_fn=controller.save_setting,
+    )
+
     return ft.ListView(
         controls=[
+            header_view,
+            ft.Container(height=tokens.SPACE_SM),
             # Hero Card
             ft.Container(
                 content=AppStyles.glass_card(

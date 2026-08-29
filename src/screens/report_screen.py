@@ -8,6 +8,7 @@ import logging
 import flet as ft
 from flet import Control
 
+from components.app_header import build_app_header
 from components.section_header import SectionHeader
 from components.sparkline_chart import PlanetaryThreatRadar, TelemetryLineChart
 from core import tokens
@@ -233,8 +234,23 @@ Asase Earth Intelligence © 2026 Kiri Research Labs
                 logger.warning("Export dossier failed: %s", ex)
                 show_snack(page, "Failed to copy dossier.", bgcolor=AppColors.ERROR)
 
+    page = flet_context.page
+
+    header_view = build_app_header(
+        page,
+        title="Dossier",
+        subtitle="MULTI-HAZARD RISK ASSESSMENT",
+        on_refresh=controller.refresh_all,
+        on_settings=lambda: (
+            controller.navigate_tab(3) if controller.navigate_tab else None
+        ),
+        save_setting_fn=controller.save_setting,
+    )
+
     return ft.ListView(
         controls=[
+            header_view,
+            ft.Container(height=tokens.SPACE_SM),
             # Location Header Card
             ft.Container(
                 content=AppStyles.glass_card(
