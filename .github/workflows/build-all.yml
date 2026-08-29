@@ -140,8 +140,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-      - name: Install libgl1 (Linux headless graphical asset processing)
-        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-glx libglib2.0-0
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
