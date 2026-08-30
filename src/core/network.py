@@ -158,3 +158,7 @@ class NetworkManager:
         if cls._client and not cls._client.is_closed:
             await cls._client.aclose()
             cls._client = None
+
+    @classmethod
+    async def close_all(cls) -> None:
+        await cls.close()

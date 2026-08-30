@@ -123,13 +123,12 @@ class AppColors:
         return AppColors.DARK_MUTED if is_dark_mode(resolved) else AppColors.LIGHT_MUTED
 
 
+LIGHT_GLASS_BG = "#F1F5F9"
+DARK_GLASS_BG = "#26263A"
+
+
 def adaptive_glass_bg(page: ft.Page | None = None) -> str:
-    dark = is_dark_mode(page)
-    return (
-        ft.Colors.with_opacity(0.65, AppColors.DARK_SURFACE)
-        if dark
-        else ft.Colors.with_opacity(0.90, AppColors.LIGHT_SURFACE)
-    )
+    return DARK_GLASS_BG if is_dark_mode(page) else LIGHT_GLASS_BG
 
 
 def adaptive_glass_border(page: ft.Page | None = None) -> str:

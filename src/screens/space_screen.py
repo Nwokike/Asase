@@ -26,13 +26,14 @@ def SpaceScreen() -> Control:
     kp = sw.get("kp_index", 0.0)
     status = sw.get("geomagnetic_status", "Quiet (Normal)")
     solar = sw.get("solar_activity", "Normal")
+    flare_class = sw.get("flare_class", "")
     raw_kp = sw.get("raw_kp", [])
 
     # Extract historical Kp values (handling both dict and list schemas from NOAA SWPC)
     kp_history: list[float] = []
     for item in raw_kp:
         if isinstance(item, dict):
-            val = item.get("estimated_kp", item.get("kp_index"))
+            val = item.get("kp", item.get("estimated_kp", item.get("kp_index")))
             if val is not None:
                 try:
                     kp_history.append(float(val))
@@ -61,7 +62,7 @@ def SpaceScreen() -> Control:
         subtitle="NOAA SPACE WEATHER PREDICTION",
         on_refresh=controller.refresh_all,
         on_settings=lambda: (
-            controller.navigate_tab(3) if controller.navigate_tab else None
+            controller.navigate_tab(4) if controller.navigate_tab else None
         ),
         save_setting_fn=controller.save_setting,
     )
@@ -224,11 +225,44 @@ def SpaceScreen() -> Control:
                                             size=tokens.FONT_SM,
                                             weight=ft.FontWeight.W_500,
                                         ),
-                                        ft.Text(
-                                            solar,
-                                            size=tokens.FONT_SM,
-                                            weight=ft.FontWeight.BOLD,
-                                            color=AppColors.PRIMARY,
+                                        ft.Column(
+                                            [
+                                                ft.Text(
+                                                    solar,
+                                                    size=tokens.FONT_SM,
+                                                    weight=ft.FontWeight.BOLD,
+                                                    color=AppColors.PRIMARY,
+                                                ),
+                                                *(
+                                                    [
+                                                        ft.Container(
+                                                            content=ft.Text(
+                                                                flare_class,
+                                                                size=tokens.FONT_XXS,
+                                                                weight=ft.FontWeight.W_700,
+                                                                color=ft.Colors.WHITE,
+                                                            ),
+                                                            bgcolor=AppColors.ERROR
+                                                            if flare_class.startswith(
+                                                                "X"
+                                                            )
+                                                            else AppColors.WARNING
+                                                            if flare_class.startswith(
+                                                                "M"
+                                                            )
+                                                            else AppColors.PRIMARY,
+                                                            padding=ft.Padding(
+                                                                6, 2, 6, 2
+                                                            ),
+                                                            border_radius=tokens.RADIUS_SM,
+                                                        )
+                                                    ]
+                                                    if flare_class
+                                                    else []
+                                                ),
+                                            ],
+                                            spacing=2,
+                                            horizontal_alignment=ft.CrossAxisAlignment.END,
                                         ),
                                     ],
                                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,

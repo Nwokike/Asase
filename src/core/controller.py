@@ -32,6 +32,7 @@ from core.theme import AppColors, AppTheme
 from services.ad_service import AdService
 from services.atmospheric_service import AtmosphericService
 from services.disaster_service import DisasterService
+from services.gateway_service import fetch_latest_version, is_newer_version
 from services.seismic_service import SeismicService
 from services.space_weather_service import SpaceWeatherService
 from services.storage_service import StorageService
@@ -107,6 +108,9 @@ class AppController:
         # Initial Telemetry Load
         self.page.run_task(self.refresh_all)
 
+        # Optional gateway update check (fails soft, never blocks startup)
+        self.page.run_task(self._check_app_version)
+
         # Mount React-style Component Tree
         from app_shell import AppShell
 
@@ -119,6 +123,7 @@ class AppController:
             open_report=self.open_report,
             share_text=self.share_text,
             launch_url=self.launch_external_url,
+            fetch_radius_history=SeismicService.fetch_radius_history,
         )
         self._controller_methods = methods
         self.page.render(lambda: ControllerMethodsCtx(methods, lambda: AppShell()))
@@ -184,6 +189,24 @@ class AppController:
                 self._controller_methods.set_theme_mode(self.page.theme_mode)
             self.page.update()
 
+    _refresh_lock: asyncio.Lock | None = None
+
+    async def _check_app_version(self) -> None:
+        """Poll the Kiri gateway for a newer published version; notify once."""
+        try:
+            latest = await fetch_latest_version()
+            if latest and is_newer_version(latest, APP_VERSION):
+                logger.info(
+                    "App update available: %s (current %s)", latest, APP_VERSION
+                )
+                show_snack(
+                    self.page,
+                    f"Asase {latest} is available — update for the latest telemetry.",
+                    bgcolor=AppColors.GREY,
+                )
+        except Exception as ex:
+            logger.debug("Version check failed (non-blocking): %s", ex)
+
     async def refresh_all(self) -> None:
         """Fetch real-time USGS earthquakes, NASA disasters, atmospheric telemetry, and space weather."""
         if not state.is_online:
@@ -191,7 +214,15 @@ class AppController:
                 "Telemetry fetch skipped: Device is offline. Using local cache."
             )
             return
+        if self._refresh_lock is None:
+            self._refresh_lock = asyncio.Lock()
+        if self._refresh_lock.locked():
+            logger.info("Refresh already in progress — throttling duplicate call")
+            return
+        async with self._refresh_lock:
+            await self._do_refresh()
 
+    async def _do_refresh(self) -> None:
         state.is_loading = True
         logger.info(
             "Refreshing all planetary telemetry feeds via NetworkManager pool..."
@@ -214,9 +245,11 @@ class AppController:
                 state.flood_data = cached.get("flood", {})
                 state.marine_data = cached.get("marine", {})
 
-            # Fetch all global data concurrently
+            # Fetch all global data concurrently (category-aware disasters)
             eq_task = SeismicService.fetch_earthquakes(state.min_magnitude_filter)
-            dis_task = DisasterService.fetch_active_disasters()
+            dis_task = DisasterService.fetch_active_disasters(
+                state.selected_hazard_type
+            )
             atmo_task = AtmosphericService.fetch_location_telemetry(
                 state.current_lat, state.current_lon
             )
@@ -276,6 +309,9 @@ class AppController:
         state.current_lon = lon
         state.current_location_name = name
         state.current_country = country
+        # Visible confirmation — the observable writes re-render every screen,
+        # but the user still needs an explicit "this happened" signal.
+        show_snack(self.page, f"Now tracking: {name}", bgcolor=AppColors.SUCCESS)
 
         if self.ad_service:
             with contextlib.suppress(Exception):
@@ -293,6 +329,16 @@ class AppController:
             recent.insert(0, entry)
             state.recent_searches = recent[:10]
             await self.storage.set(STORAGE_RECENT_SEARCHES, state.recent_searches)
+
+        # Fetch elevation for the new focus (non-blocking, logged)
+        try:
+            from services.geocoding_service import GeocodingService
+
+            elev = await GeocodingService.get_elevation(lat, lon)
+            if elev:
+                state.current_elevation = elev
+        except Exception:
+            pass
 
         if self.page:
             self.page.update()
@@ -324,7 +370,7 @@ class AppController:
                 self.page, f"Removed '{name}' from bookmarks", bgcolor=AppColors.GREY
             )
         else:
-            state.bookmarks.append(location)
+            state.bookmarks = [*state.bookmarks, location]
             show_snack(
                 self.page, f"Saved '{name}' to bookmarks", bgcolor=AppColors.SUCCESS
             )

@@ -24,6 +24,9 @@ def show_snack(
             bgcolor=bgcolor,
             duration=duration,
         )
-        page.show_dialog(snack)
+        try:
+            page.show_snack_bar(snack)
+        except AttributeError:
+            page.show_dialog(snack)
     except Exception as ex:
         logger.warning("show_snack fallback: %s", ex)

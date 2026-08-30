@@ -11,19 +11,26 @@ from models.geocoding import GeocodingResponse
 logger = logging.getLogger("asase.geocoding")
 
 
+_GEOCODE_LRU: dict[str, list[dict]] = {}
+_GEOCODE_LRU_MAX = 20
+
+
 class GeocodingService:
     @staticmethod
     async def search_cities(query: str) -> list[dict]:
-        """Search global locations by city name or keyword."""
-        if not query or len(query.strip()) < 2:
+        """Search global locations by city name or keyword — with in-memory LRU cache."""
+        q = query.strip().lower()
+        if len(q) < 2:
             return []
-        url = f"{OPEN_METEO_GEOCODING}?name={query.strip()}&count=10&language=en&format=json"
+        if q in _GEOCODE_LRU:
+            return _GEOCODE_LRU[q]
+        url = f"{OPEN_METEO_GEOCODING}?name={q}&count=10&language=en&format=json"
         try:
             client = NetworkManager.get_client()
             res = await client.get(url, timeout=AUTOCOMPLETE_TIMEOUT)
             if res.status_code == 200:
                 resp = GeocodingResponse.model_validate_json(res.content)
-                return [
+                out = [
                     {
                         "name": r.name,
                         "country": r.country,
@@ -37,6 +44,10 @@ class GeocodingService:
                     }
                     for r in resp.results
                 ]
+                if len(_GEOCODE_LRU) >= _GEOCODE_LRU_MAX:
+                    _GEOCODE_LRU.pop(next(iter(_GEOCODE_LRU)))
+                _GEOCODE_LRU[q] = out
+                return out
         except Exception as ex:
             logger.warning("Geocoding search failed for '%s': %s", query, ex)
         return []

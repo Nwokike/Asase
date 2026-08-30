@@ -1,9 +1,9 @@
 [project]
 name = "asase"
-version = "1.0.0"
+version = "1.1.0"
 description = "Asase — Global Earth Intelligence & Multi-Hazard Planetary Defense Platform"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
     "flet>=0.86.5",
     "flet-ads>=0.86.5",
@@ -29,6 +29,7 @@ startup_message = "Initializing Asase Earth Telemetry..."
 [tool.flet.web]
 base_url = "/"
 route_url_strategy = "path"
+renderer = "canvaskit"
 pwa_background_color = "#0B0F17"
 pwa_theme_color = "#10B981"
 dependencies = []
@@ -40,7 +41,7 @@ target_sdk_version = 35
 target_arch = ["arm64-v8a", "armeabi-v7a"]
 
 [tool.flet.android.manifest_application]
-usesCleartextTraffic = "true"
+usesCleartextTraffic = "false"
 
 [tool.flet.android.permission]
 "android.permission.INTERNET" = true

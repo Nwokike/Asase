@@ -4,7 +4,11 @@ import flet as ft
 from flet_tree import walk_icons, walk_texts
 
 from components.banner_ad import build_banner_ad
-from components.hazard_map import HazardMap, build_hazard_marker
+from components.hazard_map import (
+    HazardMap,
+    build_event_detail_sheet,
+    build_hazard_marker,
+)
 from components.section_header import SectionHeader
 from components.sparkline_chart import TelemetryLineChart
 from components.telemetry_card import TelemetryCard, build_severity_badge
@@ -116,6 +120,42 @@ def test_build_hazard_marker():
     assert flood_marker is not None
 
 
+def test_build_event_detail_sheet():
+    event = {
+        "type": "earthquake",
+        "title": "M 5.2 - 42km NE of Hachijo-jima, Japan",
+        "latitude": 33.4,
+        "longitude": 140.2,
+        "magnitude": 5.2,
+        "depth_km": 35.7,
+        "url": "https://earthquake.usgs.gov/earthquakes/eventpage/xyz",
+    }
+    sheet = build_event_detail_sheet(
+        event, on_close=lambda: None, on_open_url=lambda u: None
+    )
+    assert isinstance(sheet, ft.Container)
+    texts = [t.value for t in walk_texts(sheet)]
+    assert any("EARTHQUAKE" in t for t in texts)
+    assert any("Hachijo-jima" in t for t in texts)
+    assert any("Magnitude M5.2" in t for t in texts)
+    assert any("Depth 35.7 km" in t for t in texts)
+
+    # TextButton renders its `content` label outside walked Text children
+    from flet_tree import walk
+
+    buttons = [c for c in walk(sheet) if isinstance(c, ft.TextButton)]
+    assert any("OPEN SOURCE DATA" in str(b.content) for b in buttons)
+
+    # No URL → no source button
+    bare = build_event_detail_sheet(
+        {"type": "flood", "title": "Flood Alert", "latitude": 1.0, "longitude": 2.0},
+        on_close=lambda: None,
+        on_open_url=lambda u: None,
+    )
+    buttons_bare = [c for c in walk(bare) if isinstance(c, ft.TextButton)]
+    assert not any("OPEN SOURCE DATA" in str(b.content) for b in buttons_bare)
+
+
 def test_banner_ad():
     ad = build_banner_ad(None)
     assert isinstance(ad, ft.Container)
@@ -158,5 +198,28 @@ def test_location_search_bar():
         on_locate_gps=lambda: None,
     )
     assert isinstance(bar, ft.Container)
-    assert isinstance(bar.content, ft.SearchBar)
-    assert len(bar.content.controls) == 1
+    assert isinstance(bar.content, ft.Column)
+    # Full-screen SearchBar (DDGS/Sherlock pattern — no hidden overlay)
+    search = bar.content.controls[0]
+    assert isinstance(search, ft.SearchBar)
+    assert search.full_screen is True
+    assert search.value == "Tok"
+    # Suggestions render as visible ListTiles below the bar, not in the overlay
+    assert len(bar.content.controls) == 2
+    panel = bar.content.controls[1]
+    assert isinstance(panel, ft.Container)
+    assert isinstance(panel.content, ft.Column)
+    tiles = [c for c in panel.content.controls if isinstance(c, ft.ListTile)]
+    assert len(tiles) == 1
+
+    # Empty results → just the bar, no suggestion panel
+    empty_bar = build_location_search_bar(
+        page=None,
+        search_query="",
+        search_results=[],
+        on_search_change=lambda _: None,
+        on_select_city=lambda _: None,
+        on_locate_gps=lambda: None,
+    )
+    assert isinstance(empty_bar.content, ft.Column)
+    assert len(empty_bar.content.controls) == 1

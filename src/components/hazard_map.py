@@ -60,7 +60,6 @@ def build_hazard_marker(
             color=ft.Colors.with_opacity(0.5, color),
         ),
         alignment=ft.Alignment.CENTER,
-        tooltip=f"{item.get('title', 'Hazard')}",
         on_click=lambda _: on_click(item) if on_click else None,
     )
 
@@ -106,6 +105,113 @@ def build_seismic_shockwave_circles(earthquakes: list[dict]) -> list[map.CircleM
     return circles
 
 
+def build_event_detail_sheet(
+    event: dict,
+    on_close: Callable | None = None,
+    on_open_url: Callable[[str], None] | None = None,
+) -> ft.Container:
+    """Floating bottom sheet with hazard-event details (Home radar + Full Map)."""
+    m_type = str(event.get("type", "event"))
+    icon = (
+        ft.Icons.WAVES_ROUNDED
+        if m_type == "earthquake"
+        else ft.Icons.LOCAL_FIRE_DEPARTMENT_ROUNDED
+        if m_type in ("wildfire", "fire")
+        else ft.Icons.WATER_DAMAGE_ROUNDED
+        if m_type == "flood"
+        else ft.Icons.CYCLONE_ROUNDED
+    )
+    accent = (
+        AppColors.SEVERITY_HIGH
+        if m_type == "earthquake"
+        else AppColors.SEVERITY_CRITICAL
+        if m_type in ("wildfire", "fire")
+        else AppColors.OCEAN
+        if m_type == "flood"
+        else AppColors.ATMOSPHERE
+    )
+
+    title = event.get("title") or event.get("place") or "Hazard Detail"
+    details: list[str] = [
+        (
+            f"{float(event.get('latitude', 0.0)):.4f}°, "
+            f"{float(event.get('longitude', 0.0)):.4f}°"
+        )
+    ]
+    if event.get("magnitude") is not None:
+        details.append(f"Magnitude M{float(event['magnitude']):.1f}")
+    if event.get("depth_km") is not None:
+        details.append(f"Depth {float(event['depth_km']):.1f} km")
+    if event.get("category_title"):
+        details.append(str(event["category_title"]))
+
+    url = str(event.get("url") or "")
+
+    return ft.Container(
+        content=ft.Column(
+            [
+                ft.Row(
+                    [
+                        ft.Row(
+                            [
+                                ft.Icon(icon, color=accent, size=tokens.ICON_SM),
+                                ft.Text(
+                                    m_type.upper(),
+                                    size=tokens.FONT_XS,
+                                    weight=ft.FontWeight.W_700,
+                                    color=accent,
+                                ),
+                            ],
+                            spacing=4,
+                            tight=True,
+                        ),
+                        ft.IconButton(
+                            icon=ft.Icons.CLOSE_ROUNDED,
+                            icon_size=16,
+                            on_click=lambda _: on_close() if on_close else None,
+                        ),
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                ),
+                ft.Text(
+                    title,
+                    size=tokens.FONT_MD,
+                    weight=ft.FontWeight.BOLD,
+                    font_family="Outfit",
+                    max_lines=2,
+                    overflow=ft.TextOverflow.ELLIPSIS,
+                ),
+                ft.Text(
+                    " • ".join(details),
+                    size=tokens.FONT_XS,
+                    color=ft.Colors.ON_SURFACE_VARIANT,
+                ),
+                *(
+                    [
+                        ft.TextButton(
+                            "OPEN SOURCE DATA",
+                            icon=ft.Icons.OPEN_IN_NEW_ROUNDED,
+                            on_click=lambda _: on_open_url(url),
+                        )
+                    ]
+                    if url and on_open_url
+                    else []
+                ),
+            ],
+            spacing=tokens.SPACE_XXS,
+            tight=True,
+        ),
+        bottom=tokens.SPACE_SM,
+        left=tokens.SPACE_SM,
+        right=tokens.SPACE_SM,
+        padding=tokens.SPACE_MD,
+        border_radius=tokens.RADIUS_LG,
+        bgcolor=AppColors.DARK_SURFACE,
+        border=ft.Border.all(1, ft.Colors.with_opacity(0.2, ft.Colors.WHITE)),
+        shadow=ft.BoxShadow(spread_radius=2, blur_radius=12, color=ft.Colors.BLACK),
+    )
+
+
 def HazardMap(
     lat: float = 6.5244,
     lon: float = 3.3792,
@@ -117,6 +223,8 @@ def HazardMap(
     expand: bool = True,
     height: float | None = None,
     is_dark: bool = True,
+    satellite: bool = False,
+    map_ref=None,
 ) -> ft.Control:
     """Builds the interactive multi-layer planetary map with 100% auth-free, watermark-free tiles."""
     markers: list[map.Marker] = []
@@ -148,12 +256,16 @@ def HazardMap(
     )
     markers.append(user_marker)
 
-    # 100% Auth-Free & Watermark-Free Esri Dark/Light Gray Canvas tiles with OSM fallback
-    dark_tiles = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
-    light_tiles = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+    # Auth-free tiles: Esri Canvas Dark/Light or World Imagery (satellite)
+    if satellite:
+        url_tpl = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+    else:
+        dark_tiles = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+        light_tiles = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+        url_tpl = dark_tiles if is_dark else light_tiles
 
     tile_layer = map.TileLayer(
-        url_template=dark_tiles if is_dark else light_tiles,
+        url_template=url_tpl,
         fallback_url="https://tile.openstreetmap.org/{z}/{x}/{y}.png",
         user_agent_package_name="ng.kiri.asase",
         keep_buffer=2,
@@ -176,6 +288,7 @@ def HazardMap(
             keep_alive=True,
             on_tap=_on_tap_handler,
             expand=expand,
+            ref=map_ref,
         ),
         border_radius=tokens.RADIUS_LG,
         border=ft.Border.all(

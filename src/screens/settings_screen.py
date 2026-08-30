@@ -93,7 +93,7 @@ def SettingsScreen() -> Control:
             return
 
         def _do_clear():
-            state.recent_searches.clear()
+            state.recent_searches = []
             if controller.save_setting:
                 asyncio.create_task(
                     controller.save_setting("asase.recent_searches", [])

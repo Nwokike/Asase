@@ -98,7 +98,7 @@ def build_units_section(
                     "Wind Speed Unit",
                     "Choose Kilometers per hour (km/h) or Miles per hour (mph)",
                     ft.Dropdown(
-                        value="km/h" if speed_unit == "kmh" else "mph",
+                        value=speed_unit if speed_unit in ("kmh", "mph") else "kmh",
                         options=[
                             ft.DropdownOption("kmh", "km/h"),
                             ft.DropdownOption("mph", "mph"),

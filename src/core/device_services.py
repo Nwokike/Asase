@@ -33,11 +33,9 @@ class DeviceServices:
             if not is_enabled:
                 show_snack(
                     page,
-                    "Location services are disabled on device.",
+                    "Location services aren't available on this device — search for a place instead.",
                     bgcolor=AppColors.WARNING,
                 )
-                with contextlib.suppress(Exception):
-                    await geolocator.open_location_settings()
                 return
 
             status = await geolocator.get_permission_status()
@@ -59,9 +57,17 @@ class DeviceServices:
                 return
 
             logger.info("Requesting high-accuracy device GPS position...")
-            pos = await geolocator.get_current_position()
+            try:
+                import asyncio as _aio
+
+                pos = await _aio.wait_for(
+                    geolocator.get_current_position(), timeout=12.0
+                )
+            except Exception:
+                pos = None
             if not pos:
-                pos = await geolocator.get_last_known_position()
+                with contextlib.suppress(Exception):
+                    pos = await geolocator.get_last_known_position()
 
             if pos:
                 lat = float(pos.latitude)
@@ -97,8 +103,15 @@ class DeviceServices:
                 logger.warning("Native share failed: %s", ex)
 
         with contextlib.suppress(Exception):
-            cb = ft.Clipboard()
-            await cb.set(text)
+            # Flet clipboard is on Page, not a standalone control
+            if hasattr(page, "set_clipboard"):
+                await page.set_clipboard(text)
+            elif hasattr(page, "clipboard"):
+                await page.clipboard.set(text)
+            else:
+                # Fallback: show snack so user knows to copy manually
+                show_snack(page, text[:120], bgcolor=AppColors.SUCCESS)
+                return
             show_snack(page, "Copied to clipboard!", bgcolor=AppColors.SUCCESS)
 
     @staticmethod

@@ -118,12 +118,13 @@ def build_about_card(page: ft.Page) -> ft.Container:
                                     asyncio.create_task(
                                         state.ad_service.show_privacy_options()
                                     )
-                                    if hasattr(state, "ad_service") and state.ad_service
+                                    if getattr(state, "ad_service", None)
                                     else None
                                 ),
                             ),
                         ]
-                        if not getattr(page, "web", False)
+                        if getattr(state, "ad_service", None)
+                        and state.ad_service.is_mobile()
                         else []
                     ),
                 ],

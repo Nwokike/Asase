@@ -72,6 +72,10 @@ class AdService:
         except Exception:
             return False
 
+    def is_mobile(self) -> bool:
+        """Public platform gate for UI elements that only make sense on mobile."""
+        return self._is_mobile()
+
     # ── Consent Management (UMP) ──────────────────────────────────────────────
 
     async def gather_consent(self) -> None:

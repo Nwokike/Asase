@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 APP_NAME = "Asase"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.1.0"
 APP_SUBTITLE = "Global Earth Intelligence & Planetary Telemetry"
+
+# Kiri Gateway (public, unauthenticated endpoints only — auth-free vision kept)
+GATEWAY_BASE_URL = "https://api.kiri.ng"
+GATEWAY_VERSION_URL = f"{GATEWAY_BASE_URL}/version"
 
 # Storage Keys (Prefix: asase.)
 STORAGE_THEME = "asase.theme"
@@ -33,6 +37,14 @@ USGS_EARTHQUAKES_DAY = (
 USGS_EARTHQUAKES_SIGNIFICANT = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/significant_month.geojson"
 
 NASA_EONET_EVENTS = "https://eonet.gsfc.nasa.gov/api/v3/events?status=open&limit=100"
+EONET_CATEGORY_MAP = {
+    "wildfire": "wildfires",
+    "fire": "wildfires",
+    "flood": "floods",
+    "storm": "severeStorms",
+    "volcano": "volcanoes",
+    "earthquake": "earthquakes",
+}
 
 GDACS_ALERTS_RSS = "https://www.gdacs.org/xml/rss.xml"
 

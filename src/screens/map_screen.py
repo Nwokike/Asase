@@ -7,9 +7,10 @@ import asyncio
 import flet as ft
 from flet import Control
 
-from components.hazard_map import HazardMap
+from components.hazard_map import HazardMap, build_event_detail_sheet
 from core import tokens
 from core.theme import AppColors, is_dark_mode
+from hooks.use_map_center import use_map_center
 from state.app_state import AppStateCtx
 from state.controller_ctx import ControllerMethodsCtx
 
@@ -21,6 +22,11 @@ def MapScreen() -> Control:
 
     active_filter, set_active_filter = ft.use_state("all")
     selected_event, set_selected_event = ft.use_state(None)
+    satellite, set_satellite = ft.use_state(False)
+    map_ref = ft.use_ref(None)
+
+    # Follow the active focus point (search / GPS / suggestion selections)
+    use_map_center(map_ref, state.current_lat, state.current_lon, 5.0)
 
     # Filter events based on active chip
     filtered_earthquakes = (
@@ -52,7 +58,48 @@ def MapScreen() -> Control:
                 )
             )
 
+    from flet import context as flet_context
+
+    page = flet_context.page
+    is_dark = is_dark_mode(page)
+
     # Filter Chips
+    sat_chip = ft.Container(
+        content=ft.Row(
+            [
+                ft.Icon(
+                    ft.Icons.SATELLITE_ROUNDED,
+                    size=14,
+                    color=AppColors.PRIMARY
+                    if satellite
+                    else ft.Colors.ON_SURFACE_VARIANT,
+                ),
+                ft.Text(
+                    "Satellite",
+                    size=tokens.FONT_XS,
+                    weight=ft.FontWeight.W_600,
+                    color=AppColors.PRIMARY if satellite else ft.Colors.ON_SURFACE,
+                ),
+            ],
+            spacing=4,
+            tight=True,
+        ),
+        padding=ft.Padding(10, 6, 10, 6),
+        border_radius=tokens.RADIUS_FULL,
+        bgcolor=ft.Colors.with_opacity(0.18, AppColors.PRIMARY)
+        if satellite
+        else (
+            ft.Colors.with_opacity(0.85, AppColors.DARK_SURFACE)
+            if is_dark
+            else ft.Colors.WHITE
+        ),
+        border=ft.Border.all(
+            1, AppColors.PRIMARY if satellite else AppColors.get_border(page)
+        ),
+        on_click=lambda _: set_satellite(not satellite),
+        ink=True,
+    )
+
     chips = [
         ("all", "All Hazards", ft.Icons.PUBLIC_ROUNDED, AppColors.PRIMARY),
         (
@@ -70,66 +117,66 @@ def MapScreen() -> Control:
         ("storm", "Storms", ft.Icons.CYCLONE_ROUNDED, AppColors.OCEAN),
     ]
 
-    from flet import context as flet_context
-
-    page = flet_context.page
-    is_dark = is_dark_mode(page)
-
     chip_controls = [
-        ft.Container(
-            content=ft.Row(
-                [
-                    ft.Icon(
-                        icon,
-                        size=14,
-                        color=(
-                            color
-                            if active_filter == f_key
-                            else ft.Colors.ON_SURFACE_VARIANT
+        sat_chip,
+        *[
+            ft.Container(
+                content=ft.Row(
+                    [
+                        ft.Icon(
+                            icon,
+                            size=14,
+                            color=(
+                                color
+                                if active_filter == f_key
+                                else ft.Colors.ON_SURFACE_VARIANT
+                            ),
                         ),
-                    ),
-                    ft.Text(
-                        label,
-                        size=tokens.FONT_XS,
-                        weight=(
-                            ft.FontWeight.W_700
-                            if active_filter == f_key
-                            else ft.FontWeight.W_500
+                        ft.Text(
+                            label,
+                            size=tokens.FONT_XS,
+                            weight=(
+                                ft.FontWeight.W_700
+                                if active_filter == f_key
+                                else ft.FontWeight.W_500
+                            ),
+                            color=(
+                                color
+                                if active_filter == f_key
+                                else ft.Colors.ON_SURFACE
+                            ),
                         ),
-                        color=(
-                            color if active_filter == f_key else ft.Colors.ON_SURFACE
-                        ),
-                    ),
-                ],
-                spacing=4,
-                tight=True,
-            ),
-            padding=ft.Padding(10, 6, 10, 6),
-            border_radius=tokens.RADIUS_FULL,
-            bgcolor=(
-                ft.Colors.with_opacity(0.18, color)
-                if active_filter == f_key
-                else (
-                    ft.Colors.with_opacity(0.85, AppColors.DARK_SURFACE)
-                    if is_dark
-                    else ft.Colors.with_opacity(0.92, AppColors.LIGHT_SURFACE)
-                )
-            ),
-            border=ft.Border.all(
-                1,
-                (
-                    color
+                    ],
+                    spacing=4,
+                    tight=True,
+                ),
+                padding=ft.Padding(10, 6, 10, 6),
+                border_radius=tokens.RADIUS_FULL,
+                bgcolor=(
+                    ft.Colors.with_opacity(0.18, color)
                     if active_filter == f_key
                     else (
-                        ft.Colors.with_opacity(0.2, ft.Colors.WHITE)
+                        ft.Colors.with_opacity(0.85, AppColors.DARK_SURFACE)
                         if is_dark
-                        else ft.Colors.with_opacity(0.15, ft.Colors.BLACK)
+                        else ft.Colors.with_opacity(0.92, AppColors.LIGHT_SURFACE)
                     )
                 ),
-            ),
-            on_click=lambda _, key=f_key: set_active_filter(key),
-        )
-        for f_key, label, icon, color in chips
+                border=ft.Border.all(
+                    1,
+                    (
+                        color
+                        if active_filter == f_key
+                        else (
+                            ft.Colors.with_opacity(0.2, ft.Colors.WHITE)
+                            if is_dark
+                            else ft.Colors.with_opacity(0.15, ft.Colors.BLACK)
+                        )
+                    ),
+                ),
+                on_click=lambda _, key=f_key: set_active_filter(key),
+            )
+            for f_key, label, icon, color in chips
+        ],
     ]
 
     return ft.Stack(
@@ -145,6 +192,8 @@ def MapScreen() -> Control:
                 on_map_tap=_on_map_tap,
                 expand=True,
                 is_dark=is_dark,
+                satellite=satellite,
+                map_ref=map_ref,
             ),
             # Floating Top Filter Bar
             ft.Container(
@@ -160,66 +209,13 @@ def MapScreen() -> Control:
             # Selected Marker Telemetry Sheet (Bottom overlay)
             *(
                 [
-                    ft.Container(
-                        content=ft.Column(
-                            [
-                                ft.Row(
-                                    [
-                                        ft.Row(
-                                            [
-                                                ft.Icon(
-                                                    ft.Icons.WARNING_ROUNDED,
-                                                    color=AppColors.PRIMARY,
-                                                    size=tokens.ICON_SM,
-                                                ),
-                                                ft.Text(
-                                                    selected_event.get(
-                                                        "type", "Event"
-                                                    ).upper(),
-                                                    size=tokens.FONT_XS,
-                                                    weight=ft.FontWeight.W_700,
-                                                    color=AppColors.PRIMARY,
-                                                ),
-                                            ],
-                                            spacing=4,
-                                        ),
-                                        ft.IconButton(
-                                            icon=ft.Icons.CLOSE_ROUNDED,
-                                            icon_size=18,
-                                            on_click=_close_event_sheet,
-                                        ),
-                                    ],
-                                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                                ),
-                                ft.Text(
-                                    selected_event.get("title", "Hazard Detail"),
-                                    size=tokens.FONT_MD,
-                                    weight=ft.FontWeight.BOLD,
-                                    font_family="Outfit",
-                                ),
-                                ft.Text(
-                                    f"Coordinates: {selected_event.get('latitude', 0.0):.4f}°, {selected_event.get('longitude', 0.0):.4f}° • Depth: {selected_event.get('depth_km', 0.0)} km",
-                                    size=tokens.FONT_XS,
-                                    color=ft.Colors.ON_SURFACE_VARIANT,
-                                ),
-                            ],
-                            spacing=tokens.SPACE_XXS,
-                            tight=True,
-                        ),
-                        bottom=tokens.SPACE_LG,
-                        left=tokens.SPACE_LG,
-                        right=tokens.SPACE_LG,
-                        padding=tokens.SPACE_MD,
-                        border_radius=tokens.RADIUS_LG,
-                        bgcolor=AppColors.DARK_SURFACE,
-                        border=ft.Border.all(
-                            1,
-                            ft.Colors.with_opacity(0.2, ft.Colors.WHITE),
-                        ),
-                        shadow=ft.BoxShadow(
-                            spread_radius=2,
-                            blur_radius=12,
-                            color=ft.Colors.BLACK,
+                    build_event_detail_sheet(
+                        selected_event,
+                        on_close=_close_event_sheet,
+                        on_open_url=lambda u: (
+                            asyncio.create_task(controller.launch_url(u))
+                            if controller.launch_url
+                            else None
                         ),
                     )
                 ]

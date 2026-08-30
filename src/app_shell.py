@@ -20,11 +20,12 @@ from state.controller_ctx import ControllerMethodsCtx
 
 logger = logging.getLogger("asase.shell")
 
-_TAB_NAMES = ("Radar", "Full Map", "Space", "Settings")
+_TAB_NAMES = ("Radar", "Full Map", "Space", "History", "Settings")
 _TAB_ICONS = (
     ft.Icons.DASHBOARD_ROUNDED,
     ft.Icons.MAP_ROUNDED,
     ft.Icons.PUBLIC_ROUNDED,
+    ft.Icons.HISTORY_ROUNDED,
     ft.Icons.SETTINGS_ROUNDED,
 )
 
@@ -76,7 +77,7 @@ def AppShell() -> Control:
     onboarding_done, set_onboarding_done = ft.use_state(state.has_accepted_terms)
 
     # Wire navigation and theme closures
-    controller.set_theme_mode = lambda mode: set_theme_ver(state.theme_version)
+    controller.set_theme_mode = lambda _mode: set_theme_ver(state.theme_version)
     controller.dismiss_onboarding = lambda: (
         set_onboarding_done(True),
         set_active_view("dashboard"),
@@ -87,7 +88,9 @@ def AppShell() -> Control:
     controller.show_space = lambda: set_active_view("space")
     controller.show_report = lambda: set_active_view("report")
     controller.show_settings = lambda: (set_active_view("dashboard"), set_active_tab(3))
+    controller.show_history = lambda: (set_active_view("dashboard"), set_active_tab(4))
     controller.back = lambda: set_active_view("dashboard")
+    controller.navigate_tab = lambda idx: set_active_tab(idx)
 
     from flet import context as flet_context
 
@@ -149,7 +152,6 @@ def AppShell() -> Control:
             theme_ver,
             state.has_accepted_terms,
             state.theme_version,
-            state.telemetry_version,
         ],
     )
 
@@ -173,6 +175,10 @@ def AppShell() -> Control:
             screen = MapScreen()
         elif active_tab == 2:
             screen = SpaceScreen()
+        elif active_tab == 3:
+            from screens.history_screen import HistoryScreen
+
+            screen = HistoryScreen()
         else:
             screen = SettingsScreen()
 

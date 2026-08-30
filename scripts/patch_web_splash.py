@@ -4,8 +4,16 @@
 import os
 import sys
 
-INDEX_PATH = "build/web/index.html"
-PYTHON_JS_PATH = "build/web/python.js"
+INDEX_PATHS = [
+    "build/flutter/build/web/index.html",
+    "build/flutter/web/index.html",
+    "build/web/index.html",
+]
+PYTHON_JS_PATHS = [
+    "build/flutter/build/web/python.js",
+    "build/flutter/web/python.js",
+    "build/web/python.js",
+]
 
 SPLASH_HTML = """
 <div id="asase-splash">
@@ -103,31 +111,38 @@ DISMISS_BRIDGE = """var splash = document.getElementById("asase-splash");
 
 
 def patch_web():
-    if not os.path.exists(INDEX_PATH):
-        print(f"Error: {INDEX_PATH} not found", file=sys.stderr)
-        return 1
-
-    # 1. Patch index.html with splash overlay
-    with open(INDEX_PATH, "r", encoding="utf-8") as f:
-        html = f.read()
-
-    if 'id="asase-splash"' not in html:
-        html = html.replace("<body>", "<body>" + SPLASH_HTML)
-        with open(INDEX_PATH, "w", encoding="utf-8") as f:
-            f.write(html)
-        print(f"Successfully patched {INDEX_PATH} with clean dynamic splash screen")
-
-    # 2. Patch python.js to dismiss splash on first UI frame
-    if os.path.exists(PYTHON_JS_PATH):
+    patched = 0
+    for INDEX_PATH in INDEX_PATHS:
+        if not os.path.exists(INDEX_PATH):
+            continue
+        with open(INDEX_PATH, "r", encoding="utf-8") as f:
+            html = f.read()
+        if 'id="asase-splash"' not in html:
+            # Remove native Flutter splash flash white
+            html = html.replace("<body>", "<body>" + SPLASH_HTML)
+            # Inject stage bus for WASM/Python progress
+            if "window.__asaseStage" not in html:
+                html = html.replace(
+                    "</head>",
+                    '<script>window.__asaseStage=function(m){var e=document.getElementById("asase-status-text");if(e){e.style.opacity="0";setTimeout(function(){e.innerText=m;e.style.opacity="1";},150);} };</script></head>',
+                )
+            with open(INDEX_PATH, "w", encoding="utf-8") as f:
+                f.write(html)
+            print(f"Patched {INDEX_PATH} with splash + stage bus")
+            patched += 1
+    for PYTHON_JS_PATH in PYTHON_JS_PATHS:
+        if not os.path.exists(PYTHON_JS_PATH):
+            continue
         with open(PYTHON_JS_PATH, "r", encoding="utf-8") as f:
             pjs = f.read()
-
         if "asase-splash" not in pjs and "app.dartOnMessage(event.data);" in pjs:
             pjs = pjs.replace("app.dartOnMessage(event.data);", DISMISS_BRIDGE)
             with open(PYTHON_JS_PATH, "w", encoding="utf-8") as f:
                 f.write(pjs)
-            print(f"Successfully patched {PYTHON_JS_PATH} with smooth dismissal bridge")
-
+            print(f"Patched {PYTHON_JS_PATH} with dismissal bridge")
+            patched += 1
+    if patched == 0:
+        print("No web build found to patch (run flet build web first)", file=sys.stderr)
     return 0
 
 

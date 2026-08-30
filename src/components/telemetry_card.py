@@ -57,7 +57,6 @@ def TelemetryCard(
 ) -> ft.Control:
     """Builds a responsive telemetry card with distance calculation and share/link buttons."""
 
-    # Map severity to color
     if severity == "critical":
         badge_color = AppColors.SEVERITY_CRITICAL
         badge_text = "CRITICAL"
@@ -78,7 +77,6 @@ def TelemetryCard(
         state = ft.use_context(AppStateCtx)
         controller = ft.use_context(ControllerMethodsCtx)
 
-        # Calculate distance from active user location if coordinates are available
         dist_str = ""
         if event_lat is not None and event_lon is not None:
             dist_km = calculate_haversine_distance_km(
@@ -88,7 +86,10 @@ def TelemetryCard(
 
         def _on_share_click(e):
             if controller.share_text:
-                msg = f"🌍 ASASE PLANETARY ALERT:\n{title}\n{subtitle}\nSeverity: {badge_text}\nLocation: {dist_str if dist_str else 'Global'}\n{event_url}"
+                msg = (
+                    f"\U0001f30d ASASE PLANETARY ALERT:\n{title}\n{subtitle}"
+                    f"\nSeverity: {badge_text}\nLocation: {dist_str if dist_str else 'Global'}\n{event_url}"
+                )
                 asyncio.create_task(controller.share_text(msg, title))
 
         def _on_link_click(e):
@@ -226,58 +227,59 @@ def TelemetryCard(
             on_click=on_click,
         )
 
-    # In standalone unit tests without React hooks context, render directly
-    card_container = AppStyles.glass_card(
-        ft.Column(
-            [
-                ft.Row(
-                    [
-                        ft.Container(
-                            content=ft.Icon(
-                                icon, size=tokens.ICON_SM, color=final_accent
+    try:
+        return _CardBody()
+    except RuntimeError:
+        # Fallback for unit tests without a Renderer (no React context)
+        return AppStyles.glass_card(
+            ft.Column(
+                [
+                    ft.Row(
+                        [
+                            ft.Container(
+                                content=ft.Icon(
+                                    icon, size=tokens.ICON_SM, color=final_accent
+                                ),
+                                padding=tokens.SPACE_XS,
+                                border_radius=tokens.RADIUS_SM,
+                                bgcolor=ft.Colors.with_opacity(0.12, final_accent),
                             ),
-                            padding=tokens.SPACE_XS,
-                            border_radius=tokens.RADIUS_SM,
-                            bgcolor=ft.Colors.with_opacity(0.12, final_accent),
-                        ),
-                        ft.Text(
-                            badge_text,
-                            size=tokens.FONT_XXS,
-                            weight=ft.FontWeight.W_700,
-                            color=final_accent,
-                            font_family="Outfit",
-                        ),
-                    ],
-                    spacing=tokens.SPACE_XS,
-                ),
-                ft.Text(
-                    title,
-                    size=tokens.FONT_MD,
-                    weight=ft.FontWeight.BOLD,
-                    font_family="Outfit",
-                ),
-                ft.Text(
-                    subtitle,
-                    size=tokens.FONT_XS,
-                    color=ft.Colors.ON_SURFACE_VARIANT,
-                ),
-                *(
-                    [
-                        ft.Text(
-                            value,
-                            size=tokens.FONT_SM,
-                            weight=ft.FontWeight.W_600,
-                            color=ft.Colors.ON_SURFACE,
-                        )
-                    ]
-                    if value
-                    else []
-                ),
-            ],
-            spacing=tokens.SPACE_XS,
-        ),
-        padding=tokens.SPACE_MD,
-        on_click=on_click,
-    )
-
-    return card_container
+                            ft.Text(
+                                badge_text,
+                                size=tokens.FONT_XXS,
+                                weight=ft.FontWeight.W_700,
+                                color=final_accent,
+                                font_family="Outfit",
+                            ),
+                        ],
+                        spacing=tokens.SPACE_XS,
+                    ),
+                    ft.Text(
+                        title,
+                        size=tokens.FONT_MD,
+                        weight=ft.FontWeight.BOLD,
+                        font_family="Outfit",
+                    ),
+                    ft.Text(
+                        subtitle,
+                        size=tokens.FONT_XS,
+                        color=ft.Colors.ON_SURFACE_VARIANT,
+                    ),
+                    *(
+                        [
+                            ft.Text(
+                                value,
+                                size=tokens.FONT_SM,
+                                weight=ft.FontWeight.W_600,
+                                color=ft.Colors.ON_SURFACE,
+                            )
+                        ]
+                        if value
+                        else []
+                    ),
+                ],
+                spacing=tokens.SPACE_XS,
+            ),
+            padding=tokens.SPACE_MD,
+            on_click=on_click,
+        )

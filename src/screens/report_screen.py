@@ -141,8 +141,10 @@ def ReportScreen() -> Control:
             )
         else:
             try:
-                cb = ft.Clipboard()
-                await cb.set(summary_text)
+                if hasattr(page, "set_clipboard"):
+                    await page.set_clipboard(summary_text)
+                elif hasattr(page, "clipboard"):
+                    await page.clipboard.set(summary_text)
                 if page:
                     show_snack(
                         page, "Dossier copied to clipboard!", bgcolor=AppColors.SUCCESS
@@ -158,7 +160,7 @@ def ReportScreen() -> Control:
         subtitle="MULTI-HAZARD RISK ASSESSMENT",
         on_refresh=controller.refresh_all,
         on_settings=lambda: (
-            controller.navigate_tab(3) if controller.navigate_tab else None
+            controller.navigate_tab(4) if controller.navigate_tab else None
         ),
         save_setting_fn=controller.save_setting,
     )
@@ -169,6 +171,106 @@ def ReportScreen() -> Control:
         flood_risk_val,
         pollution_risk_val,
         geomagnetic_risk_val,
+    )
+    radius_events, set_radius_events = ft.use_state(None)
+    radius_loading, set_radius_loading = ft.use_state(False)
+
+    async def _load_radius_history():
+        if not controller.fetch_radius_history:
+            return
+        set_radius_loading(True)
+        try:
+            evs = await controller.fetch_radius_history(
+                state.current_lat, state.current_lon, 500.0
+            )
+            set_radius_events(evs or [])
+        except Exception as ex:
+            logger.debug("Radius history load failed: %s", ex)
+            set_radius_events([])
+        finally:
+            set_radius_loading(False)
+
+    _radius_history_block = ft.Container(
+        content=ft.Column(
+            [
+                ft.Row(
+                    [
+                        ft.Icon(
+                            ft.Icons.HISTORY_ROUNDED,
+                            size=tokens.ICON_SM,
+                            color=AppColors.PRIMARY,
+                        ),
+                        ft.Text(
+                            "LOCAL SEISMIC HISTORY (500 KM)",
+                            size=tokens.FONT_XS,
+                            weight=ft.FontWeight.W_700,
+                            color=AppColors.PRIMARY,
+                        ),
+                        ft.Container(expand=True),
+                        ft.TextButton(
+                            "Load",
+                            on_click=lambda _: asyncio.create_task(
+                                _load_radius_history()
+                            ),
+                        )
+                        if radius_events is None
+                        else ft.TextButton(
+                            "Reload",
+                            on_click=lambda _: asyncio.create_task(
+                                _load_radius_history()
+                            ),
+                        ),
+                    ],
+                    spacing=tokens.SPACE_XS,
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                ),
+                ft.Text(
+                    "Fetching…"
+                    if radius_loading
+                    else (
+                        f"{len(radius_events)} events"
+                        if radius_events is not None
+                        else "Tap Load to fetch USGS FDSN 500 km history"
+                    ),
+                    size=tokens.FONT_XS,
+                    color=ft.Colors.ON_SURFACE_VARIANT,
+                ),
+                *(
+                    [
+                        ft.Container(
+                            content=ft.Row(
+                                [
+                                    ft.Text(
+                                        f"M{float(e.get('magnitude', 0)):.1f}",
+                                        size=tokens.FONT_XS,
+                                        weight=ft.FontWeight.BOLD,
+                                        color=AppColors.SEVERITY_HIGH,
+                                    ),
+                                    ft.Text(
+                                        e.get("place", "")[:60],
+                                        size=tokens.FONT_XS,
+                                        color=ft.Colors.ON_SURFACE,
+                                        expand=True,
+                                        max_lines=1,
+                                        overflow=ft.TextOverflow.ELLIPSIS,
+                                    ),
+                                ],
+                                spacing=tokens.SPACE_SM,
+                            ),
+                            padding=ft.Padding(
+                                tokens.SPACE_SM,
+                                tokens.SPACE_XS,
+                                tokens.SPACE_SM,
+                                tokens.SPACE_XS,
+                            ),
+                        )
+                        for e in (radius_events or [])[:10]
+                    ]
+                ),
+            ],
+            spacing=tokens.SPACE_XS,
+        ),
+        padding=tokens.SPACE_MD,
     )
     hydrology_sec = build_hydrology_section(max_discharge, discharge_trend)
     marine_sec = build_marine_section(wave_height, swell_height, wave_period)
@@ -314,6 +416,7 @@ def ReportScreen() -> Control:
             ),
             SectionHeader("PLANETARY THREAT RADAR PROFILE"),
             threat_radar,
+            _radius_history_block,
             SectionHeader("HYDROLOGY & GLOFAS RIVER DISCHARGE (7-DAY FORECAST)"),
             hydrology_sec,
             SectionHeader("MARINE DYNAMICS & COASTAL SWELL"),

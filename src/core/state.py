@@ -1,4 +1,10 @@
-"""Observable Application State for Asase Earth Intelligence."""
+"""Observable Application State for Asase Earth Intelligence.
+
+@ft.observable makes every attribute write notify all components holding
+use_context(AppStateCtx), mirroring KTV/DDGS/Sherlock. Lists/dicts are
+auto-wrapped into ObservableList/ObservableDict on assignment — swap whole
+objects rather than mutating in place where possible.
+"""
 
 from __future__ import annotations
 
@@ -8,6 +14,7 @@ from typing import Any
 import flet as ft
 
 
+@ft.observable
 @dataclass
 class AppState:
     # Network & Lifecycle

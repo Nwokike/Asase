@@ -11,18 +11,50 @@ from models.space_weather import SpaceWeatherTelemetry
 logger = logging.getLogger("asase.space_weather")
 
 
+def _parse_flare_class(flares: list) -> tuple[str, str]:
+    """Extract strongest flare class from GOES xray array."""
+    best = ""
+    best_rank = -1
+    rank = {"A": 0, "B": 1, "C": 2, "M": 3, "X": 4}
+    for f in flares:
+        if isinstance(f, dict):
+            cls = (
+                str(f.get("classType") or f.get("class_type") or f.get("class") or "")
+                .strip()
+                .upper()
+            )
+            if cls and cls[0] in rank and rank[cls[0]] > best_rank:
+                best = cls
+                best_rank = rank[cls[0]]
+            # fallback: flux field
+            if not best:
+                flux = f.get("flux") or f.get("current_flux")
+                try:
+                    v = float(str(flux))
+                    if v >= 1e-4:
+                        best = "X"
+                    elif v >= 1e-5:
+                        best = "M"
+                    elif v >= 1e-6:
+                        best = "C"
+                except Exception:
+                    pass
+    if best:
+        return f"Active — {best}-class flare detected", best
+    return "Active Solar Monitoring", ""
+
+
 class SpaceWeatherService:
     @staticmethod
     async def fetch_space_weather() -> dict:
-        """Fetch real-time geomagnetic storm Kp-index and solar flare flux."""
         kp_val = 0.0
         status = "Quiet (Normal)"
         solar = "Normal"
+        flare_class = ""
         raw_kp: list = []
 
         client = NetworkManager.get_client()
 
-        # 1. Planetary Kp-index
         try:
             res = await client.get(NOAA_SWPC_KP_INDEX)
             if res.status_code == 200:
@@ -38,11 +70,7 @@ class SpaceWeatherService:
                         )
                     elif isinstance(latest, list) and len(latest) > 1:
                         kp_val = float(latest[1])
-                    else:
-                        kp_val = 0.0
-
                     raw_kp = kp_data[-12:]
-
                     if kp_val < 3.0:
                         status = "Quiet (Normal)"
                     elif kp_val < 5.0:
@@ -55,17 +83,16 @@ class SpaceWeatherService:
                         status = "G3 Strong Geomagnetic Storm"
                     else:
                         status = "G4/G5 Severe Geomagnetic Storm"
-                    logger.info("NOAA SWPC: Validated Kp %.2f (%s)", kp_val, status)
+                    logger.info("NOAA SWPC: Kp %.2f (%s)", kp_val, status)
         except Exception as e:
             logger.warning("NOAA Kp-index fetch failed: %s", e)
 
-        # 2. GOES Solar X-Ray Flares
         try:
             res2 = await client.get(NOAA_SWPC_SOLAR_FLARES)
             if res2.status_code == 200:
                 flares = res2.json()
                 if isinstance(flares, list) and flares:
-                    solar = "Active Solar Monitoring"
+                    solar, flare_class = _parse_flare_class(flares)
         except Exception as e:
             logger.debug("NOAA Solar Flares fetch failed: %s", e)
 
@@ -75,5 +102,6 @@ class SpaceWeatherService:
             solar_activity=solar,
             raw_kp=raw_kp if isinstance(raw_kp, list) else [],
         )
-
-        return telemetry.model_dump()
+        d = telemetry.model_dump()
+        d["flare_class"] = flare_class
+        return d

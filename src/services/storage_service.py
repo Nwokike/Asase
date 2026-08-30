@@ -111,9 +111,9 @@ class StorageService:
             storage_dir = get_storage_dir()
             storage_file = get_storage_file()
             storage_dir.mkdir(parents=True, exist_ok=True)
-            data_bytes = json.dumps(self._data, ensure_ascii=False, indent=2).encode(
-                "utf-8"
-            )
+            data_bytes = json.dumps(
+                self._data, ensure_ascii=False, separators=(",", ":")
+            ).encode("utf-8")
             tmp_path = storage_file.with_suffix(".json.tmp")
             bak_path = storage_file.with_suffix(".json.bak")
 
@@ -132,23 +132,29 @@ class StorageService:
     def _save_now_web(self) -> None:
         try:
             cs = self._page.client_storage
-            cs.set("asase_storage", json.dumps(self._data))
+            cs.set("asase_storage", json.dumps(self._data, separators=(",", ":")))
             self._dirty = False
             self._last_write = time.monotonic()
         except Exception as e:
             logger.warning("StorageService._save_now_web failed: %s", e)
 
     def _schedule_write(self) -> None:
-        if self._pending_write_task:
-            return
+        if self._pending_write_task and not self._pending_write_task.done():
+            self._pending_write_task.cancel()
         try:
             loop = asyncio.get_event_loop()
-            self._pending_write_task = loop.call_later(
-                _WRITE_DEBOUNCE_SEC,
-                lambda: loop.create_task(self._flush_task()),
-            )
-        except Exception:
+            self._pending_write_task = loop.create_task(self._debounced_flush())
+        except RuntimeError:
             pass
+
+    async def _debounced_flush(self) -> None:
+        try:
+            await asyncio.sleep(_WRITE_DEBOUNCE_SEC)
+            await self.flush()
+        except asyncio.CancelledError:
+            pass
+        finally:
+            self._pending_write_task = None
 
     async def _flush_task(self) -> None:
         try:
@@ -175,7 +181,7 @@ class StorageService:
     async def flush(self) -> None:
         async with self._lock:
             if self._dirty:
-                self._save_now()
+                await asyncio.to_thread(self._save_now)
 
     # ── Gzip Telemetry Cache Subsystem ──
 
@@ -199,19 +205,23 @@ class StorageService:
             path = self._cache_path(key)
             if path.exists():
                 try:
-                    raw = gzip.decompress(path.read_bytes())
-                    envelope = json.loads(raw.decode("utf-8"))
+                    raw = await asyncio.to_thread(path.read_bytes)
+                    decompressed = await asyncio.to_thread(gzip.decompress, raw)
+                    envelope = json.loads(decompressed.decode("utf-8"))
                     if now < envelope.get("expires_at", 0):
                         data = envelope.get("data")
                         self._l1_cache[key] = {
                             "data": data,
                             "expires_at": envelope["expires_at"],
                         }
+                        if len(self._l1_cache) > self._max_l1_items:
+                            self._l1_cache.popitem(last=False)
                         return data
-                    path.unlink(missing_ok=True)
+                    await asyncio.to_thread(path.unlink, True)
                 except Exception as e:
                     logger.debug("Cache read error for %s: %s", key, e)
-                    path.unlink(missing_ok=True)
+                    with contextlib.suppress(Exception):
+                        await asyncio.to_thread(path.unlink, True)
         return None
 
     async def set_cached_telemetry(
@@ -235,11 +245,17 @@ class StorageService:
                     "expires_at": expires_at,
                     "data": data,
                 }
-                raw = json.dumps(envelope, ensure_ascii=False).encode("utf-8")
-                compressed = gzip.compress(raw, compresslevel=6)
+                raw = json.dumps(
+                    envelope, ensure_ascii=False, separators=(",", ":")
+                ).encode("utf-8")
+                compressed = await asyncio.to_thread(gzip.compress, raw, 6)
                 path = self._cache_path(key)
                 tmp_path = path.with_suffix(".tmp")
-                tmp_path.write_bytes(compressed)
-                tmp_path.replace(path)
+
+                def _write() -> None:
+                    tmp_path.write_bytes(compressed)
+                    tmp_path.replace(path)
+
+                await asyncio.to_thread(_write)
             except Exception as e:
                 logger.debug("Cache write error for %s: %s", key, e)
