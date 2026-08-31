@@ -32,7 +32,6 @@ from core.theme import AppColors, AppTheme
 from services.ad_service import AdService
 from services.atmospheric_service import AtmosphericService
 from services.disaster_service import DisasterService
-from services.gateway_service import fetch_latest_version, is_newer_version
 from services.seismic_service import SeismicService
 from services.space_weather_service import SpaceWeatherService
 from services.storage_service import StorageService
@@ -107,9 +106,6 @@ class AppController:
 
         # Initial Telemetry Load
         self.page.run_task(self.refresh_all)
-
-        # Optional gateway update check (fails soft, never blocks startup)
-        self.page.run_task(self._check_app_version)
 
         # Mount React-style Component Tree
         from app_shell import AppShell
@@ -190,22 +186,6 @@ class AppController:
             self.page.update()
 
     _refresh_lock: asyncio.Lock | None = None
-
-    async def _check_app_version(self) -> None:
-        """Poll the Kiri gateway for a newer published version; notify once."""
-        try:
-            latest = await fetch_latest_version()
-            if latest and is_newer_version(latest, APP_VERSION):
-                logger.info(
-                    "App update available: %s (current %s)", latest, APP_VERSION
-                )
-                show_snack(
-                    self.page,
-                    f"Asase {latest} is available — update for the latest telemetry.",
-                    bgcolor=AppColors.GREY,
-                )
-        except Exception as ex:
-            logger.debug("Version check failed (non-blocking): %s", ex)
 
     async def refresh_all(self) -> None:
         """Fetch real-time USGS earthquakes, NASA disasters, atmospheric telemetry, and space weather."""

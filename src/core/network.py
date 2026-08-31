@@ -109,7 +109,7 @@ class ResilientRetryTransport(httpx.AsyncHTTPTransport):
 
 
 async def on_request_hook(request: httpx.Request) -> None:
-    request.headers["User-Agent"] = "Asase-Earth-Intelligence/1.1 (+https://kiri.ng)"
+    request.headers["User-Agent"] = "Asase-Earth-Intelligence/1.0 (+https://kiri.ng)"
     request.extensions["start_time"] = time.perf_counter()
 
 

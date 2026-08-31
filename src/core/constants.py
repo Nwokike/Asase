@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 APP_NAME = "Asase"
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.0.0"
 APP_SUBTITLE = "Global Earth Intelligence & Planetary Telemetry"
 
-# Kiri Gateway (public, unauthenticated endpoints only — auth-free vision kept)
+# Kiri Gateway (family-shared app key, same as akili/MarkItDown)
 GATEWAY_BASE_URL = "https://api.kiri.ng"
-GATEWAY_VERSION_URL = f"{GATEWAY_BASE_URL}/version"
+GATEWAY_CHAT_URL = f"{GATEWAY_BASE_URL}/chat"
+GATEWAY_APP_SECRET = "mobile-v1"
 
 # Storage Keys (Prefix: asase.)
 STORAGE_THEME = "asase.theme"

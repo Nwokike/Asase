@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 
 import flet as ft
 from flet import Control
 
 from components.app_header import build_app_header
 from components.banner_ad import build_banner_ad
+from components.report.ai_briefing_section import build_ai_briefing_section
 from components.report.air_quality_section import build_air_quality_section
 from components.report.hydrology_marine_section import (
     build_hydrology_section,
@@ -23,6 +25,7 @@ from components.section_header import SectionHeader
 from core import tokens
 from core.notify import show_snack
 from core.theme import AppColors, AppStyles
+from services.ai_service import DEFAULT_QUESTION, stream_briefing
 from state.app_state import AppStateCtx
 from state.controller_ctx import ControllerMethodsCtx
 
@@ -174,6 +177,58 @@ def ReportScreen() -> Control:
     )
     radius_events, set_radius_events = ft.use_state(None)
     radius_loading, set_radius_loading = ft.use_state(False)
+
+    # AI briefing state — tokens stream in, pumped to the UI in small batches
+    ai_answer, set_ai_answer = ft.use_state("")
+    ai_busy, set_ai_busy = ft.use_state(False)
+    ai_unavailable, set_ai_unavailable = ft.use_state(False)
+    ai_question, set_ai_question = ft.use_state("")
+
+    async def _run_ai(q: str):
+        if not q.strip() or ai_busy:
+            return
+        set_ai_busy(True)
+        set_ai_answer("")
+        set_ai_unavailable(False)
+
+        buf: list[str] = []
+        last_push = 0.0
+
+        def _on_token(chunk: str):
+            nonlocal last_push
+            buf.append(chunk)
+            now = time.monotonic()
+            if now - last_push > 0.2:  # batch UI updates while streaming
+                last_push = now
+                set_ai_answer("".join(buf))
+
+        try:
+            full = await stream_briefing(q, _on_token)
+            set_ai_answer(full or "".join(buf))
+            if not (full or buf):
+                set_ai_unavailable(True)
+        except Exception as ex:
+            logger.warning("AI briefing failed: %s", ex)
+            set_ai_unavailable(True)
+        finally:
+            set_ai_busy(False)
+
+    def _generate_briefing(e=None):
+        asyncio.create_task(_run_ai(DEFAULT_QUESTION))
+
+    def _ask_followup(e=None):
+        asyncio.create_task(_run_ai(ai_question))
+        set_ai_question("")
+
+    ai_section = build_ai_briefing_section(
+        ai_answer,
+        ai_busy,
+        ai_unavailable,
+        ai_question,
+        _generate_briefing,
+        _ask_followup,
+        lambda e: set_ai_question(e.control.value or ""),
+    )
 
     async def _load_radius_history():
         if not controller.fetch_radius_history:
@@ -416,6 +471,7 @@ def ReportScreen() -> Control:
             ),
             SectionHeader("PLANETARY THREAT RADAR PROFILE"),
             threat_radar,
+            ai_section,
             _radius_history_block,
             SectionHeader("HYDROLOGY & GLOFAS RIVER DISCHARGE (7-DAY FORECAST)"),
             hydrology_sec,

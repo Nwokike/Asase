@@ -1,6 +1,6 @@
 [project]
 name = "asase"
-version = "1.1.0"
+version = "1.0.0"
 description = "Asase — Global Earth Intelligence & Multi-Hazard Planetary Defense Platform"
 readme = "README.md"
 requires-python = ">=3.12"
