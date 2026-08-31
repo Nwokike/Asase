@@ -1,7 +1,7 @@
 """Comprehensive tests for Asase UI components."""
 
 import flet as ft
-from flet_tree import walk_icons, walk_texts
+from flet_tree import walk, walk_icons, walk_texts
 
 from components.banner_ad import build_banner_ad
 from components.hazard_map import (
@@ -9,6 +9,9 @@ from components.hazard_map import (
     build_event_detail_sheet,
     build_hazard_marker,
 )
+from components.home.focus_banner import build_focus_banner
+from components.map.map_scan_section import build_map_scan_section
+from components.report.ai_briefing_section import build_ai_briefing_section
 from components.section_header import SectionHeader
 from components.sparkline_chart import TelemetryLineChart
 from components.telemetry_card import TelemetryCard, build_severity_badge
@@ -56,6 +59,89 @@ def test_telemetry_card():
 
     icons = list(walk_icons(card))
     assert len(icons) >= 1
+
+
+def test_telemetry_card_clickable():
+    # Whole-card on_click flows through to the glass card container
+    clicked = []
+    card = TelemetryCard(
+        icon=ft.Icons.WAVES_ROUNDED,
+        title="M 4.2 - 12km S of Volcano",
+        value="",
+        subtitle="Depth 10.0km",
+        severity="moderate",
+        on_click=lambda e: clicked.append(e),
+    )
+    assert isinstance(card, ft.Container)
+    assert card.on_click is not None
+    assert card.ink is True  # ripple feedback for clickable cards
+
+
+def test_focus_banner_states():
+    # Collapsed: compact pill with the location name
+    pill = build_focus_banner(
+        page=None,
+        location_name="Enugu",
+        country="Nigeria",
+        elevation_m=118,
+        temperature=29,
+        us_aqi=42,
+        kp_index=2.0,
+        nearest_hazard_text=None,
+        nearest_hazard_color=AppColors.WARNING,
+        expanded=False,
+        is_loading=False,
+        on_toggle=lambda: None,
+        on_open_dossier=lambda: None,
+    )
+    texts = [t.value for t in walk_texts(pill)]
+    assert any("Tracking: Enugu" in t for t in texts)
+    assert not any("OPEN FULL DOSSIER" in t for t in texts)
+
+    # Expanded: summary card with stat chips + dossier button + hazard chip
+    expanded = build_focus_banner(
+        page=None,
+        location_name="Enugu",
+        country="Nigeria",
+        elevation_m=118,
+        temperature=29,
+        us_aqi=42,
+        kp_index=2.0,
+        nearest_hazard_text="M4.2 quake • 210 km away",
+        nearest_hazard_color=AppColors.WARNING,
+        expanded=True,
+        is_loading=False,
+        on_toggle=lambda: None,
+        on_open_dossier=lambda: None,
+    )
+    texts_e = [t.value for t in walk_texts(expanded)]
+    assert any("Enugu, Nigeria" in t for t in texts_e)
+    assert any("118 m" in t for t in texts_e)
+    assert any("29°C" in t for t in texts_e)
+    assert any("AQI 42" in t for t in texts_e)
+    assert any("Kp 2.0" in t for t in texts_e)
+    assert any("210 km away" in t for t in texts_e)
+    assert any("OPEN FULL DOSSIER" in t for t in texts_e)
+
+    # Missing telemetry degrades to n/a instead of crashing
+    degraded = build_focus_banner(
+        page=None,
+        location_name="Nowhere",
+        country="",
+        elevation_m=0,
+        temperature=None,
+        us_aqi="",
+        kp_index="",
+        nearest_hazard_text=None,
+        nearest_hazard_color=AppColors.WARNING,
+        expanded=True,
+        is_loading=True,
+        on_toggle=lambda: None,
+        on_open_dossier=lambda: None,
+    )
+    texts_d = [t.value for t in walk_texts(degraded)]
+    assert any(t == "n/a" for t in texts_d)
+    assert any("Updating live telemetry" in t for t in texts_d)
 
 
 def test_sparkline_chart_rendering():
@@ -140,11 +226,30 @@ def test_build_event_detail_sheet():
     assert any("Magnitude M5.2" in t for t in texts)
     assert any("Depth 35.7 km" in t for t in texts)
 
-    # TextButton renders its `content` label outside walked Text children
+    # TextButton/FilledButton render labels as `content` — Text objects (read
+    # .value) or plain strings, depending on construction — not walked Texts.
     from flet_tree import walk
 
+    def _label(b):
+        c = b.content
+        return c.value if isinstance(c, ft.Text) else str(c)
+
     buttons = [c for c in walk(sheet) if isinstance(c, ft.TextButton)]
-    assert any("OPEN SOURCE DATA" in str(b.content) for b in buttons)
+    assert any("SOURCE" in _label(b) for b in buttons)
+
+    # With dossier/share handlers, the sheet offers the full deep-dive path
+    full_sheet = build_event_detail_sheet(
+        event,
+        on_close=lambda: None,
+        on_open_url=lambda u: None,
+        on_view_dossier=lambda: None,
+        on_share=lambda m: None,
+    )
+    full_walk = list(walk(full_sheet))
+    filled = [c for c in full_walk if isinstance(c, ft.FilledButton)]
+    assert any("VIEW FULL DOSSIER" in _label(b) for b in filled)
+    full_buttons = [c for c in full_walk if isinstance(c, ft.TextButton)]
+    assert any("SHARE" in _label(b) for b in full_buttons)
 
     # No URL → no source button
     bare = build_event_detail_sheet(
@@ -153,12 +258,92 @@ def test_build_event_detail_sheet():
         on_open_url=lambda u: None,
     )
     buttons_bare = [c for c in walk(bare) if isinstance(c, ft.TextButton)]
-    assert not any("OPEN SOURCE DATA" in str(b.content) for b in buttons_bare)
+    assert not any("SOURCE" in _label(b) for b in buttons_bare)
 
 
 def test_banner_ad():
     ad = build_banner_ad(None)
     assert isinstance(ad, ft.Container)
+
+
+def test_ai_sections_render_markdown():
+    # Briefing answers render as rich Markdown, not raw asterisk soup
+    briefing = build_ai_briefing_section(
+        "**Primary Concern:** Rising river discharge.",
+        False,
+        False,
+        "",
+        lambda e: None,
+        lambda e: None,
+        lambda e: None,
+        model="qwen/qwen3.8-27b",
+    )
+    md = [c for c in walk(briefing) if isinstance(c, ft.Markdown)]
+    assert len(md) == 1
+    assert md[0].value == "**Primary Concern:** Rising river discharge."
+    assert md[0].selectable is True
+    assert md[0].extension_set == ft.MarkdownExtensionSet.GITHUB_WEB
+
+    # Map scan panel — same rich rendering
+    scan = build_map_scan_section(
+        "**Cluster:** Dense seismic group SE of marker.",
+        False,
+        False,
+        "",
+        "google/diffusiongemma-26b-a4b-it",
+        lambda e: None,
+        lambda e: None,
+        lambda e: None,
+    )
+    md_scan = [c for c in walk(scan) if isinstance(c, ft.Markdown)]
+    assert len(md_scan) == 1
+    assert md_scan[0].value.startswith("**Cluster:**")
+
+
+def test_markdown_stylesheet_theme():
+    from core.theme import AppStyles
+
+    sheet_dark = AppStyles.markdown_stylesheet(is_dark=True)
+    sheet_light = AppStyles.markdown_stylesheet(is_dark=False)
+    assert isinstance(sheet_dark, ft.MarkdownStyleSheet)
+    assert sheet_dark.p_text_style is not None
+    assert sheet_dark.code_text_style is not None
+    assert sheet_light.code_text_style.bgcolor != sheet_dark.code_text_style.bgcolor
+
+
+def test_space_g_scale_and_forecast_helpers():
+    from screens.space_screen import (
+        build_g_scale_meter,
+        build_kp_forecast_chips,
+        g_level_from_kp,
+        kp_severity_color,
+    )
+
+    assert g_level_from_kp(1.67) == 0
+    assert g_level_from_kp(5.2) == 1
+    assert g_level_from_kp(6.0) == 2
+    assert g_level_from_kp(7.4) == 3
+    assert g_level_from_kp(8.2) == 4
+    assert g_level_from_kp(9.0) == 5
+    assert kp_severity_color(3.0) == AppColors.SEVERITY_LOW
+    assert kp_severity_color(5.0) == AppColors.SEVERITY_MODERATE
+    assert kp_severity_color(7.0) == AppColors.SEVERITY_CRITICAL
+
+    meter = build_g_scale_meter(2)
+    texts = [t.value for t in walk_texts(meter)]
+    assert texts == ["G0", "G1", "G2", "G3", "G4", "G5"]
+
+    chips = build_kp_forecast_chips(
+        [
+            {"time_tag": "2026-09-01T00:00:00", "kp": 3.0},
+            {"time_tag": "2026-09-01T03:00:00", "kp": 6.5},
+        ]
+    )
+    chip_texts = [t.value for t in walk_texts(chips)]
+    assert "00:00" in chip_texts
+    assert "Kp 3.0" in chip_texts
+    assert "Kp 6.5" in chip_texts
+    assert build_kp_forecast_chips([]) is None
 
 
 def test_app_header():

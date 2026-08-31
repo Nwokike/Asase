@@ -18,6 +18,108 @@ from state.app_state import AppStateCtx
 from state.controller_ctx import ControllerMethodsCtx
 
 
+def g_level_from_kp(kp: float) -> int:
+    """Map Kp to the NOAA G-scale storm level (0–5)."""
+    if kp >= 9.0:
+        return 5
+    if kp >= 8.0:
+        return 4
+    if kp >= 7.0:
+        return 3
+    if kp >= 6.0:
+        return 2
+    if kp >= 5.0:
+        return 1
+    return 0
+
+
+def kp_severity_color(kp: float) -> str:
+    """Green → amber → red severity color for a Kp value."""
+    if kp < 4.0:
+        return AppColors.SEVERITY_LOW
+    if kp < 6.0:
+        return AppColors.SEVERITY_MODERATE
+    return AppColors.SEVERITY_CRITICAL
+
+
+def build_g_scale_meter(level: int) -> ft.Control:
+    """Segmented G0–G5 storm-scale bar with the current level lit."""
+    segments: list[ft.Control] = []
+    for g in range(6):
+        active = g == level
+        color = (
+            AppColors.SEVERITY_LOW
+            if g == 0
+            else AppColors.SEVERITY_MODERATE
+            if g <= 2
+            else AppColors.SEVERITY_CRITICAL
+        )
+        segments.append(
+            ft.Container(
+                content=ft.Text(
+                    f"G{g}",
+                    size=tokens.FONT_XXS,
+                    weight=ft.FontWeight.W_700,
+                    color=ft.Colors.WHITE if active else ft.Colors.ON_SURFACE_VARIANT,
+                    text_align=ft.TextAlign.CENTER,
+                ),
+                alignment=ft.Alignment.CENTER,
+                padding=ft.Padding(4, 3, 4, 3),
+                border_radius=tokens.RADIUS_XS,
+                bgcolor=ft.Colors.with_opacity(0.9 if active else 0.12, color),
+                border=ft.Border.all(
+                    1,
+                    ft.Colors.with_opacity(0.6 if active else 0.15, color),
+                ),
+                expand=1,
+            )
+        )
+    return ft.Row(segments, spacing=tokens.SPACE_XXS)
+
+
+def build_kp_forecast_chips(forecast: list[dict]) -> ft.Control | None:
+    """Row of next-24h predicted Kp chips ('HH:MM • Kp 3.0'), tinted by severity."""
+    if not forecast:
+        return None
+    chips = []
+    for f in forecast:
+        try:
+            kp = float(f.get("kp", 0.0))
+        except (TypeError, ValueError):
+            continue
+        hour = str(f.get("time_tag", ""))[11:16] or "--:--"
+        color = kp_severity_color(kp)
+        chips.append(
+            ft.Container(
+                content=ft.Column(
+                    [
+                        ft.Text(
+                            hour,
+                            size=tokens.FONT_XXS,
+                            color=ft.Colors.ON_SURFACE_VARIANT,
+                        ),
+                        ft.Text(
+                            f"Kp {kp:.1f}",
+                            size=tokens.FONT_XS,
+                            weight=ft.FontWeight.W_700,
+                            color=color,
+                        ),
+                    ],
+                    spacing=0,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    tight=True,
+                ),
+                padding=ft.Padding(
+                    tokens.SPACE_SM, tokens.SPACE_XS, tokens.SPACE_SM, tokens.SPACE_XS
+                ),
+                border_radius=tokens.RADIUS_SM,
+                bgcolor=ft.Colors.with_opacity(0.1, color),
+                border=ft.Border.all(1, ft.Colors.with_opacity(0.25, color)),
+            )
+        )
+    return ft.Row(chips, spacing=tokens.SPACE_XS, scroll=ft.ScrollMode.AUTO)
+
+
 @ft.component
 def SpaceScreen() -> Control:
     state = ft.use_context(AppStateCtx)
@@ -28,6 +130,8 @@ def SpaceScreen() -> Control:
     solar = sw.get("solar_activity", "Normal")
     flare_class = sw.get("flare_class", "")
     raw_kp = sw.get("raw_kp", [])
+    xray_flux = sw.get("xray_flux", [])
+    kp_forecast = sw.get("kp_forecast", [])
 
     # Extract historical Kp values (handling both dict and list schemas from NOAA SWPC)
     kp_history: list[float] = []
@@ -159,6 +263,8 @@ def SpaceScreen() -> Control:
                                 ],
                                 spacing=tokens.SPACE_LG,
                             ),
+                            # NOAA G-scale storm meter — the official severity scale
+                            build_g_scale_meter(g_level_from_kp(kp)),
                         ],
                         spacing=tokens.SPACE_SM,
                     ),
@@ -193,6 +299,62 @@ def SpaceScreen() -> Control:
                 padding=ft.Padding(
                     tokens.SPACE_LG, 0, tokens.SPACE_LG, tokens.SPACE_SM
                 ),
+            ),
+            # Solar X-ray flux — the live flare watch trace from GOES
+            SectionHeader("SOLAR X-RAY FLUX (GOES 0.1–0.8NM)"),
+            ft.Container(
+                content=AppStyles.glass_card(
+                    ft.Column(
+                        [
+                            ft.Text(
+                                "6-hour X-ray irradiance trace — flares appear as spikes "
+                                "(×10⁻⁹ W/m²; A/B < 100, C ~100–1k, M ~1k–10k, X > 10k)",
+                                size=tokens.FONT_XS,
+                                color=ft.Colors.ON_SURFACE_VARIANT,
+                                font_family="Outfit",
+                            ),
+                            TelemetryLineChart(
+                                values=xray_flux,
+                                accent_color=AppColors.OCEAN,
+                                height=140,
+                                tooltip_format="{:.0f}",
+                            ),
+                        ],
+                        spacing=tokens.SPACE_XS,
+                    ),
+                    padding=tokens.SPACE_MD,
+                ),
+                padding=ft.Padding(
+                    tokens.SPACE_LG, 0, tokens.SPACE_LG, tokens.SPACE_SM
+                ),
+            ),
+            # Next 24h geomagnetic outlook (predicted Kp from NOAA SWPC)
+            *(
+                [
+                    SectionHeader("NEXT 24H GEOMAGNETIC OUTLOOK"),
+                    ft.Container(
+                        content=AppStyles.glass_card(
+                            ft.Column(
+                                [
+                                    ft.Text(
+                                        "Predicted planetary K-index (3-hour cadence, NOAA SWPC)",
+                                        size=tokens.FONT_XS,
+                                        color=ft.Colors.ON_SURFACE_VARIANT,
+                                        font_family="Outfit",
+                                    ),
+                                    build_kp_forecast_chips(kp_forecast),
+                                ],
+                                spacing=tokens.SPACE_XS,
+                            ),
+                            padding=tokens.SPACE_MD,
+                        ),
+                        padding=ft.Padding(
+                            tokens.SPACE_LG, 0, tokens.SPACE_LG, tokens.SPACE_SM
+                        ),
+                    ),
+                ]
+                if kp_forecast
+                else []
             ),
             SectionHeader("SPACE WEATHER INDICES"),
             ft.Container(

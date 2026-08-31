@@ -123,6 +123,26 @@ def MapScreen() -> Control:
                 )
             )
 
+    def _open_event_dossier():
+        """Re-center tracking to the selected marker and open the Dossier."""
+        ev = selected_event or {}
+        lat = float(ev.get("latitude", 0.0))
+        lon = float(ev.get("longitude", 0.0))
+        name = ev.get("place") or ev.get("title") or f"Coord ({lat:.2f}, {lon:.2f})"
+
+        async def _go():
+            set_selected_event(None)
+            if controller.select_coordinates:
+                await controller.select_coordinates(lat, lon, name, "")
+            if controller.open_report:
+                await controller.open_report()
+
+        asyncio.create_task(_go())
+
+    def _share_event_text(msg: str):
+        if controller.share_text:
+            asyncio.create_task(controller.share_text(msg, "Asase Hazard Alert"))
+
     from flet import context as flet_context
 
     page = flet_context.page
@@ -321,6 +341,14 @@ def MapScreen() -> Control:
                             _on_scan,
                             _on_scan_ask,
                             lambda e: set_scan_question(e.control.value or ""),
+                            is_dark=is_dark,
+                            on_open_link=(
+                                lambda url: (
+                                    asyncio.create_task(controller.launch_url(url))
+                                    if controller.launch_url
+                                    else None
+                                )
+                            ),
                         ),
                         left=tokens.SPACE_LG,
                         right=tokens.SPACE_LG,
@@ -341,6 +369,8 @@ def MapScreen() -> Control:
                             if controller.launch_url
                             else None
                         ),
+                        on_view_dossier=_open_event_dossier,
+                        on_share=_share_event_text,
                     )
                 ]
                 if selected_event

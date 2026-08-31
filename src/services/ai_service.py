@@ -40,8 +40,8 @@ SYSTEM_PROMPT = (
     "the provided measurements — never invent or estimate values you were not "
     "given; if a value is missing, say it is unavailable; be specific and "
     "reference the actual numbers; no hedging filler; calm factual tone like a "
-    "flight safety card. Lead with the single most important concern, then at "
-    "most 4 short points."
+    "flight safety card. Format as clean Markdown: a single bold lead line with "
+    "the most important concern, then at most 4 short bullet points."
 )
 
 DEFAULT_QUESTION = (
@@ -57,9 +57,9 @@ MAP_SCAN_SYSTEM_PROMPT = (
     "their colors, density and spatial pattern around the tracked location — "
     "and connect visible patterns to the provided measurements. Never invent "
     "events, places, or numbers that are not visible in the image or present "
-    "in the measurements. Lead with the most significant visible hazard "
-    "cluster, then at most 4 short points. Plain language a normal person can "
-    "act on."
+    "in the measurements. Lead with a single bold line naming the most "
+    "significant visible hazard cluster, then at most 4 short Markdown bullet "
+    "points. Plain language a normal person can act on."
 )
 
 DEFAULT_SCAN_QUESTION = (

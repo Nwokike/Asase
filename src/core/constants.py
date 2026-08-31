@@ -59,6 +59,9 @@ OPEN_METEO_ELEVATION = "https://api.open-meteo.com/v1/elevation"
 NOAA_SWPC_KP_INDEX = (
     "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json"
 )
+NOAA_SWPC_KP_FORECAST = (
+    "https://services.swpc.noaa.gov/products/noaa-planetary-k-index-forecast.json"
+)
 NOAA_SWPC_SOLAR_FLARES = (
     "https://services.swpc.noaa.gov/json/goes/primary/xrays-6-hour.json"
 )

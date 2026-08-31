@@ -15,8 +15,13 @@ def TelemetryLineChart(
     height: float = 120,
     curved: bool = True,
     show_points: bool = True,
+    tooltip_format: str = "{:.1f}",
 ) -> ft.Control:
-    """Builds a hardware-accelerated trend line chart with below-line gradient."""
+    """Builds a hardware-accelerated trend line chart with below-line gradient.
+
+    `tooltip_format` shapes the per-point tooltip, e.g. "{:.0f}" for
+    nanoflux-scale X-ray values where one decimal would be noise.
+    """
     if not values:
         return ft.Container(
             content=ft.Text(
@@ -39,7 +44,7 @@ def TelemetryLineChart(
         fc.LineChartDataPoint(
             x=float(i),
             y=float(val),
-            tooltip=f"{val:.1f}",
+            tooltip=tooltip_format.format(val),
         )
         for i, val in enumerate(values)
     ]

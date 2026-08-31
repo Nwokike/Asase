@@ -22,6 +22,12 @@ class SpaceWeatherTelemetry(BaseModel):
     # NOAA's products feed serves dicts ({"time_tag", "Kp", ...}); older SWPC
     # endpoints serve row lists. Accept both so the chart never starves.
     raw_kp: list[list | dict] = Field(default_factory=list)
+    # Strongest flare class in the 6h GOES window, e.g. "M1.0" ("" if none)
+    flare_class: str = ""
+    # GOES 0.1-0.8nm channel flux trace, downscaled ×10⁻⁹ W/m² (~72 points)
+    xray_flux: list[float] = Field(default_factory=list)
+    # Next ~24h predicted Kp: [{"time_tag", "kp", "observed"}...] (predicted only)
+    kp_forecast: list[dict] = Field(default_factory=list)
 
     @computed_field
     @property

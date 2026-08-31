@@ -246,7 +246,9 @@ def test_ai_briefing_section_busy_and_answer_states():
         lambda e: None,
     )
     texts_a = [t.value for t in walk_texts(answered)]
-    assert any("Kp is quiet" in t for t in texts_a)
+    # The answer lives in a Markdown control, not plain Texts
+    mds = [c for c in walk(answered) if isinstance(c, ft.Markdown)]
+    assert len(mds) == 1 and "Kp is quiet" in mds[0].value
     assert any("Regenerate Briefing" in t for t in texts_a)
     assert any(isinstance(c, ft.TextField) for c in walk(answered))
 
@@ -300,7 +302,8 @@ def test_map_scan_section_states():
         lambda e: None,
     )
     texts = [t.value for t in walk_texts(answered)]
-    assert any("Dense quake cluster" in t for t in texts)
+    mds = [c for c in walk(answered) if isinstance(c, ft.Markdown)]
+    assert len(mds) == 1 and "Dense quake cluster" in mds[0].value
     assert any("via google/diffusiongemma" in t for t in texts)
 
     busy = build_map_scan_section(

@@ -22,8 +22,24 @@ def build_ai_briefing_section(
     on_ask,
     on_question_change,
     model: str = "",
+    is_dark: bool = False,
+    on_open_link=None,
 ) -> ft.Container:
-    """Builds the grounded AI briefing card (Generate + follow-up Ask)."""
+    """Builds the grounded AI briefing card (Generate + follow-up Ask).
+
+    The answer renders as rich Markdown (bold headings, bullets) using the
+    family-standard stylesheet.
+    """
+
+    def _answer_view() -> ft.Control:
+        return ft.Markdown(
+            value=answer,
+            selectable=True,
+            extension_set=ft.MarkdownExtensionSet.GITHUB_WEB,
+            md_style_sheet=AppStyles.markdown_stylesheet(is_dark),
+            on_tap_link=((lambda e: on_open_link(e.data)) if on_open_link else None),
+        )
+
     return ft.Container(
         content=AppStyles.glass_card(
             ft.Column(
@@ -90,11 +106,7 @@ def build_ai_briefing_section(
                     *(
                         [
                             ft.Container(
-                                content=ft.Text(
-                                    answer,
-                                    size=tokens.FONT_SM,
-                                    selectable=True,
-                                ),
+                                content=_answer_view(),
                                 padding=tokens.SPACE_MD,
                                 border_radius=tokens.RADIUS_MD,
                                 bgcolor=ft.Colors.with_opacity(

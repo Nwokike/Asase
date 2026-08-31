@@ -210,6 +210,66 @@ class AppStyles:
         )
 
     @staticmethod
+    def markdown_stylesheet(is_dark: bool) -> ft.MarkdownStyleSheet:
+        """Standard sheet for rendering AI/LLM answers as rich Markdown.
+
+        Follows the akili-app family pattern: comfortable line-height body,
+        bold accent headings, monospace code on tinted blocks, underlined
+        accent links, and a left-barred blockquote.
+        """
+        return ft.MarkdownStyleSheet(
+            p_text_style=ft.TextStyle(size=tokens.FONT_MD, height=1.6),
+            h1_text_style=ft.TextStyle(
+                size=tokens.FONT_HERO,
+                weight=ft.FontWeight.BOLD,
+                color=AppColors.PRIMARY,
+            ),
+            h2_text_style=ft.TextStyle(
+                size=tokens.FONT_XXL,
+                weight=ft.FontWeight.BOLD,
+                color=AppColors.PRIMARY,
+            ),
+            h3_text_style=ft.TextStyle(size=tokens.FONT_XL, weight=ft.FontWeight.W_600),
+            h4_text_style=ft.TextStyle(size=tokens.FONT_LG, weight=ft.FontWeight.W_600),
+            strong_text_style=ft.TextStyle(weight=ft.FontWeight.BOLD),
+            em_text_style=ft.TextStyle(italic=True),
+            code_text_style=ft.TextStyle(
+                font_family="Courier New",
+                size=tokens.FONT_SM,
+                color=ft.Colors.WHITE if is_dark else "#1F2937",
+                bgcolor="#2A2A2A" if is_dark else "#F0F0F0",
+            ),
+            a_text_style=ft.TextStyle(
+                color=AppColors.PRIMARY,
+                decoration=ft.TextDecoration.UNDERLINE,
+                weight=ft.FontWeight.W_500,
+            ),
+            blockquote_text_style=ft.TextStyle(
+                size=tokens.FONT_SM,
+                italic=True,
+                color=ft.Colors.with_opacity(0.8, ft.Colors.ON_SURFACE),
+            ),
+            blockquote_decoration=ft.BoxDecoration(
+                bgcolor="#1E1E1E" if is_dark else "#EFEFEF",
+                border_radius=ft.BorderRadius(0, tokens.RADIUS_XS, tokens.RADIUS_XS, 0),
+                border=ft.Border(
+                    left=ft.BorderSide(4, AppColors.ATMOSPHERE),
+                    top=ft.BorderSide(0, ft.Colors.TRANSPARENT),
+                    right=ft.BorderSide(0, ft.Colors.TRANSPARENT),
+                    bottom=ft.BorderSide(0, ft.Colors.TRANSPARENT),
+                ),
+            ),
+            list_bullet_text_style=ft.TextStyle(size=tokens.FONT_MD, height=1.5),
+            horizontal_rule_decoration=ft.BoxDecoration(
+                border=ft.Border(
+                    bottom=ft.BorderSide(
+                        1, ft.Colors.with_opacity(0.12, ft.Colors.ON_SURFACE)
+                    )
+                )
+            ),
+        )
+
+    @staticmethod
     def brand_gradient(page: ft.Page | None = None):
         """Clean neutral background gradient matching MarkItDown & DDGS."""
         dark = is_dark_mode(page)

@@ -17,12 +17,25 @@ def build_map_scan_section(
     on_scan,
     on_ask,
     on_question_change,
+    is_dark: bool = False,
+    on_open_link=None,
 ) -> ft.Container:
     """Floating bottom panel: 'AI Scan This Map' + streamed answer + follow-up.
 
     Collapses to a single pill button when idle with no answer, so it never
-    fights the map for space until the user asks for it.
+    fights the map for space until the user asks for it. The answer renders
+    as rich Markdown via the family-standard stylesheet.
     """
+
+    def _answer_view() -> ft.Control:
+        return ft.Markdown(
+            value=answer,
+            selectable=True,
+            extension_set=ft.MarkdownExtensionSet.GITHUB_WEB,
+            md_style_sheet=AppStyles.markdown_stylesheet(is_dark),
+            on_tap_link=((lambda e: on_open_link(e.data)) if on_open_link else None),
+        )
+
     header = ft.Row(
         [
             ft.Container(
@@ -83,7 +96,7 @@ def build_map_scan_section(
     if answer:
         body_rows.append(
             ft.Container(
-                content=ft.Text(answer, size=tokens.FONT_SM, selectable=True),
+                content=_answer_view(),
                 padding=tokens.SPACE_MD,
                 border_radius=tokens.RADIUS_MD,
                 bgcolor=ft.Colors.with_opacity(0.06, AppColors.ATMOSPHERE),

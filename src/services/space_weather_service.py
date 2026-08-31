@@ -3,12 +3,20 @@
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 
-from core.constants import NOAA_SWPC_KP_INDEX, NOAA_SWPC_SOLAR_FLARES
+from core.constants import (
+    NOAA_SWPC_KP_FORECAST,
+    NOAA_SWPC_KP_INDEX,
+    NOAA_SWPC_SOLAR_FLARES,
+)
 from core.network import NetworkManager
 from models.space_weather import SpaceWeatherTelemetry
 
 logger = logging.getLogger("asase.space_weather")
+
+# The GOES channel used for official flare classification
+_XRAY_CHANNEL = "0.1-0.8nm"
 
 
 def _parse_flare_class(flares: list) -> tuple[str, str]:
@@ -44,6 +52,49 @@ def _parse_flare_class(flares: list) -> tuple[str, str]:
     return "Active Solar Monitoring", ""
 
 
+def _parse_xray_series(flares: list) -> list[float]:
+    """Extract the 0.1-0.8nm flux trace, downscaled to nW/m² (~72 pts)."""
+    try:
+        vals = [
+            float(f["flux"]) * 1e9
+            for f in flares
+            if isinstance(f, dict)
+            and f.get("energy") == _XRAY_CHANNEL
+            and f.get("flux") is not None
+        ]
+    except (TypeError, ValueError, KeyError):
+        return []
+    if not vals:
+        return []
+    step = max(1, len(vals) // 72)
+    return vals[::step][-72:]
+
+
+def _parse_kp_forecast(rows: list) -> list[dict]:
+    """Keep the next ~24h of predicted Kp entries (3h cadence → 8 slots)."""
+    now = datetime.now(UTC)
+    out: list[dict] = []
+    for r in rows:
+        if not isinstance(r, dict) or r.get("observed") != "predicted":
+            continue
+        try:
+            when = datetime.fromisoformat(str(r.get("time_tag", "")))
+        except ValueError:
+            continue
+        if when.tzinfo is None:
+            when = when.replace(tzinfo=UTC)  # SWPC stamps are UTC, unstamped
+        if when <= now:
+            continue
+        try:
+            kp = float(r.get("kp", 0.0))
+        except (TypeError, ValueError):
+            continue
+        out.append({"time_tag": str(r.get("time_tag", "")), "kp": kp})
+        if len(out) >= 8:
+            break
+    return out
+
+
 class SpaceWeatherService:
     @staticmethod
     async def fetch_space_weather() -> dict:
@@ -52,6 +103,8 @@ class SpaceWeatherService:
         solar = "Normal"
         flare_class = ""
         raw_kp: list = []
+        xray_flux: list[float] = []
+        kp_forecast: list[dict] = []
 
         client = NetworkManager.get_client()
 
@@ -98,15 +151,26 @@ class SpaceWeatherService:
                 flares = res2.json()
                 if isinstance(flares, list) and flares:
                     solar, flare_class = _parse_flare_class(flares)
+                    xray_flux = _parse_xray_series(flares)
         except Exception as e:
             logger.debug("NOAA Solar Flares fetch failed: %s", e)
+
+        try:
+            res3 = await client.get(NOAA_SWPC_KP_FORECAST)
+            if res3.status_code == 200:
+                rows = res3.json()
+                if isinstance(rows, list):
+                    kp_forecast = _parse_kp_forecast(rows)
+        except Exception as e:
+            logger.debug("NOAA Kp forecast fetch failed: %s", e)
 
         telemetry = SpaceWeatherTelemetry(
             kp_index=kp_val,
             geomagnetic_status=status,
             solar_activity=solar,
             raw_kp=raw_kp if isinstance(raw_kp, list) else [],
+            flare_class=flare_class,
+            xray_flux=xray_flux if isinstance(xray_flux, list) else [],
+            kp_forecast=kp_forecast if isinstance(kp_forecast, list) else [],
         )
-        d = telemetry.model_dump()
-        d["flare_class"] = flare_class
-        return d
+        return telemetry.model_dump()

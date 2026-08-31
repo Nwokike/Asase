@@ -24,7 +24,7 @@ from components.report.weather_indicators_section import (
 from components.section_header import SectionHeader
 from core import tokens
 from core.notify import show_snack
-from core.theme import AppColors, AppStyles
+from core.theme import AppColors, AppStyles, is_dark_mode
 from services.ai_service import DEFAULT_QUESTION, stream_briefing
 from state.app_state import AppStateCtx
 from state.controller_ctx import ControllerMethodsCtx
@@ -184,10 +184,16 @@ def ReportScreen() -> Control:
     ai_unavailable, set_ai_unavailable = ft.use_state(False)
     ai_question, set_ai_question = ft.use_state("")
     ai_model, set_ai_model = ft.use_state("")
+    # Supersede token: every fire bumps the generation; results from an
+    # older fire (superseded by a newer location or question) no-op.
+    ai_gen_ref = ft.use_ref(0)
 
     async def _run_ai(q: str):
-        if not q.strip() or ai_busy:
+        if not q.strip():
             return
+        gen = (ai_gen_ref.current or 0) + 1
+        ai_gen_ref.current = gen
+        fired_at = (state.current_lat, state.current_lon)
         set_ai_busy(True)
         set_ai_answer("")
         set_ai_unavailable(False)
@@ -198,6 +204,8 @@ def ReportScreen() -> Control:
 
         def _on_token(chunk: str):
             nonlocal last_push
+            if ai_gen_ref.current != gen:
+                return  # a newer request superseded this stream
             buf.append(chunk)
             now = time.monotonic()
             if now - last_push > 0.2:  # batch UI updates while streaming
@@ -206,22 +214,58 @@ def ReportScreen() -> Control:
 
         try:
             result = await stream_briefing(q, _on_token)
+            if ai_gen_ref.current != gen:
+                return  # a newer briefing took over mid-stream
             set_ai_answer(result.text or "".join(buf))
             set_ai_model(result.model)
-            if not (result.text or buf):
+            if result.text:
+                # Cache keyed to the exact coordinates it was generated for
+                state.ai_briefing = {
+                    "answer": result.text,
+                    "model": result.model,
+                    "lat": fired_at[0],
+                    "lon": fired_at[1],
+                }
+            elif not (result.text or buf):
                 set_ai_unavailable(True)
         except Exception as ex:
             logger.warning("AI briefing failed: %s", ex)
-            set_ai_unavailable(True)
+            if ai_gen_ref.current == gen:
+                set_ai_unavailable(True)
         finally:
-            set_ai_busy(False)
+            if ai_gen_ref.current == gen:
+                set_ai_busy(False)
 
     def _generate_briefing(e=None):
+        if ai_busy:
+            return
         asyncio.create_task(_run_ai(DEFAULT_QUESTION))
 
     def _ask_followup(e=None):
-        asyncio.create_task(_run_ai(ai_question))
+        q = ai_question
         set_ai_question("")
+        if q.strip():
+            asyncio.create_task(_run_ai(q))
+
+    # The briefing is a function of the tracked LOCATION, not of screen
+    # mounts: the effect fires on Dossier open and RE-FIRES for every
+    # location change while it's open (search, card tap, map tap) — each
+    # new dossier gets its own fresh briefing. A cache hit (the exact same
+    # coordinates already briefed this session) hydrates instantly instead.
+    # NOTE: use_effect invokes the setup with ZERO arguments.
+    def _brief_for_location():
+        cache = state.ai_briefing or {}
+        if (
+            cache.get("answer")
+            and cache.get("lat") == state.current_lat
+            and cache.get("lon") == state.current_lon
+        ):
+            set_ai_answer(str(cache["answer"]))
+            set_ai_model(str(cache.get("model", "")))
+            return
+        asyncio.create_task(_run_ai(DEFAULT_QUESTION))
+
+    ft.use_effect(_brief_for_location, [state.current_lat, state.current_lon])
 
     ai_section = build_ai_briefing_section(
         ai_answer,
@@ -232,6 +276,14 @@ def ReportScreen() -> Control:
         _ask_followup,
         lambda e: set_ai_question(e.control.value or ""),
         ai_model,
+        is_dark=is_dark_mode(page),
+        on_open_link=(
+            lambda url: (
+                asyncio.create_task(controller.launch_url(url))
+                if controller.launch_url
+                else None
+            )
+        ),
     )
 
     async def _load_radius_history():

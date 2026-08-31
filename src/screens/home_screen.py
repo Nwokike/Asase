@@ -13,6 +13,7 @@ from components.banner_ad import AdMobBanner
 from components.hazard_map import HazardMap, build_event_detail_sheet
 from components.home.active_alert_banner import build_active_alert_banner
 from components.home.bookmarks_section import build_bookmarks_section
+from components.home.focus_banner import build_focus_banner
 from components.home.hazard_filter_chips import build_hazard_filter_chips
 from components.home.location_search_bar import build_location_search_bar
 from components.home.summary_cards_row import build_quick_metrics_row
@@ -20,7 +21,7 @@ from components.section_header import SectionHeader
 from components.skeleton_loader import TelemetrySkeletonCard
 from components.telemetry_card import TelemetryCard
 from core import tokens
-from core.geo_utils import calculate_haversine_distance_km
+from core.geo_utils import calculate_haversine_distance_km, format_distance
 from core.theme import AppColors, is_dark_mode
 from hooks.use_debounce import use_debounce
 from hooks.use_map_center import use_map_center
@@ -41,6 +42,7 @@ def HomeScreen() -> Control:
     _is_searching, set_is_searching = ft.use_state(False)
     debounced_q = use_debounce(search_query, 350)
     selected_event, set_selected_event = ft.use_state(None)
+    focus_expanded, set_focus_expanded = ft.use_state(False)
     home_map_ref = ft.use_ref(None)
 
     # Keep the embedded radar centered on the active focus point
@@ -78,6 +80,13 @@ def HomeScreen() -> Control:
             )
         set_search_query("")
         set_search_results([])
+        # Auto-open the Now-Tracking summary card so the selection is obvious
+        set_focus_expanded(True)
+
+    def _on_bookmark_select(lat: float, lon: float, name: str, country: str = ""):
+        if controller.select_coordinates:
+            asyncio.create_task(controller.select_coordinates(lat, lon, name, country))
+        set_focus_expanded(True)
 
     # Find closest active hazard to user
     closest_hazard = None
@@ -159,47 +168,46 @@ def HomeScreen() -> Control:
         if controller.open_report:
             asyncio.create_task(controller.open_report())
 
-    # Visible focus-point pill — reassurance that a selection actually landed
-    focus_pill = ft.Container(
-        content=ft.Row(
-            [
-                ft.Icon(
-                    ft.Icons.LOCATION_ON_ROUNDED,
-                    size=tokens.ICON_XS,
-                    color=AppColors.PRIMARY,
-                ),
-                ft.Text(
-                    f"Tracking: {state.current_location_name}",
-                    size=tokens.FONT_XS,
-                    weight=ft.FontWeight.W_600,
-                    color=AppColors.PRIMARY,
-                    max_lines=1,
-                    overflow=ft.TextOverflow.ELLIPSIS,
-                ),
-                ft.Icon(
-                    ft.Icons.EXPAND_MORE_ROUNDED,
-                    size=tokens.ICON_XS,
-                    color=AppColors.PRIMARY,
-                ),
-            ],
-            spacing=tokens.SPACE_XXS,
-            tight=True,
-        ),
-        padding=ft.Padding(
-            tokens.SPACE_MD, tokens.SPACE_XS, tokens.SPACE_MD, tokens.SPACE_XS
-        ),
-        border_radius=tokens.RADIUS_FULL,
-        bgcolor=ft.Colors.with_opacity(0.1, AppColors.PRIMARY),
-        border=ft.Border.all(1, ft.Colors.with_opacity(0.3, AppColors.PRIMARY)),
-        on_click=_on_focus_pill_click,
-        ink=True,
+    # Two-state Now-Tracking banner: pill when collapsed, full summary card
+    # (with the obvious "Open Full Dossier" button) when expanded.
+    if closest_hazard:
+        hazard_ev, hazard_dist, _htype = closest_hazard
+        hazard_label = hazard_ev.get("place") or hazard_ev.get("title") or "hazard"
+        hazard_short = (
+            f"M{hazard_ev.get('magnitude', 0):.1f} quake"
+            if hazard_ev.get("magnitude")
+            else hazard_label
+        )
+        nearest_hazard_text = f"{hazard_short} • {format_distance(hazard_dist)}"
+        hazard_color = (
+            AppColors.SEVERITY_CRITICAL if hazard_dist < 150 else AppColors.WARNING
+        )
+    else:
+        nearest_hazard_text = None
+        hazard_color = AppColors.WARNING
+
+    focus_banner = build_focus_banner(
+        page,
+        state.current_location_name,
+        state.current_country,
+        state.current_elevation,
+        (state.weather_data or {}).get("current", {}).get("temperature_2m"),
+        us_aqi,
+        kp_val,
+        nearest_hazard_text,
+        hazard_color,
+        focus_expanded,
+        state.is_loading,
+        on_toggle=lambda: set_focus_expanded(not focus_expanded),
+        on_open_dossier=_on_focus_pill_click,
     )
 
     filter_chips = build_hazard_filter_chips(
         page, state.selected_hazard_type, _on_chip_select
     )
     bookmarks_bar = build_bookmarks_section(
-        state.bookmarks, controller.select_coordinates
+        state.bookmarks,
+        _on_bookmark_select,
     )
     alert_banner = build_active_alert_banner(
         closest_hazard,
@@ -214,17 +222,35 @@ def HomeScreen() -> Control:
         space_status,
     )
 
-    return ft.ListView(
+    def _open_event_dossier():
+        """Re-center tracking to the selected event and open the full Dossier.
+
+        select_coordinates is awaited first so the Dossier (and its auto-AI
+        briefing) mounts with fresh telemetry for the event's location.
+        """
+        ev = selected_event or {}
+        lat = float(ev.get("latitude", 0.0))
+        lon = float(ev.get("longitude", 0.0))
+        name = ev.get("place") or ev.get("title") or f"Coord ({lat:.2f}, {lon:.2f})"
+
+        async def _go():
+            if controller.select_coordinates:
+                await controller.select_coordinates(lat, lon, name, "")
+            if controller.open_report:
+                await controller.open_report()
+
+        asyncio.create_task(_go())
+
+    def _share_event_text(msg: str):
+        if controller.share_text:
+            asyncio.create_task(controller.share_text(msg, "Asase Hazard Alert"))
+
+    content_list = ft.ListView(
         controls=[
             header_view,
             search_bar,
             filter_chips,
-            ft.Container(
-                content=focus_pill,
-                padding=ft.Padding(
-                    tokens.SPACE_LG, tokens.SPACE_XS, tokens.SPACE_LG, 0
-                ),
-            ),
+            focus_banner,
             *([bookmarks_bar] if bookmarks_bar else []),
             *([alert_banner] if alert_banner else []),
             metrics_row,
@@ -252,21 +278,6 @@ def HomeScreen() -> Control:
                             map_ref=home_map_ref,
                         ),
                         padding=ft.Padding(tokens.SPACE_LG, 0, tokens.SPACE_LG, 0),
-                    ),
-                    *(
-                        [
-                            build_event_detail_sheet(
-                                selected_event,
-                                on_close=lambda: set_selected_event(None),
-                                on_open_url=lambda u: (
-                                    asyncio.create_task(controller.launch_url(u))
-                                    if controller.launch_url
-                                    else None
-                                ),
-                            )
-                        ]
-                        if selected_event
-                        else []
                     ),
                 ],
                 expand=False,
@@ -305,6 +316,7 @@ def HomeScreen() -> Control:
                                     event_lat=float(eq.get("latitude", 0.0)),
                                     event_lon=float(eq.get("longitude", 0.0)),
                                     event_url=eq.get("url", ""),
+                                    on_click=lambda _, ev=eq: set_selected_event(ev),
                                 )
                                 for eq in filtered_eq[:12]
                             ],
@@ -350,6 +362,7 @@ def HomeScreen() -> Control:
                                     event_lat=float(dis.get("latitude", 0.0)),
                                     event_lon=float(dis.get("longitude", 0.0)),
                                     event_url=dis.get("url", ""),
+                                    on_click=lambda _, ev=dis: set_selected_event(ev),
                                 )
                                 for dis in filtered_dis[:8]
                             ],
@@ -366,5 +379,32 @@ def HomeScreen() -> Control:
             ft.Container(height=tokens.SPACE_XXXL),
         ],
         spacing=0,
+        expand=True,
+    )
+
+    # Page-level overlay stack: event cards and map markers both open the
+    # detail sheet here, so it's visible no matter where in the feed you tap
+    # (the old sheet only overlay the 240px mini-map region).
+    return ft.Stack(
+        controls=[
+            content_list,
+            *(
+                [
+                    build_event_detail_sheet(
+                        selected_event,
+                        on_close=lambda: set_selected_event(None),
+                        on_open_url=lambda u: (
+                            asyncio.create_task(controller.launch_url(u))
+                            if controller.launch_url
+                            else None
+                        ),
+                        on_view_dossier=_open_event_dossier,
+                        on_share=_share_event_text,
+                    )
+                ]
+                if selected_event
+                else []
+            ),
+        ],
         expand=True,
     )

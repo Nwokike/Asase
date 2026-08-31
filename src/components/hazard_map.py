@@ -109,8 +109,14 @@ def build_event_detail_sheet(
     event: dict,
     on_close: Callable | None = None,
     on_open_url: Callable[[str], None] | None = None,
+    on_view_dossier: Callable | None = None,
+    on_share: Callable[[str], None] | None = None,
 ) -> ft.Container:
-    """Floating bottom sheet with hazard-event details (Home radar + Full Map)."""
+    """Floating bottom sheet with hazard-event details (Home radar + Full Map).
+
+    Beyond the event facts, offers 'View Full Dossier' (re-center tracking to
+    the event and open the report) and 'Share'.
+    """
     m_type = str(event.get("type", "event"))
     icon = (
         ft.Icons.WAVES_ROUNDED
@@ -146,6 +152,10 @@ def build_event_detail_sheet(
         details.append(str(event["category_title"]))
 
     url = str(event.get("url") or "")
+    share_msg = (
+        f"\U0001f30d ASASE PLANETARY ALERT\n{title}\n"
+        f"{' • '.join(details)}{f'\n{url}' if url else ''}"
+    )
 
     return ft.Container(
         content=ft.Column(
@@ -188,13 +198,64 @@ def build_event_detail_sheet(
                 ),
                 *(
                     [
-                        ft.TextButton(
-                            "OPEN SOURCE DATA",
-                            icon=ft.Icons.OPEN_IN_NEW_ROUNDED,
-                            on_click=lambda _: on_open_url(url),
+                        ft.Row(
+                            [
+                                *(
+                                    [
+                                        ft.FilledButton(
+                                            icon=ft.Icons.ANALYTICS_ROUNDED,
+                                            content=ft.Text(
+                                                "VIEW FULL DOSSIER",
+                                                size=tokens.FONT_XS,
+                                                weight=ft.FontWeight.W_700,
+                                                color=ft.Colors.WHITE,
+                                            ),
+                                            style=ft.ButtonStyle(
+                                                bgcolor=AppColors.PRIMARY,
+                                                shape=ft.RoundedRectangleBorder(
+                                                    radius=tokens.RADIUS_MD
+                                                ),
+                                            ),
+                                            on_click=lambda _: on_view_dossier(),
+                                        )
+                                    ]
+                                    if on_view_dossier
+                                    else []
+                                ),
+                                *(
+                                    [
+                                        ft.TextButton(
+                                            icon=ft.Icons.SHARE_ROUNDED,
+                                            content=ft.Text(
+                                                "SHARE",
+                                                size=tokens.FONT_XS,
+                                                weight=ft.FontWeight.W_700,
+                                                color=ft.Colors.ON_SURFACE_VARIANT,
+                                            ),
+                                            on_click=lambda _: on_share(share_msg),
+                                        )
+                                    ]
+                                    if on_share
+                                    else []
+                                ),
+                                *(
+                                    [
+                                        ft.TextButton(
+                                            "SOURCE",
+                                            icon=ft.Icons.OPEN_IN_NEW_ROUNDED,
+                                            on_click=lambda _: on_open_url(url),
+                                        )
+                                    ]
+                                    if url and on_open_url
+                                    else []
+                                ),
+                            ],
+                            spacing=tokens.SPACE_XS,
+                            wrap=True,
+                            run_spacing=tokens.SPACE_XXS,
                         )
                     ]
-                    if url and on_open_url
+                    if (url and on_open_url) or on_view_dossier or on_share
                     else []
                 ),
             ],

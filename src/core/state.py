@@ -41,6 +41,11 @@ class AppState:
     marine_data: dict = field(default_factory=dict)
     space_weather: dict = field(default_factory=dict)
 
+    # AI briefing session cache — {answer, model, lat, lon, question}: the
+    # Dossier hydrates from this on re-open instead of re-calling the gateway
+    # for the same location.
+    ai_briefing: dict = field(default_factory=dict)
+
     # Local Persistence
     recent_searches: list[dict] = field(default_factory=list)
     bookmarks: list[dict] = field(default_factory=list)
