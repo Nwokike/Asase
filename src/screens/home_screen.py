@@ -44,7 +44,7 @@ def HomeScreen() -> Control:
     home_map_ref = ft.use_ref(None)
 
     # Keep the embedded radar centered on the active focus point
-    use_map_center(home_map_ref, state.current_lat, state.current_lon, 4.0)
+    use_map_center(home_map_ref, state.current_lat, state.current_lon, 9.0)
 
     async def _do_search(q: str):
         if len(q.strip()) >= 2:
@@ -155,6 +155,10 @@ def HomeScreen() -> Control:
         if controller.refresh_all:
             asyncio.create_task(controller.refresh_all())
 
+    def _on_focus_pill_click(_e=None):
+        if controller.open_report:
+            asyncio.create_task(controller.open_report())
+
     # Visible focus-point pill — reassurance that a selection actually landed
     focus_pill = ft.Container(
         content=ft.Row(
@@ -187,7 +191,7 @@ def HomeScreen() -> Control:
         border_radius=tokens.RADIUS_FULL,
         bgcolor=ft.Colors.with_opacity(0.1, AppColors.PRIMARY),
         border=ft.Border.all(1, ft.Colors.with_opacity(0.3, AppColors.PRIMARY)),
-        on_click=lambda _: controller.open_report() if controller.open_report else None,
+        on_click=_on_focus_pill_click,
         ink=True,
     )
 

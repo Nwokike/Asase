@@ -33,7 +33,12 @@ def SpaceScreen() -> Control:
     kp_history: list[float] = []
     for item in raw_kp:
         if isinstance(item, dict):
-            val = item.get("kp", item.get("estimated_kp", item.get("kp_index")))
+            # NOAA products feed uses "Kp" (capital); other SWPC feeds use
+            # lowercase variants — accept both so no reading is dropped.
+            val = item.get(
+                "Kp",
+                item.get("kp", item.get("estimated_kp", item.get("kp_index"))),
+            )
             if val is not None:
                 try:
                     kp_history.append(float(val))

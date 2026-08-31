@@ -26,6 +26,7 @@ async def main(page: ft.Page) -> None:
     page.on_error = controller.on_error
 
     async def _on_close(e=None):
+        controller.shutdown()
         with contextlib.suppress(Exception):
             if controller.storage:
                 await controller.storage.flush()

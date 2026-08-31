@@ -107,6 +107,9 @@ class AppController:
         # Initial Telemetry Load
         self.page.run_task(self.refresh_all)
 
+        # Live-monitor cadence — keep feeds fresh without manual refreshes
+        self._telemetry_task = asyncio.create_task(self._telemetry_loop())
+
         # Mount React-style Component Tree
         from app_shell import AppShell
 
@@ -186,6 +189,22 @@ class AppController:
             self.page.update()
 
     _refresh_lock: asyncio.Lock | None = None
+    _telemetry_task: asyncio.Task | None = None
+    _TELEMETRY_REFRESH_SECONDS = 300  # 5 min — USGS/EONET update upstream
+
+    async def _telemetry_loop(self) -> None:
+        """Periodic telemetry cadence so the app reads like a live monitor."""
+        while True:
+            await asyncio.sleep(self._TELEMETRY_REFRESH_SECONDS)
+            try:
+                await self.refresh_all()
+            except Exception as ex:
+                logger.debug("Periodic telemetry refresh skipped: %s", ex)
+
+    def shutdown(self) -> None:
+        """Cancel the periodic telemetry loop on app close."""
+        if self._telemetry_task and not self._telemetry_task.done():
+            self._telemetry_task.cancel()
 
     async def refresh_all(self) -> None:
         """Fetch real-time USGS earthquakes, NASA disasters, atmospheric telemetry, and space weather."""

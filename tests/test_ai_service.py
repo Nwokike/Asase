@@ -10,9 +10,12 @@ from components.report.ai_briefing_section import build_ai_briefing_section
 from core.state import state
 from services.ai_service import (
     DEFAULT_QUESTION,
+    DEFAULT_SCAN_QUESTION,
+    AIResult,
     build_dossier_context,
     extract_stream_delta,
     stream_briefing,
+    stream_map_scan,
 )
 
 
@@ -106,9 +109,23 @@ async def test_stream_briefing_assembles_tokens():
         return_value=_mock_httpx_client(client),
     ):
         tokens: list[str] = []
-        full = await stream_briefing("brief me", tokens.append)
-    assert full == "Kp is quiet. AQI 42 is good."
+        result = await stream_briefing("brief me", tokens.append)
+    assert result.text == "Kp is quiet. AQI 42 is good."
     assert tokens == ["Kp is quiet. ", "AQI 42 is good."]
+
+
+async def test_stream_briefing_reports_model_attribution():
+    chunks = [
+        _sse({"model": "qwen/qwen3.8-27b", "choices": [{"delta": {"content": "x"}}]}),
+    ]
+    client = MagicMock()
+    client.stream = MagicMock(return_value=_FakeStreamContext(chunks))
+    with patch(
+        "services.ai_service.httpx.AsyncClient",
+        return_value=_mock_httpx_client(client),
+    ):
+        result = await stream_briefing("brief me", lambda t: None)
+    assert result.model == "qwen/qwen3.8-27b"
 
 
 async def test_stream_briefing_non_200_returns_empty():
@@ -120,7 +137,8 @@ async def test_stream_briefing_non_200_returns_empty():
         "services.ai_service.httpx.AsyncClient",
         return_value=_mock_httpx_client(client),
     ):
-        assert await stream_briefing("brief me", lambda t: None) == ""
+        result = await stream_briefing("brief me", lambda t: None)
+    assert result == AIResult()
 
 
 async def test_stream_briefing_fails_soft():
@@ -129,7 +147,36 @@ async def test_stream_briefing_fails_soft():
         side_effect=OSError("gateway unreachable"),
     ):
         result = await stream_briefing("brief me", lambda t: None)
-    assert result == ""
+    assert result.text == ""
+
+
+async def test_stream_map_scan_sends_multimodal_image_payload():
+    chunks = [_sse({"choices": [{"delta": {"content": "One cluster visible."}}]})]
+    client = MagicMock()
+    client.stream = MagicMock(return_value=_FakeStreamContext(chunks))
+    with patch(
+        "services.ai_service.httpx.AsyncClient",
+        return_value=_mock_httpx_client(client),
+    ) as _:
+        result = await stream_map_scan(b"fakepng", "scan it", lambda t: None)
+    assert result.text == "One cluster visible."
+    # The payload posted to the gateway must be a multimodal image_url message
+    payload = client.stream.call_args.kwargs["json"]
+    assert payload["task_type"] == "multimodal"
+    content = payload["messages"][-1]["content"]
+    assert isinstance(content, list)
+    image_part = next(p for p in content if p.get("type") == "image_url")
+    assert image_part["image_url"]["url"].startswith("data:image/png;base64,")
+    text_part = next(p for p in content if p.get("type") == "text")
+    assert "scan it" in text_part["text"]
+
+
+async def test_stream_map_scan_rejects_oversized_capture():
+    # Fail soft without any HTTP call when the capture exceeds the body cap
+    with patch("services.ai_service.httpx.AsyncClient") as ctor:
+        result = await stream_map_scan(b"\x00" * 12_000_000, "scan", lambda t: None)
+    assert result.text == ""
+    ctor.assert_not_called()
 
 
 def test_build_dossier_context_reflects_state():
@@ -160,6 +207,7 @@ def test_build_dossier_context_reflects_state():
 
 def test_default_question_is_actionable():
     assert "risk briefing" in DEFAULT_QUESTION.lower()
+    assert "hazards are visible" in DEFAULT_SCAN_QUESTION.lower()
 
 
 def test_ai_briefing_section_initial_state():
@@ -209,3 +257,53 @@ def test_ai_briefing_section_unavailable_state():
     )
     texts = [t.value for t in walk_texts(section)]
     assert any("unavailable right now" in t for t in texts)
+
+
+def test_ai_briefing_section_shows_model_attribution():
+    section = build_ai_briefing_section(
+        "Kp is quiet.",
+        False,
+        False,
+        "",
+        lambda e: None,
+        lambda e: None,
+        lambda e: None,
+        model="qwen/qwen3.8-27b",
+    )
+    texts = [t.value for t in walk_texts(section)]
+    assert any("via qwen/qwen3.8-27b" in t for t in texts)
+
+    # No attribution line when the model is unknown
+    no_model = build_ai_briefing_section(
+        "Kp is quiet.", False, False, "", lambda e: None, lambda e: None, lambda e: None
+    )
+    texts2 = [t.value for t in walk_texts(no_model)]
+    assert not any(t and t.startswith("via ") for t in texts2)
+
+
+def test_map_scan_section_states():
+    from components.map.map_scan_section import build_map_scan_section
+
+    idle = build_map_scan_section(
+        "", False, False, "", "", lambda e: None, lambda e: None, lambda e: None
+    )
+    assert any("AI Scan This Map" in t for t in [x.value for x in walk_texts(idle)])
+
+    answered = build_map_scan_section(
+        "Dense quake cluster SE of the marker.",
+        False,
+        False,
+        "",
+        "google/diffusiongemma-26b-a4b-it",
+        lambda e: None,
+        lambda e: None,
+        lambda e: None,
+    )
+    texts = [t.value for t in walk_texts(answered)]
+    assert any("Dense quake cluster" in t for t in texts)
+    assert any("via google/diffusiongemma" in t for t in texts)
+
+    busy = build_map_scan_section(
+        "", True, False, "", "", lambda e: None, lambda e: None, lambda e: None
+    )
+    assert any("Scanning map view" in t for t in [x.value for x in walk_texts(busy)])

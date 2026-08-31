@@ -19,7 +19,9 @@ class SpaceWeatherTelemetry(BaseModel):
     kp_index: float = 0.0
     geomagnetic_status: str = "Quiet (Normal)"
     solar_activity: str = "Normal"
-    raw_kp: list[list] = Field(default_factory=list)
+    # NOAA's products feed serves dicts ({"time_tag", "Kp", ...}); older SWPC
+    # endpoints serve row lists. Accept both so the chart never starves.
+    raw_kp: list[list | dict] = Field(default_factory=list)
 
     @computed_field
     @property

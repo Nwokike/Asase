@@ -183,6 +183,7 @@ def ReportScreen() -> Control:
     ai_busy, set_ai_busy = ft.use_state(False)
     ai_unavailable, set_ai_unavailable = ft.use_state(False)
     ai_question, set_ai_question = ft.use_state("")
+    ai_model, set_ai_model = ft.use_state("")
 
     async def _run_ai(q: str):
         if not q.strip() or ai_busy:
@@ -190,6 +191,7 @@ def ReportScreen() -> Control:
         set_ai_busy(True)
         set_ai_answer("")
         set_ai_unavailable(False)
+        set_ai_model("")
 
         buf: list[str] = []
         last_push = 0.0
@@ -203,9 +205,10 @@ def ReportScreen() -> Control:
                 set_ai_answer("".join(buf))
 
         try:
-            full = await stream_briefing(q, _on_token)
-            set_ai_answer(full or "".join(buf))
-            if not (full or buf):
+            result = await stream_briefing(q, _on_token)
+            set_ai_answer(result.text or "".join(buf))
+            set_ai_model(result.model)
+            if not (result.text or buf):
                 set_ai_unavailable(True)
         except Exception as ex:
             logger.warning("AI briefing failed: %s", ex)
@@ -228,6 +231,7 @@ def ReportScreen() -> Control:
         _generate_briefing,
         _ask_followup,
         lambda e: set_ai_question(e.control.value or ""),
+        ai_model,
     )
 
     async def _load_radius_history():

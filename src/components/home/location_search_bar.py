@@ -86,7 +86,7 @@ def build_location_search_bar(
 
     suggestion_block = (
         ft.Container(
-            content=ft.Column(suggestions, spacing=0),
+            content=ft.Column(suggestions, spacing=0, tight=True),
             bgcolor=AppColors.get_surface(page),
             border=ft.Border.all(1, AppColors.get_border(page)),
             border_radius=ft.RoundedRectangleBorder(radius=tokens.RADIUS_MD),
@@ -101,6 +101,8 @@ def build_location_search_bar(
         content=ft.Column(
             [bar, *([suggestion_block] if suggestion_block else [])],
             spacing=0,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
         ),
+        alignment=ft.Alignment.CENTER,
         padding=ft.Padding(tokens.SPACE_LG, tokens.SPACE_SM, tokens.SPACE_LG, 0),
     )

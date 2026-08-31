@@ -21,6 +21,7 @@ def build_ai_briefing_section(
     on_generate,
     on_ask,
     on_question_change,
+    model: str = "",
 ) -> ft.Container:
     """Builds the grounded AI briefing card (Generate + follow-up Ask)."""
     return ft.Container(
@@ -106,6 +107,18 @@ def build_ai_briefing_section(
                             )
                         ]
                         if answer
+                        else []
+                    ),
+                    *(
+                        [
+                            ft.Text(
+                                f"via {model}",
+                                size=tokens.FONT_XS,
+                                color=ft.Colors.ON_SURFACE_VARIANT,
+                                italic=True,
+                            )
+                        ]
+                        if answer and model and not busy
                         else []
                     ),
                     *(
