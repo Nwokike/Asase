@@ -53,35 +53,45 @@ def build_app_header(
         return ft.Icons.SETTINGS_SYSTEM_DAYDREAM_ROUNDED
 
     # Left: Clean Transparent Adaptive SVG Branding (no container padding or filler color)
-    branding = ft.Row(
-        [
-            ft.Image(
-                src="/icon.svg",
-                width=32,
-                height=32,
-                color=ft.Colors.WHITE if is_dark else None,
-            ),
-            ft.Column(
-                [
-                    ft.Text(
-                        title,
-                        size=tokens.FONT_MD,
-                        weight=ft.FontWeight.BOLD,
-                        font_family="Outfit",
-                    ),
-                    ft.Text(
-                        subtitle.upper(),
-                        size=8,
-                        weight=ft.FontWeight.W_700,
-                        color=AppColors.PRIMARY,
-                    ),
-                ],
-                spacing=0,
-            ),
-        ],
-        spacing=tokens.SPACE_SM,
-        vertical_alignment=ft.CrossAxisAlignment.CENTER,
-    )
+    # When title is the brand name "Asase", render the full logo SVG directly (which
+    # already contains the wordmark "Asase" + "Earth Intelligence") without repeating
+    # redundant text. For other screens (e.g. Settings, Space), render icon.svg + title.
+    if title == "Asase":
+        branding = ft.Image(
+            src="/logo.svg",
+            height=32,
+            fit=ft.BoxFit.CONTAIN,
+        )
+    else:
+        branding = ft.Row(
+            [
+                ft.Image(
+                    src="/icon.svg",
+                    width=32,
+                    height=32,
+                    color=ft.Colors.WHITE if is_dark else None,
+                ),
+                ft.Column(
+                    [
+                        ft.Text(
+                            title,
+                            size=tokens.FONT_MD,
+                            weight=ft.FontWeight.BOLD,
+                            font_family="Outfit",
+                        ),
+                        ft.Text(
+                            subtitle.upper(),
+                            size=8,
+                            weight=ft.FontWeight.W_700,
+                            color=AppColors.PRIMARY,
+                        ),
+                    ],
+                    spacing=0,
+                ),
+            ],
+            spacing=tokens.SPACE_SM,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        )
 
     # Right: Action Icons
     actions = [

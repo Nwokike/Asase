@@ -50,6 +50,12 @@ EONET_CATEGORY_MAP = {
 GDACS_ALERTS_RSS = "https://www.gdacs.org/xml/rss.xml"
 
 OPEN_METEO_GEOCODING = "https://geocoding-api.open-meteo.com/v1/search"
+OPEN_METEO_REVERSE_GEOCODING = "https://geocoding-api.open-meteo.com/v1/reverse"
+BIGDATACLOUD_REVERSE_GEOCODING = (
+    "https://api.bigdatacloud.net/data/reverse-geocode-client"
+)
+IP_GEOLOCATION_URL = "https://ipapi.co/json/"
+IP_GEOLOCATION_BACKUP_URL = "https://ip-api.com/json/"
 OPEN_METEO_FORECAST = "https://api.open-meteo.com/v1/forecast"
 OPEN_METEO_AIR_QUALITY = "https://air-quality-api.open-meteo.com/v1/air-quality"
 OPEN_METEO_FLOOD = "https://flood-api.open-meteo.com/v1/flood"

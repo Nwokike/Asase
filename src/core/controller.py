@@ -379,11 +379,13 @@ class AppController:
         state.telemetry_version += 1
 
     async def locate_user(self) -> None:
-        """Locate user using native device GPS with permission handling."""
+        """Locate user using native GPS with universal IP fallback and reverse geocoding."""
         await DeviceServices.locate_user(
             self.geolocator,
             self.page,
-            lambda lat, lon: self.select_coordinates(lat, lon, "My GPS Location", ""),
+            lambda lat, lon, name, country: self.select_coordinates(
+                lat, lon, name, country
+            ),
         )
 
     async def share_text(self, text: str, subject: str = "Planetary Alert") -> None:

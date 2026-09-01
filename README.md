@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="src/assets/icon.png" alt="Asase Earth Intelligence" width="220" />
+  <img src="src/assets/logo.svg" alt="Asase Earth Intelligence" width="360" />
 </p>
 
 <p align="center">

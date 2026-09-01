@@ -69,7 +69,7 @@ SPLASH_HTML = """
       pointer-events: none;
     }
   </style>
-  <img src="favicon.png" alt="Asase" />
+  <img src="icon.png" alt="Asase" />
   <div class="asase-spinner"></div>
   <div id="asase-status-text" class="asase-status">Starting Earth Intelligence...</div>
   <script>

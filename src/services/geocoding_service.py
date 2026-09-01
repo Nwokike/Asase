@@ -4,7 +4,14 @@ from __future__ import annotations
 
 import logging
 
-from core.constants import OPEN_METEO_ELEVATION, OPEN_METEO_GEOCODING
+from core.constants import (
+    BIGDATACLOUD_REVERSE_GEOCODING,
+    IP_GEOLOCATION_BACKUP_URL,
+    IP_GEOLOCATION_URL,
+    OPEN_METEO_ELEVATION,
+    OPEN_METEO_GEOCODING,
+    OPEN_METEO_REVERSE_GEOCODING,
+)
 from core.network import AUTOCOMPLETE_TIMEOUT, NetworkManager
 from models.geocoding import GeocodingResponse
 
@@ -13,6 +20,8 @@ logger = logging.getLogger("asase.geocoding")
 
 _GEOCODE_LRU: dict[str, list[dict]] = {}
 _GEOCODE_LRU_MAX = 20
+_REVERSE_GEOCODE_LRU: dict[str, dict] = {}
+_REVERSE_GEOCODE_LRU_MAX = 30
 
 
 class GeocodingService:
@@ -51,6 +60,132 @@ class GeocodingService:
         except Exception as ex:
             logger.warning("Geocoding search failed for '%s': %s", query, ex)
         return []
+
+    @staticmethod
+    async def reverse_geocode(lat: float, lon: float) -> dict | None:
+        """Resolve (lat, lon) coordinates to nearest city and country name.
+
+        Tries Open-Meteo reverse geocoding first, falling back to BigDataCloud
+        client-side reverse geocoding. Both are completely auth-free.
+        """
+        cache_key = f"{lat:.3f},{lon:.3f}"
+        if cache_key in _REVERSE_GEOCODE_LRU:
+            return _REVERSE_GEOCODE_LRU[cache_key]
+
+        client = NetworkManager.get_client()
+
+        # 1. Primary: Open-Meteo Reverse Geocoding
+        url_om = f"{OPEN_METEO_REVERSE_GEOCODING}?latitude={lat:.4f}&longitude={lon:.4f}&language=en&format=json"
+        try:
+            res = await client.get(url_om, timeout=AUTOCOMPLETE_TIMEOUT)
+            if res.status_code == 200:
+                resp = GeocodingResponse.model_validate_json(res.content)
+                if resp.results:
+                    r = resp.results[0]
+                    result = {
+                        "name": r.name,
+                        "country": r.country,
+                        "country_code": r.country_code,
+                        "admin1": r.admin1,
+                        "latitude": r.latitude,
+                        "longitude": r.longitude,
+                        "elevation": r.elevation or 0.0,
+                    }
+                    if len(_REVERSE_GEOCODE_LRU) >= _REVERSE_GEOCODE_LRU_MAX:
+                        _REVERSE_GEOCODE_LRU.pop(next(iter(_REVERSE_GEOCODE_LRU)))
+                    _REVERSE_GEOCODE_LRU[cache_key] = result
+                    return result
+        except Exception as ex:
+            logger.debug(
+                "Open-Meteo reverse geocoding missed for (%s, %s): %s", lat, lon, ex
+            )
+
+        # 2. Fallback: BigDataCloud Free Client Reverse Geocoding
+        url_bdc = f"{BIGDATACLOUD_REVERSE_GEOCODING}?latitude={lat:.4f}&longitude={lon:.4f}&localityLanguage=en"
+        try:
+            res = await client.get(url_bdc, timeout=AUTOCOMPLETE_TIMEOUT)
+            if res.status_code == 200:
+                data = res.json()
+                city = (
+                    data.get("city")
+                    or data.get("locality")
+                    or data.get("principalSubdivision")
+                    or f"Coord ({lat:.2f}, {lon:.2f})"
+                )
+                country = data.get("countryName") or ""
+                result = {
+                    "name": city,
+                    "country": country,
+                    "country_code": data.get("countryCode", ""),
+                    "admin1": data.get("principalSubdivision", ""),
+                    "latitude": lat,
+                    "longitude": lon,
+                    "elevation": 0.0,
+                }
+                if len(_REVERSE_GEOCODE_LRU) >= _REVERSE_GEOCODE_LRU_MAX:
+                    _REVERSE_GEOCODE_LRU.pop(next(iter(_REVERSE_GEOCODE_LRU)))
+                _REVERSE_GEOCODE_LRU[cache_key] = result
+                return result
+        except Exception as ex:
+            logger.debug(
+                "BigDataCloud reverse geocoding missed for (%s, %s): %s", lat, lon, ex
+            )
+
+        return None
+
+    @staticmethod
+    async def locate_by_ip() -> tuple[float, float, str, str] | None:
+        """Resolve current location via IP geolocation when native GPS is unavailable.
+
+        Returns (latitude, longitude, city_name, country_name) or None.
+        """
+        client = NetworkManager.get_client()
+
+        # 1. Primary: ipapi.co
+        try:
+            res = await client.get(IP_GEOLOCATION_URL, timeout=AUTOCOMPLETE_TIMEOUT)
+            if res.status_code == 200:
+                data = res.json()
+                if "latitude" in data and "longitude" in data:
+                    lat = float(data["latitude"])
+                    lon = float(data["longitude"])
+                    city = data.get("city") or "My Location"
+                    country = data.get("country_name") or ""
+                    logger.info(
+                        "IP Geolocation resolved via ipapi.co: %s, %s (%s, %s)",
+                        city,
+                        country,
+                        lat,
+                        lon,
+                    )
+                    return lat, lon, city, country
+        except Exception as ex:
+            logger.debug("ipapi.co geolocation failed: %s", ex)
+
+        # 2. Fallback: ip-api.com
+        try:
+            res = await client.get(
+                IP_GEOLOCATION_BACKUP_URL, timeout=AUTOCOMPLETE_TIMEOUT
+            )
+            if res.status_code == 200:
+                data = res.json()
+                if data.get("status") == "success" and "lat" in data and "lon" in data:
+                    lat = float(data["lat"])
+                    lon = float(data["lon"])
+                    city = data.get("city") or "My Location"
+                    country = data.get("country") or ""
+                    logger.info(
+                        "IP Geolocation resolved via ip-api.com: %s, %s (%s, %s)",
+                        city,
+                        country,
+                        lat,
+                        lon,
+                    )
+                    return lat, lon, city, country
+        except Exception as ex:
+            logger.debug("ip-api.com geolocation failed: %s", ex)
+
+        return None
 
     @staticmethod
     async def get_elevation(lat: float, lon: float) -> float:

@@ -6,49 +6,23 @@ import flet as ft
 from flet import Control
 
 from core import tokens
-from core.constants import APP_NAME, APP_SUBTITLE, STORAGE_ONBOARDING_DONE
+from core.constants import STORAGE_ONBOARDING_DONE
 from core.theme import AppColors
 from state.app_state import AppStateCtx
 from state.controller_ctx import ControllerMethodsCtx
 
 
-@ft.component
-def OnboardingScreen() -> Control:
-    state = ft.use_context(AppStateCtx)
-    controller = ft.use_context(ControllerMethodsCtx)
-
-    from flet import context as flet_context
-
-    page = flet_context.page
-
-    async def _accept(e=None):
-        state.has_accepted_terms = True
-        state.is_first_launch = False
-        state.telemetry_version += 1
-        if controller.dismiss_onboarding:
-            controller.dismiss_onboarding()
-        if controller.save_setting:
-            await controller.save_setting(STORAGE_ONBOARDING_DONE, "true")
-        if page:
-            page.update()
-
+def build_onboarding_view(on_accept=None) -> Control:
+    """Builds the pure onboarding layout with the logo and terms checklist."""
     return ft.Container(
         content=ft.Column(
             [
                 ft.Container(expand=True),
-                ft.Image(src="icon.png", width=96, height=96),
-                ft.Container(height=tokens.SPACE_MD),
-                ft.Text(
-                    APP_NAME,
-                    size=tokens.FONT_HERO,
-                    weight=ft.FontWeight.BOLD,
-                    font_family="Outfit",
-                ),
-                ft.Text(
-                    APP_SUBTITLE,
-                    size=tokens.FONT_MD,
-                    color=ft.Colors.ON_SURFACE_VARIANT,
-                    text_align=ft.TextAlign.CENTER,
+                ft.Image(
+                    src="/logo.svg",
+                    width=240,
+                    height=80,
+                    fit=ft.BoxFit.CONTAIN,
                 ),
                 ft.Container(height=tokens.SPACE_XL),
                 ft.Container(
@@ -153,7 +127,7 @@ def OnboardingScreen() -> Control:
                         shape=ft.RoundedRectangleBorder(radius=tokens.RADIUS_MD),
                     ),
                     width=320,
-                    on_click=_accept,
+                    on_click=on_accept,
                 ),
                 ft.Container(height=tokens.SPACE_XL),
             ],
@@ -164,3 +138,26 @@ def OnboardingScreen() -> Control:
         alignment=ft.Alignment.CENTER,
         expand=True,
     )
+
+
+@ft.component
+def OnboardingScreen() -> Control:
+    state = ft.use_context(AppStateCtx)
+    controller = ft.use_context(ControllerMethodsCtx)
+
+    from flet import context as flet_context
+
+    page = flet_context.page
+
+    async def _accept(e=None):
+        state.has_accepted_terms = True
+        state.is_first_launch = False
+        state.telemetry_version += 1
+        if controller.dismiss_onboarding:
+            controller.dismiss_onboarding()
+        if controller.save_setting:
+            await controller.save_setting(STORAGE_ONBOARDING_DONE, "true")
+        if page:
+            page.update()
+
+    return build_onboarding_view(_accept)
