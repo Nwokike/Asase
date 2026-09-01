@@ -16,11 +16,16 @@ def TelemetryLineChart(
     curved: bool = True,
     show_points: bool = True,
     tooltip_format: str = "{:.1f}",
+    secondary_values: list[float] | None = None,
+    secondary_color: str = AppColors.GREY,
+    step_direction: float | None = None,
+    bottom_labels: list[str] | None = None,
+    left_axis_title: str | None = None,
 ) -> ft.Control:
-    """Builds a hardware-accelerated trend line chart with below-line gradient.
+    """Builds a hardware-accelerated trend line chart with multi-series support.
 
-    `tooltip_format` shapes the per-point tooltip, e.g. "{:.0f}" for
-    nanoflux-scale X-ray values where one decimal would be noise.
+    Supports secondary baseline series (dashed line), discrete step charts
+    (via `step_direction`), rich axis labeling, and custom point tooltips.
     """
     if not values:
         return ft.Container(
@@ -35,7 +40,10 @@ def TelemetryLineChart(
         )
 
     # If only 1 value is present, extend to 2 points so LineChart can draw a steady baseline
-    chart_vals = [values[0], values[0]] if len(values) == 1 else values
+    chart_vals = [values[0], values[0]] if len(values) == 1 else list(values)
+    if secondary_values:
+        chart_vals.extend(secondary_values)
+
     min_val = min(chart_vals)
     max_val = max(chart_vals)
     padding_y = max(0.5, (max_val - min_val) * 0.15) if max_val != min_val else 1.0
@@ -49,21 +57,76 @@ def TelemetryLineChart(
         for i, val in enumerate(values)
     ]
 
-    line_data = fc.LineChartData(
+    primary_data = fc.LineChartData(
         points=points,
-        curved=curved,
+        curved=curved if step_direction is None else False,
         color=accent_color,
         stroke_width=2.5,
         below_line_bgcolor=ft.Colors.with_opacity(0.12, accent_color),
+        step_direction=step_direction,
     )
+
+    data_series = [primary_data]
+
+    if secondary_values:
+        sec_points = [
+            fc.LineChartDataPoint(
+                x=float(i),
+                y=float(val),
+                tooltip=f"Mean: {tooltip_format.format(val)}",
+            )
+            for i, val in enumerate(secondary_values[: len(values)])
+        ]
+        sec_data = fc.LineChartData(
+            points=sec_points,
+            curved=curved,
+            color=secondary_color,
+            stroke_width=1.5,
+            dash_pattern=[6, 4],
+            below_line_bgcolor=None,
+        )
+        data_series.append(sec_data)
+
+    bottom_axis = None
+    if bottom_labels:
+        axis_labels = [
+            fc.ChartAxisLabel(
+                value=float(i),
+                label=ft.Text(
+                    lbl,
+                    size=9,
+                    color=ft.Colors.ON_SURFACE_VARIANT,
+                ),
+            )
+            for i, lbl in enumerate(bottom_labels[: len(values)])
+        ]
+        bottom_axis = fc.ChartAxis(
+            labels=axis_labels,
+            show_labels=True,
+            label_size=16,
+        )
+
+    left_axis = None
+    if left_axis_title:
+        left_axis = fc.ChartAxis(
+            title=ft.Text(
+                left_axis_title,
+                size=9,
+                color=ft.Colors.ON_SURFACE_VARIANT,
+            ),
+            title_size=16,
+            show_labels=False,
+        )
 
     return ft.Container(
         content=fc.LineChart(
-            data_series=[line_data],
+            data_series=data_series,
             min_y=min_val - padding_y,
             max_y=max_val + padding_y,
             min_x=0,
             max_x=len(values) - 1,
+            bottom_axis=bottom_axis,
+            left_axis=left_axis,
             interactive=True,
             expand=True,
         ),

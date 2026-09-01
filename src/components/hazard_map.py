@@ -335,16 +335,35 @@ def HazardMap(
 
     circle_layer = map.CircleLayer(circles=circle_markers)
     marker_layer = map.MarkerLayer(markers=markers)
+    attribution_layer = map.SimpleAttribution(
+        text="Esri · USGS · NASA · NOAA",
+        alignment=ft.Alignment.BOTTOM_LEFT,
+        bgcolor=ft.Colors.with_opacity(0.35, ft.Colors.BLACK),
+        text_style=ft.TextStyle(size=8, color=ft.Colors.WHITE_70),
+    )
 
     def _on_tap_handler(e: map.MapTapEvent):
         if on_map_tap and e.coordinates:
             on_map_tap(e.coordinates.latitude, e.coordinates.longitude)
 
+    # Lock rotation gestures on mobile/touch while keeping smooth drag and pinch-to-zoom
+    interactions = map.InteractionConfiguration(
+        flags=(
+            map.InteractionFlag.DRAG
+            | map.InteractionFlag.PINCH_ZOOM
+            | map.InteractionFlag.DOUBLE_TAP_ZOOM
+            | map.InteractionFlag.SCROLL_WHEEL_ZOOM
+        )
+    )
+
     return ft.Container(
         content=map.Map(
-            layers=[tile_layer, circle_layer, marker_layer],
+            layers=[tile_layer, circle_layer, marker_layer, attribution_layer],
             initial_center=map.MapLatitudeLongitude(lat, lon),
             initial_zoom=zoom,
+            min_zoom=2.0,
+            max_zoom=18.0,
+            interaction_configuration=interactions,
             bgcolor="#0B0F17" if is_dark else "#F1F5F9",
             keep_alive=True,
             on_tap=_on_tap_handler,

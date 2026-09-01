@@ -13,8 +13,9 @@ from core.theme import AppColors, AppStyles
 def build_hydrology_section(
     max_discharge: float | None,
     discharge_trend: list[float],
+    mean_trend: list[float] | None = None,
 ) -> ft.Container:
-    """Builds the GloFAS Hydrological river discharge card."""
+    """Builds the GloFAS Hydrological river discharge card with 2-series forecast."""
     return ft.Container(
         content=AppStyles.glass_card(
             ft.Column(
@@ -24,7 +25,7 @@ def build_hydrology_section(
                         f"{max_discharge:.1f} m³/s"
                         if max_discharge
                         else "Dry / Minor stream",
-                        "GloFAS Global Hydrological Simulation",
+                        "GloFAS Global Hydrological Simulation (7-Day vs Climatology Mean)",
                         ft.Icons.WATER_DAMAGE_ROUNDED,
                     ),
                     *(
@@ -32,8 +33,14 @@ def build_hydrology_section(
                             ft.Container(
                                 content=TelemetryLineChart(
                                     values=discharge_trend,
+                                    secondary_values=mean_trend,
                                     accent_color=AppColors.OCEAN,
                                     height=110,
+                                    bottom_labels=[
+                                        f"+{i}d"
+                                        for i in range(1, len(discharge_trend) + 1)
+                                    ],
+                                    left_axis_title="m³/s",
                                 ),
                                 padding=tokens.SPACE_XS,
                             )

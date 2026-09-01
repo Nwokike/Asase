@@ -108,61 +108,58 @@ class SpaceWeatherService:
 
         client = NetworkManager.get_client()
 
-        try:
-            res = await client.get(NOAA_SWPC_KP_INDEX)
-            if res.status_code == 200:
-                kp_data = res.json()
-                if isinstance(kp_data, list) and len(kp_data) >= 1:
-                    latest = kp_data[-1]
-                    if isinstance(latest, dict):
-                        kp_val = float(
-                            latest.get(
-                                "Kp",
-                                latest.get(
-                                    "kp",
-                                    latest.get(
-                                        "estimated_kp", latest.get("kp_index", 0.0)
-                                    ),
-                                ),
-                            )
-                        )
-                    elif isinstance(latest, list) and len(latest) > 1:
-                        kp_val = float(latest[1])
-                    raw_kp = kp_data[-12:]
-                    if kp_val < 3.0:
-                        status = "Quiet (Normal)"
-                    elif kp_val < 5.0:
-                        status = "Unsettled / Active"
-                    elif kp_val < 6.0:
-                        status = "G1 Minor Geomagnetic Storm"
-                    elif kp_val < 7.0:
-                        status = "G2 Moderate Geomagnetic Storm"
-                    elif kp_val < 8.0:
-                        status = "G3 Strong Geomagnetic Storm"
-                    else:
-                        status = "G4/G5 Severe Geomagnetic Storm"
-                    logger.info("NOAA SWPC: Kp %.2f (%s)", kp_val, status)
-        except Exception as e:
-            logger.warning("NOAA Kp-index fetch failed: %s", e)
+        async def _fetch_noaa(url: str):
+            try:
+                res = await client.get(url)
+                return res.json() if res.status_code == 200 else None
+            except Exception as ex:
+                logger.debug("NOAA fetch failed for %s: %s", url, ex)
+                return None
 
-        try:
-            res2 = await client.get(NOAA_SWPC_SOLAR_FLARES)
-            if res2.status_code == 200:
-                flares = res2.json()
-                if isinstance(flares, list) and flares:
-                    solar, flare_class = _parse_flare_class(flares)
-                    xray_flux = _parse_xray_series(flares)
-        except Exception as e:
-            logger.debug("NOAA Solar Flares fetch failed: %s", e)
+        # Fetch all 3 NOAA space weather feeds concurrently
+        import asyncio
 
-        try:
-            res3 = await client.get(NOAA_SWPC_KP_FORECAST)
-            if res3.status_code == 200:
-                rows = res3.json()
-                if isinstance(rows, list):
-                    kp_forecast = _parse_kp_forecast(rows)
-        except Exception as e:
-            logger.debug("NOAA Kp forecast fetch failed: %s", e)
+        kp_data, flares, forecast_rows = await asyncio.gather(
+            _fetch_noaa(NOAA_SWPC_KP_INDEX),
+            _fetch_noaa(NOAA_SWPC_SOLAR_FLARES),
+            _fetch_noaa(NOAA_SWPC_KP_FORECAST),
+        )
+
+        if isinstance(kp_data, list) and len(kp_data) >= 1:
+            latest = kp_data[-1]
+            if isinstance(latest, dict):
+                kp_val = float(
+                    latest.get(
+                        "Kp",
+                        latest.get(
+                            "kp",
+                            latest.get("estimated_kp", latest.get("kp_index", 0.0)),
+                        ),
+                    )
+                )
+            elif isinstance(latest, list) and len(latest) > 1:
+                kp_val = float(latest[1])
+            raw_kp = kp_data[-12:]
+            if kp_val < 3.0:
+                status = "Quiet (Normal)"
+            elif kp_val < 5.0:
+                status = "Unsettled / Active"
+            elif kp_val < 6.0:
+                status = "G1 Minor Geomagnetic Storm"
+            elif kp_val < 7.0:
+                status = "G2 Moderate Geomagnetic Storm"
+            elif kp_val < 8.0:
+                status = "G3 Strong Geomagnetic Storm"
+            else:
+                status = "G4/G5 Severe Geomagnetic Storm"
+            logger.info("NOAA SWPC: Kp %.2f (%s)", kp_val, status)
+
+        if isinstance(flares, list) and flares:
+            solar, flare_class = _parse_flare_class(flares)
+            xray_flux = _parse_xray_series(flares)
+
+        if isinstance(forecast_rows, list):
+            kp_forecast = _parse_kp_forecast(forecast_rows)
 
         telemetry = SpaceWeatherTelemetry(
             kp_index=kp_val,

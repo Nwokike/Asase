@@ -78,46 +78,46 @@ def build_focus_banner(
     name = location_name or "Global Telemetry"
     header = f"{name}{f', {country}' if country else ''}"
 
-    if not expanded:
-        pill = ft.Container(
-            content=ft.Row(
-                [
-                    ft.Icon(
-                        ft.Icons.LOCATION_ON_ROUNDED,
-                        size=tokens.ICON_XS,
-                        color=AppColors.PRIMARY,
-                    ),
-                    ft.Text(
-                        f"Tracking: {name}",
-                        size=tokens.FONT_XS,
-                        weight=ft.FontWeight.W_600,
-                        color=AppColors.PRIMARY,
-                        max_lines=1,
-                        overflow=ft.TextOverflow.ELLIPSIS,
-                    ),
-                    ft.Icon(
-                        ft.Icons.EXPAND_MORE_ROUNDED,
-                        size=tokens.ICON_XS,
-                        color=AppColors.PRIMARY,
-                    ),
-                ],
-                spacing=tokens.SPACE_XXS,
-                tight=True,
-            ),
-            padding=ft.Padding(
-                tokens.SPACE_MD, tokens.SPACE_XS, tokens.SPACE_MD, tokens.SPACE_XS
-            ),
-            border_radius=tokens.RADIUS_FULL,
-            bgcolor=ft.Colors.with_opacity(0.1, AppColors.PRIMARY),
-            border=ft.Border.all(1, ft.Colors.with_opacity(0.3, AppColors.PRIMARY)),
-            on_click=lambda _: on_toggle(),
-            ink=True,
-        )
-        return ft.Container(
-            content=ft.Row([pill], alignment=ft.MainAxisAlignment.CENTER),
-            alignment=ft.Alignment.CENTER,
-            padding=ft.Padding(tokens.SPACE_LG, tokens.SPACE_XS, tokens.SPACE_LG, 0),
-        )
+    pill = ft.Container(
+        content=ft.Row(
+            [
+                ft.Icon(
+                    ft.Icons.LOCATION_ON_ROUNDED,
+                    size=tokens.ICON_XS,
+                    color=AppColors.PRIMARY,
+                ),
+                ft.Text(
+                    f"Tracking: {name}",
+                    size=tokens.FONT_XS,
+                    weight=ft.FontWeight.W_600,
+                    color=AppColors.PRIMARY,
+                    max_lines=1,
+                    overflow=ft.TextOverflow.ELLIPSIS,
+                ),
+                ft.Icon(
+                    ft.Icons.EXPAND_MORE_ROUNDED,
+                    size=tokens.ICON_XS,
+                    color=AppColors.PRIMARY,
+                ),
+            ],
+            spacing=tokens.SPACE_XXS,
+            tight=True,
+        ),
+        padding=ft.Padding(
+            tokens.SPACE_MD, tokens.SPACE_XS, tokens.SPACE_MD, tokens.SPACE_XS
+        ),
+        border_radius=tokens.RADIUS_FULL,
+        bgcolor=ft.Colors.with_opacity(0.1, AppColors.PRIMARY),
+        border=ft.Border.all(1, ft.Colors.with_opacity(0.3, AppColors.PRIMARY)),
+        on_click=lambda _: on_toggle(),
+        ink=True,
+    )
+    collapsed_view = ft.Container(
+        key="focus_collapsed",
+        content=ft.Row([pill], alignment=ft.MainAxisAlignment.CENTER),
+        alignment=ft.Alignment.CENTER,
+        padding=ft.Padding(tokens.SPACE_LG, tokens.SPACE_XS, tokens.SPACE_LG, 0),
+    )
 
     temp_str = _fmt_num(temperature, "{:.0f}°C")
     aqi_str = _fmt_num(us_aqi, "AQI {:.0f}")
@@ -220,12 +220,21 @@ def build_focus_banner(
         tight=True,
     )
 
-    return ft.Container(
+    expanded_view = ft.Container(
+        key="focus_expanded",
         content=AppStyles.glass_card(column, page=page, padding=tokens.SPACE_MD),
         alignment=ft.Alignment.CENTER,
         padding=ft.Padding(
             tokens.SPACE_LG, tokens.SPACE_XS, tokens.SPACE_LG, tokens.SPACE_XS
         ),
+    )
+
+    return ft.AnimatedSwitcher(
+        content=expanded_view if expanded else collapsed_view,
+        transition=ft.AnimatedSwitcherTransition.FADE,
+        duration=ft.Duration(milliseconds=250),
+        switch_in_curve=ft.AnimationCurve.EASE_OUT,
+        switch_out_curve=ft.AnimationCurve.EASE_IN,
     )
 
 

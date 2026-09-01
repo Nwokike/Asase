@@ -157,6 +157,27 @@ def test_sparkline_chart_rendering():
     assert "Awaiting" in texts[0].value or "Insufficient" in texts[0].value
 
 
+def test_telemetry_line_chart_multi_series_and_step():
+    # 2-series chart (actual + mean) with discrete step direction and axis labels
+    chart_multi = TelemetryLineChart(
+        values=[10.0, 25.0, 40.0],
+        secondary_values=[12.0, 20.0, 30.0],
+        step_direction=0.0,
+        curved=False,
+        bottom_labels=["+1d", "+2d", "+3d"],
+        left_axis_title="m³/s",
+    )
+    assert isinstance(chart_multi, ft.Container)
+    import flet_charts as fc
+
+    lc = chart_multi.content
+    assert isinstance(lc, fc.LineChart)
+    assert len(lc.data_series) == 2
+    assert lc.data_series[1].dash_pattern == [6, 4]  # secondary series is dashed
+    assert lc.bottom_axis is not None
+    assert lc.left_axis is not None
+
+
 def test_hazard_map_component():
     eqs = [
         {

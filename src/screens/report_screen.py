@@ -60,6 +60,8 @@ def ReportScreen() -> Control:
     flood_daily = state.flood_data.get("daily", {})
     river_discharge = flood_daily.get("river_discharge", [])
     discharge_trend = [float(v) for v in river_discharge[:7] if v is not None]
+    river_discharge_mean = flood_daily.get("river_discharge_mean", [])
+    mean_trend = [float(v) for v in river_discharge_mean[:7] if v is not None]
     max_discharge = max(discharge_trend) if discharge_trend else None
 
     marine_current = state.marine_data.get("current", {})
@@ -383,7 +385,7 @@ def ReportScreen() -> Control:
         ),
         padding=tokens.SPACE_MD,
     )
-    hydrology_sec = build_hydrology_section(max_discharge, discharge_trend)
+    hydrology_sec = build_hydrology_section(max_discharge, discharge_trend, mean_trend)
     marine_sec = build_marine_section(wave_height, swell_height, wave_period)
     air_quality_sec = build_air_quality_section(
         us_aqi, pm25, pm10, co, no2, o3, so2, dust, aqi_trend

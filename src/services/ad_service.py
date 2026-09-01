@@ -114,9 +114,19 @@ class AdService:
         if not _HAS_ADS or not self._is_mobile() or not self._can_request_ads:
             return ft.Container(width=0, height=0)
         try:
+            req = fta.AdRequest(
+                keywords=[
+                    "earthquake",
+                    "weather",
+                    "wildfire",
+                    "disaster",
+                    "atmosphere",
+                    "planetary",
+                ]
+            )
             ad = fta.BannerAd(
                 unit_id=self.banner_id,
-                size=fta.AdSize.BANNER,
+                request=req,
                 on_error=lambda e: logger.debug("Banner ad error: %s", e),
             )
             return ft.Container(
@@ -131,15 +141,33 @@ class AdService:
     async def preload_interstitial(self, on_close: Callable | None = None) -> None:
         """Pre-load an interstitial ad for subsequent display."""
         self._on_close = on_close
-        if not _HAS_ADS or not self._is_mobile() or not self._can_request_ads:
+        if (
+            not _HAS_ADS
+            or not self._is_mobile()
+            or not self._can_request_ads
+            or not self.page
+        ):
             return
         try:
+            req = fta.AdRequest(
+                keywords=[
+                    "earthquake",
+                    "weather",
+                    "space",
+                    "hydrology",
+                    "intelligence",
+                ]
+            )
             self.interstitial = fta.InterstitialAd(
                 unit_id=self.interstitial_id,
+                request=req,
                 on_load=lambda e: logger.debug("Interstitial ad preloaded"),
                 on_error=lambda e: logger.debug("Interstitial ad load error: %s", e),
                 on_close=self._handle_close,
             )
+            # Register InterstitialAd as an active page service
+            if self.interstitial not in self.page.services:
+                self.page.services.append(self.interstitial)
         except Exception as e:
             logger.debug("Interstitial ad preload failed: %s", e)
             self.interstitial = None

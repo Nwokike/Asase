@@ -88,39 +88,53 @@ def HomeScreen() -> Control:
             asyncio.create_task(controller.select_coordinates(lat, lon, name, country))
         set_focus_expanded(True)
 
-    # Find closest active hazard to user
-    closest_hazard = None
-    min_dist_km = 999999.0
-    for eq in state.earthquakes:
-        lat = float(eq.get("latitude", 0.0))
-        lon = float(eq.get("longitude", 0.0))
-        d = calculate_haversine_distance_km(
-            state.current_lat, state.current_lon, lat, lon
-        )
-        if d < min_dist_km:
-            min_dist_km = d
-            closest_hazard = (eq, d, "earthquake")
+    # Find closest active hazard to user (Memoized across coordinates & feeds)
+    def _compute_closest_hazard():
+        ch = None
+        min_d = 999999.0
+        for eq in state.earthquakes:
+            lat = float(eq.get("latitude", 0.0))
+            lon = float(eq.get("longitude", 0.0))
+            d = calculate_haversine_distance_km(
+                state.current_lat, state.current_lon, lat, lon
+            )
+            if d < min_d:
+                min_d = d
+                ch = (eq, d, "earthquake")
 
-    for dis in state.disasters:
-        lat = float(dis.get("latitude", 0.0))
-        lon = float(dis.get("longitude", 0.0))
-        d = calculate_haversine_distance_km(
-            state.current_lat, state.current_lon, lat, lon
-        )
-        if d < min_dist_km:
-            min_dist_km = d
-            closest_hazard = (dis, d, dis.get("type", "hazard"))
+        for dis in state.disasters:
+            lat = float(dis.get("latitude", 0.0))
+            lon = float(dis.get("longitude", 0.0))
+            d = calculate_haversine_distance_km(
+                state.current_lat, state.current_lon, lat, lon
+            )
+            if d < min_d:
+                min_d = d
+                ch = (dis, d, dis.get("type", "hazard"))
+        return ch
 
-    # Filtered views based on hazard chip
-    _filter = state.selected_hazard_type
-    if _filter != "all" and _filter != "earthquake":
-        filtered_eq = []
-    else:
-        filtered_eq = state.earthquakes
-    if _filter == "all":
-        filtered_dis = state.disasters
-    else:
-        filtered_dis = [d for d in state.disasters if d.get("type") == _filter]
+    closest_hazard = ft.use_memo(
+        _compute_closest_hazard,
+        [state.current_lat, state.current_lon, state.earthquakes, state.disasters],
+    )
+
+    # Filtered views based on hazard chip (Memoized)
+    def _compute_filtered_events():
+        flt = state.selected_hazard_type
+        if flt != "all" and flt != "earthquake":
+            eqs = []
+        else:
+            eqs = state.earthquakes
+        if flt == "all":
+            diss = state.disasters
+        else:
+            diss = [d for d in state.disasters if d.get("type") == flt]
+        return eqs, diss
+
+    filtered_eq, filtered_dis = ft.use_memo(
+        _compute_filtered_events,
+        [state.selected_hazard_type, state.earthquakes, state.disasters],
+    )
 
     # Air Quality Summary
     aqi_current = state.air_quality_data.get("current", {})
