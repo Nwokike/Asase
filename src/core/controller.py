@@ -71,27 +71,32 @@ class AppController:
         self.page.window.min_width = 360
         self.page.window.min_height = 600
 
-        # Register Native Ecosystem Services
-        self.connectivity = ft.Connectivity()
-        self.connectivity.on_change = self._on_connectivity_change
-        self.page.services.append(self.connectivity)
-        self.page.run_task(self._init_connectivity)
-        self.page.on_app_lifecycle_state_change = self._on_lifecycle_change
+        is_web = getattr(self.page, "web", False)
 
-        self.geolocator = Geolocator()
-        self.page.services.append(self.geolocator)
+        # Register Native Ecosystem Services (Desktop / Mobile only)
+        if not is_web:
+            self.connectivity = ft.Connectivity()
+            self.connectivity.on_change = self._on_connectivity_change
+            self.page.services.append(self.connectivity)
+            self.page.run_task(self._init_connectivity)
+            self.page.on_app_lifecycle_state_change = self._on_lifecycle_change
 
-        self.haptics = ft.HapticFeedback()
-        self.page.services.append(self.haptics)
+            self.geolocator = Geolocator()
+            self.page.services.append(self.geolocator)
 
-        self.share = ft.Share()
-        self.page.services.append(self.share)
+            self.haptics = ft.HapticFeedback()
+            self.page.services.append(self.haptics)
 
-        self.url_launcher = ft.UrlLauncher()
-        self.page.services.append(self.url_launcher)
+            self.share = ft.Share()
+            self.page.services.append(self.share)
 
-        self.storage_paths = ft.StoragePaths()
-        self.page.services.append(self.storage_paths)
+            self.url_launcher = ft.UrlLauncher()
+            self.page.services.append(self.url_launcher)
+
+            self.storage_paths = ft.StoragePaths()
+            self.page.services.append(self.storage_paths)
+        else:
+            state.is_online = True
 
         self.storage = StorageService(self.page)
         self.ad_service = AdService(self.page)
@@ -101,8 +106,9 @@ class AppController:
         await self._load_saved_state()
 
         # UMP GDPR Consent & Preload Interstitial Ads on mobile
-        self.page.run_task(self.ad_service.gather_consent)
-        self.page.run_task(self.ad_service.preload_interstitial)
+        if not is_web:
+            self.page.run_task(self.ad_service.gather_consent)
+            self.page.run_task(self.ad_service.preload_interstitial)
 
         # Initial Telemetry Load
         self.page.run_task(self.refresh_all)
