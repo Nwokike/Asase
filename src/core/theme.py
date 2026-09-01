@@ -140,6 +140,30 @@ def adaptive_glass_border(page: ft.Page | None = None) -> str:
     )
 
 
+def logo_asset(page: ft.Page | None = None) -> str:
+    """Returns the reactive full-logo asset path (white wordmark in dark mode).
+
+    logo.svg carries the wordmark in dark slate (#253746) for light surfaces;
+    logo_dark.svg swaps the wordmark/earth linework to white while keeping the
+    green leaf — mirroring how the icon tint flips with the theme.
+    """
+    return "/logo_dark.svg" if is_dark_mode(page) else "/logo.svg"
+
+
+def build_logo(
+    page: ft.Page | None = None,
+    height: float = 32,
+    width: float | None = None,
+) -> ft.Image:
+    """Theme-reactive full logo (wordmark + earth + leaf) sized via CONTAIN fit."""
+    return ft.Image(
+        src=logo_asset(page),
+        height=height,
+        width=width,
+        fit=ft.BoxFit.CONTAIN,
+    )
+
+
 class AppTheme:
     @staticmethod
     def get_light_theme() -> ft.Theme:

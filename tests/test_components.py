@@ -370,51 +370,44 @@ def test_space_g_scale_and_forecast_helpers():
 def test_app_header():
     from components.app_header import build_app_header
 
-    # Brand header (title == "Asase") renders logo.svg directly without duplicate text
-    hdr_brand = build_app_header(
+    # Every screen uses the same consistent branding: reactive icon + title text.
+    # page=None resolves to dark mode, so the icon is tinted white.
+    hdr = build_app_header(
         page=None,
         title="Asase",
         subtitle="EARTH INTELLIGENCE",
         on_refresh=lambda: None,
         on_settings=lambda: None,
     )
-    assert isinstance(hdr_brand, ft.Container)
-    images_brand = [c for c in walk(hdr_brand) if isinstance(c, ft.Image)]
-    assert any(img.src == "/logo.svg" for img in images_brand)
-    texts_brand = [t.value for t in walk_texts(hdr_brand)]
-    assert "Asase" not in texts_brand  # wordmark is inside logo.svg, no text duplicate
-
-    # Sub-screen header (e.g. Settings) renders icon.svg + specific title text
-    hdr_sub = build_app_header(
-        page=None,
-        title="Settings",
-        subtitle="CONFIGURATION",
-        on_refresh=lambda: None,
-        on_settings=lambda: None,
-    )
-    assert isinstance(hdr_sub, ft.Container)
-    images_sub = [c for c in walk(hdr_sub) if isinstance(c, ft.Image)]
-    assert any(img.src == "/icon.svg" for img in images_sub)
-    texts_sub = [t.value for t in walk_texts(hdr_sub)]
-    assert "Settings" in texts_sub
-    assert "CONFIGURATION" in texts_sub
+    assert isinstance(hdr, ft.Container)
+    images = [c for c in walk(hdr) if isinstance(c, ft.Image)]
+    assert any(img.src == "/icon.svg" for img in images)
+    icon_img = next(img for img in images if img.src == "/icon.svg")
+    assert icon_img.color == ft.Colors.WHITE  # dark-mode white tint
+    texts = [t.value for t in walk_texts(hdr)]
+    assert "Asase" in texts
+    assert "EARTH INTELLIGENCE" in texts
 
 
-def test_about_card_and_onboarding_use_logo():
+def test_about_card_and_onboarding_use_reactive_logo():
     from components.settings.sections_about import build_about_card
     from screens.onboarding_screen import build_onboarding_view
 
+    # page=None resolves to dark mode → white-wordmark logo variant.
     about = build_about_card(page=None)
     about_images = [c for c in walk(about) if isinstance(c, ft.Image)]
-    assert any(img.src == "/logo.svg" for img in about_images)
+    assert any(img.src == "/logo_dark.svg" for img in about_images)
     about_texts = [t.value for t in walk_texts(about)]
-    assert "Asase" not in about_texts  # wordmark is inside logo.svg
+    assert "Asase" not in about_texts  # wordmark is inside the logo asset
 
-    onboarding = build_onboarding_view()
+    onboarding = build_onboarding_view(page=None)
     onboard_images = [c for c in walk(onboarding) if isinstance(c, ft.Image)]
-    assert any(img.src == "/logo.svg" for img in onboard_images)
+    assert any(img.src == "/logo_dark.svg" for img in onboard_images)
     onboard_texts = [t.value for t in walk_texts(onboarding)]
-    assert "Asase" not in onboard_texts  # wordmark is inside logo.svg
+    assert "Asase" not in onboard_texts  # wordmark is inside the logo asset
+    # Modern hero onboarding showcases the feature set without repeating the brand wordmark.
+    assert any("Live Seismic Network" in t for t in onboard_texts)
+    assert any("Enter Planetary Command" in t for t in onboard_texts)
 
 
 def test_location_search_bar():

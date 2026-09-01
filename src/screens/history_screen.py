@@ -7,6 +7,7 @@ import asyncio
 import flet as ft
 from flet import Control
 
+from components.app_header import build_app_header
 from components.empty_state import EmptyState
 from components.section_header import SectionHeader
 from core import tokens
@@ -40,43 +41,35 @@ def HistoryScreen() -> Control:
 
         asyncio.create_task(_do())
 
-    header = ft.Container(
-        content=ft.Column(
-            [
-                ft.Row(
-                    [
-                        ft.Icon(
-                            ft.Icons.HISTORY_ROUNDED,
-                            size=tokens.ICON_LG,
-                            color=AppColors.PRIMARY,
-                        ),
-                        ft.Column(
-                            [
-                                ft.Text(
-                                    "History",
-                                    size=tokens.FONT_XL,
-                                    weight=ft.FontWeight.BOLD,
-                                    font_family="Outfit",
-                                ),
-                                ft.Text(
-                                    f"{len(state.recent_searches)} locations • {len(state.bookmarks)} bookmarks",
-                                    size=tokens.FONT_XS,
-                                    color=ft.Colors.ON_SURFACE_VARIANT,
-                                ),
-                            ],
-                            spacing=2,
-                            expand=True,
-                        ),
-                        ft.TextButton("Clear", on_click=_clear)
-                        if state.recent_searches
-                        else ft.Container(),
-                    ],
-                    spacing=tokens.SPACE_MD,
-                ),
-            ],
-            spacing=tokens.SPACE_SM,
-        ),
-        padding=tokens.SPACE_LG,
+    header = build_app_header(
+        page,
+        title="History",
+        subtitle="SAVED LOCATIONS & RECENT SEARCHES",
+        on_refresh=controller.refresh_all,
+    )
+
+    # Clear-all action preserved from the old inline header, shown only when
+    # there is something to clear.
+    clear_row = (
+        ft.Container(
+            content=ft.Row(
+                [
+                    ft.Text(
+                        f"{len(state.recent_searches)} locations • {len(state.bookmarks)} bookmarks",
+                        size=tokens.FONT_XS,
+                        color=ft.Colors.ON_SURFACE_VARIANT,
+                        expand=True,
+                    ),
+                    ft.TextButton("Clear All", on_click=_clear)
+                    if state.recent_searches
+                    else ft.Container(),
+                ],
+                spacing=tokens.SPACE_MD,
+            ),
+            padding=ft.Padding(tokens.SPACE_LG, 0, tokens.SPACE_LG, tokens.SPACE_XS),
+        )
+        if (state.recent_searches or state.bookmarks)
+        else ft.Container()
     )
 
     def _row(item: dict, is_bookmark: bool = False):
@@ -178,6 +171,7 @@ def HistoryScreen() -> Control:
     return ft.ListView(
         controls=[
             header,
+            clear_row,
             ft.Container(content=body, padding=ft.Padding(0, tokens.SPACE_SM, 0, 0)),
             ft.Container(height=tokens.SPACE_XXXL),
         ],

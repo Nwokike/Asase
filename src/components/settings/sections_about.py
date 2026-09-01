@@ -8,7 +8,7 @@ from components.activity_terminal import show_activity_terminal_dialog
 from core import tokens
 from core.constants import APP_VERSION
 from core.state import state
-from core.theme import AppColors, AppStyles, is_dark_mode
+from core.theme import AppColors, AppStyles, build_logo, is_dark_mode
 
 
 def build_terminal_card(page: ft.Page) -> ft.Container:
@@ -66,18 +66,13 @@ def build_terminal_card(page: ft.Page) -> ft.Container:
 
 
 def build_about_card(page: ft.Page) -> ft.Container:
-    """Builds the About & Licenses Card with transparent adaptive vector logo."""
+    """Builds the About & Licenses Card with theme-reactive full logo."""
     is_dark = is_dark_mode(page)
     return AppStyles.glass_card(
         ft.Container(
             content=ft.Column(
                 [
-                    ft.Image(
-                        src="/logo.svg",
-                        width=180,
-                        height=54,
-                        fit=ft.BoxFit.CONTAIN,
-                    ),
+                    build_logo(page, height=54, width=180),
                     ft.Container(height=tokens.SPACE_XXS),
                     ft.Text(
                         f"Version {APP_VERSION}",
