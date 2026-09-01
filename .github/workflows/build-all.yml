@@ -119,8 +119,7 @@ jobs:
           find build/flutter -name "*arm64-v8a*.apk" -not -path "*/intermediates/*" -exec cp {} build/apk/asase-arm64-v8a.apk \;
           find build/flutter -name "*armeabi-v7a*.apk" -not -path "*/intermediates/*" -exec cp {} build/apk/asase-armeabi-v7a.apk \;
           find build/flutter -name "*x86_64*.apk" -not -path "*/intermediates/*" -exec cp {} build/apk/asase-x86_64.apk \;
-          # Fallback if specific ABI filename format differs
-          find build/flutter -name "*.apk" -not -path "*/intermediates/*" -not -path "*/build/apk/*" -exec cp -u {} build/apk/ \;
+          find build/flutter -name "app-release.apk" -not -path "*/intermediates/*" -exec cp {} build/apk/asase-universal.apk \;
           ls -lh build/apk/
       - name: Verify 16 KB page alignment (Google Play requirement)
         run: python scripts/check_elf_alignment.py build/apk/*.apk
