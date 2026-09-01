@@ -25,6 +25,7 @@ class DeviceServices:
         geolocator: Geolocator | None,
         page: ft.Page,
         on_success: Callable[[float, float, str, str], Any],
+        silent: bool = False,
     ) -> None:
         """Locate user using native device GPS with universal IP fallback and reverse geocoding.
 
@@ -119,12 +120,13 @@ class DeviceServices:
             except Exception as ex:
                 logger.warning("Location success callback error: %s", ex)
 
-        # ── 4. Final Failure Guidance ──
-        show_snack(
-            page,
-            "Could not determine your location — search for a place instead.",
-            bgcolor=AppColors.WARNING,
-        )
+        # ── 4. Final Failure Guidance (only if user explicitly triggered locate) ──
+        if not silent:
+            show_snack(
+                page,
+                "Could not determine your location — search for a place instead.",
+                bgcolor=AppColors.WARNING,
+            )
 
     @staticmethod
     async def share_text(

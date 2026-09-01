@@ -78,3 +78,29 @@ async def test_toggle_bookmark_no_name_noop():
     c.haptics = None
     await c.toggle_bookmark({})
     assert state.bookmarks == []
+
+
+@pytest.mark.asyncio
+async def test_auto_locate_on_startup():
+    from unittest.mock import patch
+
+    from services.geocoding_service import GeocodingService
+
+    page = _page_mock()
+    c = AppController(page)
+    state.current_location_name = "Global Telemetry"
+
+    with (
+        patch.object(
+            GeocodingService,
+            "locate_by_ip",
+            new=AsyncMock(return_value=(51.5074, -0.1278, "London", "United Kingdom")),
+        ),
+        patch.object(c, "refresh_all", new=AsyncMock()),
+    ):
+        await c._auto_locate_on_startup()
+
+    assert state.current_location_name == "London"
+    assert state.current_country == "United Kingdom"
+    assert state.current_lat == 51.5074
+    assert state.current_lon == -0.1278

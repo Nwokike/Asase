@@ -113,6 +113,9 @@ class AppController:
         # Initial Telemetry Load
         self.page.run_task(self.refresh_all)
 
+        # Dynamic Locality Auto-Detection (Silent GPS/IP fallback on startup)
+        self.page.run_task(self._auto_locate_on_startup)
+
         # Live-monitor cadence — keep feeds fresh without manual refreshes
         self._telemetry_task = asyncio.create_task(self._telemetry_loop())
 
@@ -393,6 +396,27 @@ class AppController:
                 lat, lon, name, country
             ),
         )
+
+    async def _auto_locate_on_startup(self) -> None:
+        """Silently detect user locality on initial startup (GPS/IP fallback).
+
+        If user has not manually selected another location yet, dynamically centers
+        the map and localized feeds on their actual city anywhere in the world.
+        """
+        if state.current_location_name == "Global Telemetry":
+            await DeviceServices.locate_user(
+                self.geolocator,
+                self.page,
+                self._apply_auto_location,
+                silent=True,
+            )
+
+    async def _apply_auto_location(
+        self, lat: float, lon: float, name: str, country: str
+    ) -> None:
+        """Apply auto-detected location if user hasn't selected another place."""
+        if state.current_location_name in ("Global Telemetry", name):
+            await self.select_coordinates(lat, lon, name, country)
 
     async def share_text(self, text: str, subject: str = "Planetary Alert") -> None:
         """Share text or report using native OS Share sheet."""

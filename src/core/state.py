@@ -25,12 +25,12 @@ class AppState:
     has_accepted_terms: bool = False
     theme_mode: ft.ThemeMode = ft.ThemeMode.SYSTEM
 
-    # Geolocation / Active Focus Point (Defaults to Global / Accra/Lagos/Nairobi or User GPS)
+    # Geolocation / Active Focus Point (Defaults to Global Overview until auto-located or selected)
     current_location_name: str = "Global Telemetry"
     current_country: str = ""
-    current_lat: float = 6.5244
-    current_lon: float = 3.3792
-    current_elevation: float = 10.0
+    current_lat: float = 20.0
+    current_lon: float = 0.0
+    current_elevation: float = 0.0
 
     # Live Hazards & Telemetry Feeds
     earthquakes: list[dict] = field(default_factory=list)
