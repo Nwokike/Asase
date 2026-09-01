@@ -64,7 +64,7 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-pythonpath = ["src", "tests"]
+pythonpath = [".", "src", "tests"]
 asyncio_mode = "auto"
 
 [tool.ruff]
