@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <strong>Asase — Global Earth Intelligence & Multi-Hazard Planetary Defense Platform</strong>
+  <strong>Global Earth Intelligence & Multi-Hazard Planetary Defense Platform</strong>
 </p>
 
 <p align="center">
