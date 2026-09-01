@@ -123,40 +123,36 @@ def build_map_scan_section(
             )
         )
 
-    body_rows.append(
-        ft.Row(
-            [
-                ft.FilledButton(
-                    icon=ft.Icons.AUTO_AWESOME_ROUNDED,
-                    content=ft.Text(
-                        "Rescan View" if answer else "AI Scan This Map",
-                        size=tokens.FONT_SM,
-                        weight=ft.FontWeight.W_600,
-                        color=ft.Colors.WHITE,
-                    ),
-                    style=ft.ButtonStyle(
-                        bgcolor=AppColors.ATMOSPHERE,
-                        shape=ft.RoundedRectangleBorder(radius=tokens.RADIUS_MD),
-                    ),
-                    on_click=on_scan,
-                    disabled=busy,
+    action_controls = [
+        ft.FilledButton(
+            icon=ft.Icons.AUTO_AWESOME_ROUNDED,
+            content=ft.Text(
+                "Rescan View" if answer else "AI Scan This Map",
+                size=tokens.FONT_SM,
+                weight=ft.FontWeight.W_600,
+                color=ft.Colors.WHITE,
+            ),
+            style=ft.ButtonStyle(
+                bgcolor=AppColors.ATMOSPHERE,
+                shape=ft.RoundedRectangleBorder(radius=tokens.RADIUS_MD),
+            ),
+            on_click=on_scan,
+            disabled=busy,
+        ),
+    ]
+    if answer:
+        action_controls.append(
+            ft.TextButton(
+                content=ft.Text(
+                    "Close",
+                    size=tokens.FONT_SM,
+                    color=ft.Colors.ON_SURFACE_VARIANT,
                 ),
-                (
-                    ft.TextButton(
-                        content=ft.Text(
-                            "Close",
-                            size=tokens.FONT_SM,
-                            color=ft.Colors.ON_SURFACE_VARIANT,
-                        ),
-                        on_click=lambda e: on_scan(close_only=True),
-                    )
-                    if answer
-                    else None
-                ),
-            ],
-            spacing=tokens.SPACE_SM,
+                on_click=lambda e: on_scan(close_only=True),
+            )
         )
-    )
+
+    body_rows.append(ft.Row(action_controls, spacing=tokens.SPACE_SM))
     if answer and not busy:
         body_rows.append(
             ft.TextField(
