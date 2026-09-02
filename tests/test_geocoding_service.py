@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
+from flet_geolocator import GeolocatorPermissionStatus
 
 from core.device_services import DeviceServices
 from services.geocoding_service import GeocodingService
@@ -126,60 +127,94 @@ async def test_reverse_geocode_bigdatacloud_fallback():
 
 
 @pytest.mark.asyncio
-async def test_locate_by_ip_ipapi_success():
-    mock_data = {
-        "latitude": 6.5244,
-        "longitude": 3.3792,
-        "city": "Lagos",
-        "country_name": "Nigeria",
-    }
-    mock_resp = httpx.Response(
-        200, json=mock_data, request=httpx.Request("GET", "https://ipapi.co/json/")
-    )
-    with patch.object(httpx.AsyncClient, "get", return_value=mock_resp):
-        res = await GeocodingService.locate_by_ip()
-        assert res == (6.5244, 3.3792, "Lagos", "Nigeria")
-
-
-@pytest.mark.asyncio
-async def test_locate_by_ip_ipapi_fallback_to_ip_api():
-    def _mock_get(url, **kwargs):
-        if "ipapi.co" in str(url):
-            return httpx.Response(500, request=httpx.Request("GET", str(url)))
-        if "ip-api.com" in str(url):
-            return httpx.Response(
-                200,
-                json={
-                    "status": "success",
-                    "lat": 5.55,
-                    "lon": -0.19,
-                    "city": "Accra",
-                    "country": "Ghana",
-                },
-                request=httpx.Request("GET", str(url)),
-            )
-        return httpx.Response(404, request=httpx.Request("GET", str(url)))
-
-    with patch.object(httpx.AsyncClient, "get", side_effect=_mock_get):
-        res = await GeocodingService.locate_by_ip()
-        assert res == (5.55, -0.19, "Accra", "Ghana")
-
-
-@pytest.mark.asyncio
-async def test_device_services_locate_user_ip_fallback():
-    # Native geolocator is None or disabled -> triggers IP fallback and on_success
+async def test_geolocator_success_without_ip_estimates():
+    # Real device geolocation resolves + reverse geocodes to a real city
     page = MagicMock()
+    page.web = False
     success_args = []
 
     async def _on_success(lat, lon, name, country):
         success_args.append((lat, lon, name, country))
 
+    geo = MagicMock()
+    geo.is_location_service_enabled = AsyncMock(return_value=True)
+    geo.get_permission_status = AsyncMock(
+        return_value=GeolocatorPermissionStatus.ALWAYS
+    )
+    geo.get_current_position = AsyncMock(
+        return_value=MagicMock(latitude=6.44, longitude=7.50)
+    )
+    geo.get_last_known_position = AsyncMock(return_value=None)
+
     with patch.object(
         GeocodingService,
-        "locate_by_ip",
-        new=AsyncMock(return_value=(6.44, 7.50, "Enugu", "Nigeria")),
+        "reverse_geocode",
+        new=AsyncMock(
+            return_value={"name": "Enugu", "country": "Nigeria", "admin1": "Enugu"}
+        ),
     ):
-        await DeviceServices.locate_user(None, page, _on_success)
+        await DeviceServices.locate_user(geo, page, _on_success, silent=True)
 
-    assert len(success_args) == 1
-    assert success_args[0] == (6.44, 7.50, "Enugu", "Nigeria")
+    assert success_args == [(6.44, 7.50, "Enugu", "Nigeria")]
+
+
+@pytest.mark.asyncio
+async def test_locate_user_gps_failure_stays_silent():
+    # GPS-only policy: when geolocation fails, nothing is called — no IP
+    # estimate ever guesses a city the user isn't in.
+    page = MagicMock()
+    page.web = False
+    success_args = []
+
+    async def _on_success(lat, lon, name, country):
+        success_args.append((lat, lon, name, country))
+
+    geo = MagicMock()
+    geo.is_location_service_enabled = AsyncMock(return_value=True)
+    geo.get_permission_status = AsyncMock(
+        return_value=GeolocatorPermissionStatus.ALWAYS
+    )
+
+    async def _fail(**kwargs):
+        raise RuntimeError("gps error")
+
+    geo.get_current_position = MagicMock(side_effect=_fail)
+    geo.get_last_known_position = AsyncMock(return_value=None)
+
+    with patch.object(
+        GeocodingService, "reverse_geocode", new=AsyncMock(return_value=None)
+    ):
+        await DeviceServices.locate_user(geo, page, _on_success, silent=True)
+
+    assert success_args == []
+
+
+@pytest.mark.asyncio
+async def test_locate_user_web_uses_longer_timeout():
+    # Web permission dialogs need more time — 15s vs 8s native.
+    page = MagicMock()
+    page.web = True
+    geo = MagicMock()
+    geo.is_location_service_enabled = AsyncMock(return_value=True)
+    geo.get_permission_status = AsyncMock(
+        return_value=GeolocatorPermissionStatus.ALWAYS
+    )
+    geo.get_current_position = AsyncMock(return_value=None)
+    geo.get_last_known_position = AsyncMock(return_value=None)
+
+    captured: dict = {}
+
+    async def _capture_wait_for(coro, timeout=None):
+        captured["timeout"] = timeout
+        coro.close()
+        raise TimeoutError
+
+    with (
+        patch.object(
+            GeocodingService, "reverse_geocode", new=AsyncMock(return_value=None)
+        ),
+        patch("asyncio.wait_for", new=_capture_wait_for),
+    ):
+        await DeviceServices.locate_user(geo, page, lambda *a: None, silent=True)
+
+    assert captured["timeout"] == 15.0

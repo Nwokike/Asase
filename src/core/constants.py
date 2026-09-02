@@ -3,8 +3,13 @@
 from __future__ import annotations
 
 APP_NAME = "Asase"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.1"
+APP_BUILD_NUMBER = 3
 APP_SUBTITLE = "Global Earth Intelligence & Planetary Telemetry"
+
+# ── Update & Distribution URLs ─────────────────────────────────────────
+UPDATE_CONFIG_URL = "https://raw.githubusercontent.com/Nwokike/Asase/main/version.json"
+GITHUB_RELEASES_URL = "https://github.com/Nwokike/Asase/releases/latest"
 
 # Kiri Gateway (family-shared app key, same as akili/MarkItDown)
 GATEWAY_BASE_URL = "https://api.kiri.ng"
@@ -20,6 +25,7 @@ STORAGE_BOOKMARKS = "asase.bookmarks"
 STORAGE_RECENT_SEARCHES = "asase.recent_searches"
 STORAGE_OFFLINE_CACHE = "asase.offline_cache"
 STORAGE_ONBOARDING_DONE = "asase.onboarding_done"
+STORAGE_LAST_LOCATION = "asase.last_location"  # {name, country, lat, lon, elevation}
 
 # UI Messages
 MSG_OFFLINE = "Offline Mode: Displaying cached planetary intelligence data."
@@ -54,8 +60,6 @@ OPEN_METEO_REVERSE_GEOCODING = "https://geocoding-api.open-meteo.com/v1/reverse"
 BIGDATACLOUD_REVERSE_GEOCODING = (
     "https://api.bigdatacloud.net/data/reverse-geocode-client"
 )
-IP_GEOLOCATION_URL = "https://ipapi.co/json/"
-IP_GEOLOCATION_BACKUP_URL = "https://ip-api.com/json/"
 OPEN_METEO_FORECAST = "https://api.open-meteo.com/v1/forecast"
 OPEN_METEO_AIR_QUALITY = "https://air-quality-api.open-meteo.com/v1/air-quality"
 OPEN_METEO_FLOOD = "https://flood-api.open-meteo.com/v1/flood"

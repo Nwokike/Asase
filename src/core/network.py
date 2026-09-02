@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import random
+import sys
 import time
 from typing import Any, ClassVar
 
@@ -109,7 +110,7 @@ class ResilientRetryTransport(httpx.AsyncHTTPTransport):
 
 
 async def on_request_hook(request: httpx.Request) -> None:
-    request.headers["User-Agent"] = "Asase-Earth-Intelligence/1.0 (+https://kiri.ng)"
+    request.headers["User-Agent"] = "Asase-Earth-Intelligence/1.0.1 (+https://kiri.ng)"
     request.extensions["start_time"] = time.perf_counter()
 
 
@@ -142,6 +143,10 @@ class NetworkManager:
                 backoff_factor=0.4,
                 limits=LIMITS,
             )
+            # HTTP/2 multiplexes the 4 Open-Meteo calls over one connection
+            # (desktop/mobile). Skipped in Pyodide, where requests go through
+            # browser fetch (already h2) and the h2 package may be absent.
+            use_http2 = sys.platform != "emscripten"
             cls._client = httpx.AsyncClient(
                 transport=transport,
                 timeout=DEFAULT_TIMEOUT,
@@ -150,6 +155,7 @@ class NetworkManager:
                     "response": [on_response_hook],
                 },
                 follow_redirects=True,
+                http2=use_http2,
             )
         return cls._client
 

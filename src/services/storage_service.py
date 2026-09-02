@@ -1,9 +1,12 @@
 """Platform-resilient key-value storage & Gzip telemetry cache service for Asase.
 
 Combines:
-1. Sherlock's web client_storage persistence
+1. Flet's own SharedPreferences service for web persistence
+   (client_storage was REMOVED in flet 0.86 — SharedPreferences is the
+   built-in replacement: localStorage on web, JSON file on desktop)
 2. KTV Player's atomic crash-proof local JSON storage (.tmp + .bak + .corrupted)
-3. L1 Memory LRU Cache + L2 Disk Gzip (.json.gz) telemetry cache with TTL
+3. L1 Memory LRU Cache + L2 Disk MsgPack telemetry cache with TTL
+   (web L2 persists through SharedPreferences as a JSON envelope store)
 """
 
 from __future__ import annotations
@@ -48,6 +51,10 @@ def get_cache_dir() -> Path:
 class StorageService:
     """Universal persistent storage & multi-tier cache engine for Web, Android, and Desktop."""
 
+    _WEB_STORAGE_KEY = "asase_storage"
+    _WEB_CACHE_KEY = "asase_tcache"
+    _MAX_WEB_ENVELOPES = 8
+
     def __init__(self, page: ft.Page):
         self._page = page
         self._data: dict[str, Any] = {}
@@ -55,7 +62,9 @@ class StorageService:
         self._dirty = False
         self._last_write: float = 0.0
         self._pending_write_task: asyncio.Task | None = None
-        self._is_web = bool(getattr(page, "session_id", None))
+        # flet 0.86 removed page.session_id and page.client_storage —
+        # page.web is the platform signal, SharedPreferences the store.
+        self._is_web = bool(getattr(page, "web", False))
 
         # L1 Memory LRU Cache
         self._l1_cache: collections.OrderedDict[str, dict[str, Any]] = (
@@ -64,17 +73,27 @@ class StorageService:
         self._max_l1_items = 50
 
         if self._is_web:
-            self._load_web()
+            # Flet's own persistent KV store — must be registered as a page
+            # service before it can be invoked.
+            self._prefs = ft.SharedPreferences()
+            with contextlib.suppress(Exception):
+                page.services.append(self._prefs)
+            self._web_loaded = False
         else:
+            self._prefs = None
+            self._web_loaded = True
             self._load()
 
-    def _load_web(self) -> None:
+    async def _ensure_web_loaded(self) -> None:
+        """One-shot lazy load of the SharedPreferences-backed store."""
+        if self._web_loaded:
+            return
+        self._web_loaded = True
         try:
-            cs = self._page.client_storage
-            raw = cs.get("asase_storage")
+            raw = await self._prefs.get(self._WEB_STORAGE_KEY)
             self._data = json.loads(raw) if raw else {}
         except Exception as e:
-            logger.warning("StorageService._load_web failed: %s", e)
+            logger.warning("StorageService web load failed: %s", e)
             self._data = {}
 
     def _load(self) -> None:
@@ -105,9 +124,6 @@ class StorageService:
         self._data = {}
 
     def _save_now(self) -> None:
-        if self._is_web:
-            self._save_now_web()
-            return
         try:
             storage_dir = get_storage_dir()
             storage_file = get_storage_file()
@@ -130,10 +146,13 @@ class StorageService:
         except Exception as e:
             logger.warning("StorageService._save_now failed: %s", e)
 
-    def _save_now_web(self) -> None:
+    async def _save_now_web(self) -> None:
+        """Persist the whole store as one JSON string via SharedPreferences."""
         try:
-            cs = self._page.client_storage
-            cs.set("asase_storage", json.dumps(self._data, separators=(",", ":")))
+            await self._prefs.set(
+                self._WEB_STORAGE_KEY,
+                json.dumps(self._data, ensure_ascii=False, separators=(",", ":")),
+            )
             self._dirty = False
             self._last_write = time.monotonic()
         except Exception as e:
@@ -165,16 +184,19 @@ class StorageService:
 
     async def get(self, key: str, default: Any = None) -> Any:
         async with self._lock:
+            await self._ensure_web_loaded()
             return self._data.get(key, default)
 
     async def set(self, key: str, value: Any) -> None:
         async with self._lock:
+            await self._ensure_web_loaded()
             self._data[key] = value
             self._dirty = True
         self._schedule_write()
 
     async def delete(self, key: str) -> None:
         async with self._lock:
+            await self._ensure_web_loaded()
             self._data.pop(key, None)
             self._dirty = True
         self._schedule_write()
@@ -182,7 +204,10 @@ class StorageService:
     async def flush(self) -> None:
         async with self._lock:
             if self._dirty:
-                await asyncio.to_thread(self._save_now)
+                if self._is_web:
+                    await self._save_now_web()
+                else:
+                    await asyncio.to_thread(self._save_now)
 
     # ── High-Performance MsgPack Telemetry Cache Subsystem ──
 
@@ -190,8 +215,31 @@ class StorageService:
         h = hashlib.sha256(key.encode("utf-8")).hexdigest()[:16]
         return get_cache_dir() / f"{h}.msgpack"
 
+    async def _load_web_tcache(self) -> dict[str, dict[str, Any]]:
+        """Read the web L2 telemetry envelope store from SharedPreferences."""
+        try:
+            raw = await self._prefs.get(self._WEB_CACHE_KEY)
+            store = json.loads(raw) if raw else {}
+            return store if isinstance(store, dict) else {}
+        except Exception as e:
+            logger.debug("Web tcache read failed: %s", e)
+            return {}
+
+    async def _save_web_tcache(self, store: dict[str, dict[str, Any]]) -> None:
+        """Persist the web L2 telemetry envelope store (LRU-evicted, capped)."""
+        try:
+            # Evict oldest entries beyond the cap to stay tiny in localStorage
+            items = sorted(store.items(), key=lambda kv: kv[1].get("_saved", 0))
+            if len(items) > self._MAX_WEB_ENVELOPES:
+                store = dict(items[-self._MAX_WEB_ENVELOPES :])
+            await self._prefs.set(
+                self._WEB_CACHE_KEY, json.dumps(store, separators=(",", ":"))
+            )
+        except Exception as e:
+            logger.debug("Web tcache write failed: %s", e)
+
     async def get_cached_telemetry(self, key: str) -> Any | None:
-        """Retrieve telemetry from L1 Memory or L2 Disk MsgPack Cache (with legacy fallback)."""
+        """Retrieve telemetry from L1 Memory or L2 Cache (with legacy fallback)."""
         now = time.time()
         # 1. L1 Memory
         if key in self._l1_cache:
@@ -201,7 +249,7 @@ class StorageService:
                 return item["data"]
             del self._l1_cache[key]
 
-        # 2. L2 Disk MsgPack (with legacy gzip fallback)
+        # 2. L2 Disk MsgPack (native) / SharedPreferences (web, legacy gzip fallback)
         if not self._is_web:
             path = self._cache_path(key)
             h = hashlib.sha256(key.encode("utf-8")).hexdigest()[:16]
@@ -244,6 +292,22 @@ class StorageService:
                     logger.debug("Legacy cache read error for %s: %s", key, e)
                     with contextlib.suppress(Exception):
                         await asyncio.to_thread(legacy_path.unlink, True)
+        else:
+            store = await self._load_web_tcache()
+            envelope = store.get(key)
+            if isinstance(envelope, dict):
+                if now < envelope.get("expires_at", 0):
+                    data = envelope.get("data")
+                    self._l1_cache[key] = {
+                        "data": data,
+                        "expires_at": envelope["expires_at"],
+                    }
+                    if len(self._l1_cache) > self._max_l1_items:
+                        self._l1_cache.popitem(last=False)
+                    return data
+                # Expired — drop it from the store so the cap counts live keys
+                store.pop(key, None)
+                await self._save_web_tcache(store)
         return None
 
     async def set_cached_telemetry(
@@ -253,7 +317,7 @@ class StorageService:
         ttl_seconds: float = 900.0,
         ttl: float | None = None,
     ) -> None:
-        """Store telemetry in L1 Memory and L2 Disk MsgPack Cache (3-5x faster binary format)."""
+        """Store telemetry in L1 Memory and L2 Cache (3-5x faster binary format)."""
         actual_ttl = ttl if ttl is not None else ttl_seconds
         expires_at = time.time() + actual_ttl
         if len(self._l1_cache) >= self._max_l1_items:
@@ -278,3 +342,14 @@ class StorageService:
                 await asyncio.to_thread(_write)
             except Exception as e:
                 logger.debug("Cache write error for %s: %s", key, e)
+        else:
+            try:
+                store = await self._load_web_tcache()
+                store[key] = {
+                    "expires_at": expires_at,
+                    "data": data,
+                    "_saved": time.time(),
+                }
+                await self._save_web_tcache(store)
+            except Exception as e:
+                logger.debug("Web cache write error for %s: %s", key, e)

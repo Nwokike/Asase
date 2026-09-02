@@ -391,7 +391,6 @@ def test_app_header():
 
 def test_about_card_and_onboarding_use_reactive_logo():
     from components.settings.sections_about import build_about_card
-    from core.state import state as app_state
     from screens.onboarding_screen import build_onboarding_view
 
     # page=None resolves to dark mode → white-wordmark logo variant.
@@ -401,16 +400,6 @@ def test_about_card_and_onboarding_use_reactive_logo():
     about_texts = [t.value for t in walk_texts(about)]
     assert "Asase" not in about_texts  # wordmark is inside the logo asset
 
-    # Clean slate: no telemetry systems live
-    saved = {
-        f: getattr(app_state, f)
-        for f in ("earthquakes", "disasters", "weather_data", "space_weather")
-    }
-    app_state.earthquakes = []
-    app_state.disasters = []
-    app_state.weather_data = {}
-    app_state.space_weather = {}
-
     def _noop(*_args):
         pass
 
@@ -418,17 +407,10 @@ def test_about_card_and_onboarding_use_reactive_logo():
         args = {
             "page": None,
             "page_idx": idx,
-            "systems_ready": 0,
-            "search_query": "",
-            "search_results": [],
-            "picked_name": "",
             "on_next": _noop,
             "on_skip": _noop,
             "on_swipe": _noop,
             "on_dot_click": _noop,
-            "on_search_change": _noop,
-            "on_pick_city": _noop,
-            "on_locate_gps": _noop,
         }
         args.update(kw)
         return build_onboarding_view(**args)
@@ -442,61 +424,36 @@ def test_about_card_and_onboarding_use_reactive_logo():
         ]
         return out
 
-    try:
-        # Slide 0 — brand: reactive dark wordmark + live systems progress panel
-        v0 = _view(0)
-        texts0 = _labels(v0)
-        imgs = [c for c in walk(v0) if isinstance(c, ft.Image)]
-        assert any(img.src == "/logo_dark.svg" for img in imgs)
-        assert "Planetary\nCommand Center" in texts0
-        assert "0 of 4 systems live" in texts0
-        assert "Skip" in texts0 and "Next" in texts0
+    # Slide 0 — brand: reactive dark wordmark, no text duplication
+    v0 = _view(0)
+    texts0 = _labels(v0)
+    imgs = [c for c in walk(v0) if isinstance(c, ft.Image)]
+    assert any(img.src == "/logo_dark.svg" for img in imgs)
+    assert "Skip" in texts0 and "Next" in texts0
 
-        # Slide 1 — locality: home search bar + suggestion tiles + GPS button
-        results = [
-            {
-                "name": "Lagos",
-                "country": "Nigeria",
-                "latitude": 6.45,
-                "longitude": 3.39,
-                "elevation": 41,
-            }
-        ]
-        v1 = _view(1, search_query="Lag", search_results=results)
-        texts1 = _labels(v1)
-        assert "Where should we\nstand watch?" in texts1
-        bars = [c for c in walk(v1) if isinstance(c, ft.SearchBar)]
-        assert len(bars) == 1
-        assert "Search" in (bars[0].bar_hint_text or "")
-        assert bars[0].bar_trailing[0].on_click is not None  # GPS locate button
-        tiles = [c for c in walk(v1) if isinstance(c, ft.ListTile)]
-        assert len(tiles) == 1
-        assert tiles[0].title.value == "Lagos, Nigeria"
-        assert tiles[0].on_click is not None
-        # Picked-city confirmation flows into the footer disclaimer
-        texts1p = _labels(_view(1, picked_name="Lagos"))
-        assert any("Standing watch over Lagos" in t for t in texts1p)
+    # Slide 1 — hazards showcase: hero icon + title + reactive surface tokens
+    v1 = _view(1)
+    texts1 = _labels(v1)
+    assert "Every Hazard,\nOne Command View" in texts1
+    icons = [c for c in walk(v1) if isinstance(c, ft.Icon)]
+    assert any(i.icon == ft.Icons.PUBLIC_ROUNDED for i in icons)
 
-        # Slide 2 — readiness: checklist flips Live as systems land
-        texts2 = _labels(_view(2))
-        assert "Systems\nSyncing" in texts2
-        assert "Enter Planetary Command" in texts2
-        app_state.earthquakes = [{"m": 3.5}]
-        texts2r = _labels(_view(2, systems_ready=1))
-        assert "Live" in texts2r
-        app_state.disasters = [{"m": 1}]
-        app_state.weather_data = {"current": {}}
-        app_state.space_weather = {"kp": []}
-        texts2all = _labels(_view(2, systems_ready=4))
-        assert "All Systems\nOperational" in texts2all
+    # Slide 2 — AI showcase + final CTA
+    v2 = _view(2)
+    texts2 = _labels(v2)
+    assert "Grounded AI\nBriefings" in texts2
+    assert "Enter Planetary Command" in texts2
+    # Skip is hidden on the last slide
+    skips = [
+        b
+        for b in walk_buttons(v2)
+        if isinstance(getattr(b, "content", None), str) and b.content == "Skip"
+    ]
+    assert all(not b.visible for b in skips)
 
-        # The wordmark never appears as plain text in any slide
-        for idx in range(3):
-            assert "Asase" not in _labels(_view(idx))
-    finally:
-        # Restore real state for other tests
-        for f, v in saved.items():
-            setattr(app_state, f, v)
+    # The wordmark never appears as plain text in any slide
+    for idx in range(3):
+        assert "Asase" not in _labels(_view(idx))
 
 
 def test_location_search_bar():

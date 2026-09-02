@@ -79,7 +79,11 @@ def build_location_search_bar(
                 size=tokens.FONT_XS,
                 color=ft.Colors.ON_SURFACE_VARIANT,
             ),
-            on_click=lambda _, city=c: on_select_city(city),
+            on_click=lambda _, city=c: (
+                asyncio.create_task(on_select_city(city))
+                if asyncio.iscoroutinefunction(on_select_city)
+                else on_select_city(city)
+            ),
         )
         for c in search_results
     ]

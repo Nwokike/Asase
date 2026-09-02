@@ -1,0 +1,9 @@
+{
+  "build_number": 3,
+  "version": "1.0.1",
+  "type": "update",
+  "title": "Asase 1.0.1",
+  "release_notes": "• Accurate web location: real GPS only — no more estimated cities\n• Remembers your last tracked city between launches\n• Faster refresh: city switches refetch local feeds only\n• Web caching + simple theme-reactive onboarding & boot screen\n• In-app What's New dialog (mobile/desktop)",
+  "mandatory": false,
+  "github_url": "https://github.com/Nwokike/Asase/releases/latest"
+}

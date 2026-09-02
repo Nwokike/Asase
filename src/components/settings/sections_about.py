@@ -68,19 +68,30 @@ def build_terminal_card(page: ft.Page) -> ft.Container:
 def build_about_card(page: ft.Page) -> ft.Container:
     """Builds the About & Licenses Card with theme-reactive full logo."""
     is_dark = is_dark_mode(page)
+
+    def _open_version_dialog(e=None):
+        from components.version_dialog import show_version_dialog
+
+        show_version_dialog(page)
+
     return AppStyles.glass_card(
         ft.Container(
             content=ft.Column(
                 [
                     build_logo(page, height=54, width=180),
                     ft.Container(height=tokens.SPACE_XXS),
-                    ft.Text(
-                        f"Version {APP_VERSION}",
-                        size=tokens.FONT_SM,
-                        color=AppColors.PRIMARY
-                        if not is_dark
-                        else AppColors.PRIMARY_LIGHT,
-                        weight=ft.FontWeight.W_600,
+                    ft.Container(
+                        content=ft.Text(
+                            f"Version {APP_VERSION}",
+                            size=tokens.FONT_SM,
+                            color=AppColors.PRIMARY
+                            if not is_dark
+                            else AppColors.PRIMARY_LIGHT,
+                            weight=ft.FontWeight.W_600,
+                        ),
+                        ink=True,
+                        tooltip="Tap to view changelog",
+                        on_click=_open_version_dialog,
                     ),
                     ft.Container(height=tokens.SPACE_XS),
                     ft.Text(

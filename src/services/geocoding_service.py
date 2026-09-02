@@ -6,8 +6,6 @@ import logging
 
 from core.constants import (
     BIGDATACLOUD_REVERSE_GEOCODING,
-    IP_GEOLOCATION_BACKUP_URL,
-    IP_GEOLOCATION_URL,
     OPEN_METEO_ELEVATION,
     OPEN_METEO_GEOCODING,
     OPEN_METEO_REVERSE_GEOCODING,
@@ -130,60 +128,6 @@ class GeocodingService:
             logger.debug(
                 "BigDataCloud reverse geocoding missed for (%s, %s): %s", lat, lon, ex
             )
-
-        return None
-
-    @staticmethod
-    async def locate_by_ip() -> tuple[float, float, str, str] | None:
-        """Resolve current location via IP geolocation when native GPS is unavailable.
-
-        Returns (latitude, longitude, city_name, country_name) or None.
-        """
-        client = NetworkManager.get_client()
-
-        # 1. Primary: ipapi.co
-        try:
-            res = await client.get(IP_GEOLOCATION_URL, timeout=AUTOCOMPLETE_TIMEOUT)
-            if res.status_code == 200:
-                data = res.json()
-                if "latitude" in data and "longitude" in data:
-                    lat = float(data["latitude"])
-                    lon = float(data["longitude"])
-                    city = data.get("city") or "My Location"
-                    country = data.get("country_name") or ""
-                    logger.info(
-                        "IP Geolocation resolved via ipapi.co: %s, %s (%s, %s)",
-                        city,
-                        country,
-                        lat,
-                        lon,
-                    )
-                    return lat, lon, city, country
-        except Exception as ex:
-            logger.debug("ipapi.co geolocation failed: %s", ex)
-
-        # 2. Fallback: ip-api.com
-        try:
-            res = await client.get(
-                IP_GEOLOCATION_BACKUP_URL, timeout=AUTOCOMPLETE_TIMEOUT
-            )
-            if res.status_code == 200:
-                data = res.json()
-                if data.get("status") == "success" and "lat" in data and "lon" in data:
-                    lat = float(data["lat"])
-                    lon = float(data["lon"])
-                    city = data.get("city") or "My Location"
-                    country = data.get("country") or ""
-                    logger.info(
-                        "IP Geolocation resolved via ip-api.com: %s, %s (%s, %s)",
-                        city,
-                        country,
-                        lat,
-                        lon,
-                    )
-                    return lat, lon, city, country
-        except Exception as ex:
-            logger.debug("ip-api.com geolocation failed: %s", ex)
 
         return None
 

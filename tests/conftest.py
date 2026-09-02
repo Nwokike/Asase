@@ -15,6 +15,7 @@ def mock_page():
     page.client_storage.set.return_value = None
     page.services = []
     page.theme_mode = ft.ThemeMode.SYSTEM
+    page.web = False
     page.session_id = None
     page.platform = MagicMock()
     page.platform.is_mobile.return_value = False

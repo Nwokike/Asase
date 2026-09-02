@@ -17,6 +17,7 @@ from core.constants import (
     MSG_OFFLINE,
     MSG_ONLINE,
     STORAGE_BOOKMARKS,
+    STORAGE_LAST_LOCATION,
     STORAGE_MIN_MAGNITUDE,
     STORAGE_ONBOARDING_DONE,
     STORAGE_RECENT_SEARCHES,
@@ -73,6 +74,13 @@ class AppController:
 
         is_web = getattr(self.page, "web", False)
 
+        # Geolocator works everywhere — web included (browser Geolocation API
+        # via geolocator_web). On web it must only run from a user gesture
+        # (onboarding GPS button / search-bar locate) since browsers suppress
+        # permission prompts that fire without one.
+        self.geolocator = Geolocator()
+        self.page.services.append(self.geolocator)
+
         # Register Native Ecosystem Services (Desktop / Mobile only)
         if not is_web:
             self.connectivity = ft.Connectivity()
@@ -80,9 +88,6 @@ class AppController:
             self.page.services.append(self.connectivity)
             self.page.run_task(self._init_connectivity)
             self.page.on_app_lifecycle_state_change = self._on_lifecycle_change
-
-            self.geolocator = Geolocator()
-            self.page.services.append(self.geolocator)
 
             self.haptics = ft.HapticFeedback()
             self.page.services.append(self.haptics)
@@ -113,7 +118,13 @@ class AppController:
         # Initial Telemetry Load
         self.page.run_task(self.refresh_all)
 
-        # Dynamic Locality Auto-Detection (Silent GPS/IP fallback on startup)
+        # Silent update check — native only (mobile/desktop); the web app is
+        # always the latest deployed build, so checking version.json there is
+        # pointless and only burns a request that 404s.
+        if not is_web:
+            self.page.run_task(self.check_for_updates)
+
+        # Dynamic Locality Auto-Detection (Silent GPS on startup, off-web only)
         self.page.run_task(self._auto_locate_on_startup)
 
         # Live-monitor cadence — keep feeds fresh without manual refreshes
@@ -164,7 +175,7 @@ class AppController:
                 state.speed_unit = speed_u
 
             onboarding_done = await self.storage.get(STORAGE_ONBOARDING_DONE)
-            if onboarding_done == "true" or self.page.web:
+            if onboarding_done == "true":
                 state.has_accepted_terms = True
                 state.is_first_launch = False
 
@@ -175,6 +186,23 @@ class AppController:
             recent = await self.storage.get(STORAGE_RECENT_SEARCHES)
             if isinstance(recent, list):
                 state.recent_searches = recent
+
+            # Restore the last focus point so returning users reopen on their
+            # city instead of "Global Telemetry" (20.0, 0.0).
+            saved_loc = await self.storage.get(STORAGE_LAST_LOCATION)
+            if isinstance(saved_loc, dict) and saved_loc.get("name"):
+                state.current_lat = float(saved_loc.get("lat", 20.0))
+                state.current_lon = float(saved_loc.get("lon", 0.0))
+                state.current_location_name = str(saved_loc["name"])
+                state.current_country = str(saved_loc.get("country", ""))
+                if saved_loc.get("elevation") is not None:
+                    state.current_elevation = float(saved_loc["elevation"])
+                logger.info(
+                    "Restored last focus point: %s (%s, %s)",
+                    state.current_location_name,
+                    state.current_lat,
+                    state.current_lon,
+                )
 
         except Exception as e:
             logger.warning("Failed to load saved state: %s", e)
@@ -197,7 +225,36 @@ class AppController:
                 self._controller_methods.set_theme_mode(self.page.theme_mode)
             self.page.update()
 
+    async def check_for_updates(self) -> None:
+        """Silent startup check of version.json; sets state and auto-opens
+        the version dialog only when the update is mandatory."""
+        from services.update_service import UpdateService
+
+        result = await UpdateService().check_for_update()
+        if result:
+            state.update_available = True
+            state.update_data = result
+            logger.info(
+                "Update available: v%s (build %s)",
+                result.get("version"),
+                result.get("build_number"),
+            )
+            try:
+                self.page.update()
+            except Exception:
+                pass
+            if result.get("mandatory"):
+                self.open_version_dialog()
+
+    def open_version_dialog(self) -> None:
+        """Open the version dialog (changelog when up to date, update UI
+        when a newer build was found)."""
+        from components.version_dialog import show_version_dialog
+
+        show_version_dialog(self.page)
+
     _refresh_lock: asyncio.Lock | None = None
+    _refresh_pending: tuple[bool, bool] | None = None  # (fetch_global, fetch_local)
     _telemetry_task: asyncio.Task | None = None
     _TELEMETRY_REFRESH_SECONDS = 300  # 5 min — USGS/EONET update upstream
 
@@ -216,7 +273,26 @@ class AppController:
             self._telemetry_task.cancel()
 
     async def refresh_all(self) -> None:
-        """Fetch real-time USGS earthquakes, NASA disasters, atmospheric telemetry, and space weather."""
+        """Fetch every feed: global (quakes/disasters/space) + local (atmospheric)."""
+        await self._run_scoped(fetch_global=True, fetch_local=True)
+
+    async def refresh_local_feeds(self) -> None:
+        """Re-fetch only the location-keyed feeds (weather/AQI/flood/marine).
+
+        Used on focus-point changes: the global feeds don't depend on
+        coordinates, so switching locality costs 4 requests instead of a
+        full pass and never re-pulls EONET fetched moments earlier.
+        """
+        await self._run_scoped(fetch_global=False, fetch_local=True)
+
+    async def _run_scoped(self, fetch_global: bool, fetch_local: bool) -> None:
+        """Run a scoped refresh pass; coalesce requests that arrive mid-flight.
+
+        A request landing while another pass is in flight sets a pending flag
+        instead of being dropped, and the running pass loops once more when
+        done — the freshest state (e.g. a city picked mid-refresh) is always
+        eventually fetched.
+        """
         if not state.is_online:
             logger.info(
                 "Telemetry fetch skipped: Device is offline. Using local cache."
@@ -225,79 +301,32 @@ class AppController:
         if self._refresh_lock is None:
             self._refresh_lock = asyncio.Lock()
         if self._refresh_lock.locked():
-            logger.info("Refresh already in progress — throttling duplicate call")
+            self._refresh_pending = (fetch_global, fetch_local)
+            logger.info("Refresh in progress — queued one coalescing pass")
             return
         async with self._refresh_lock:
-            await self._do_refresh()
+            await self._do_refresh(fetch_global, fetch_local)
+            while self._refresh_pending is not None:
+                pending, self._refresh_pending = self._refresh_pending, None
+                await self._do_refresh(pending[0], pending[1])
 
-    async def _do_refresh(self) -> None:
+    async def _do_refresh(self, fetch_global: bool, fetch_local: bool) -> None:
         state.is_loading = True
-        logger.info(
-            "Refreshing all planetary telemetry feeds via NetworkManager pool..."
+        scope = " + ".join(
+            s for s, on in (("global", fetch_global), ("local", fetch_local)) if on
         )
+        logger.info("Refreshing %s telemetry feeds via NetworkManager pool...", scope)
 
         try:
-            cache_key = f"telemetry_{state.current_lat:.2f}_{state.current_lon:.2f}"
-            cached = None
-            if self.storage:
-                cached = await self.storage.get_cached_telemetry(cache_key)
-
-            if cached:
-                logger.info(
-                    "Using fresh cached telemetry envelope for (%s, %s)",
-                    state.current_lat,
-                    state.current_lon,
-                )
-                state.weather_data = cached.get("weather", {})
-                state.air_quality_data = cached.get("air_quality", {})
-                state.flood_data = cached.get("flood", {})
-                state.marine_data = cached.get("marine", {})
-
-            # Fetch all global data concurrently (category-aware disasters)
-            eq_task = SeismicService.fetch_earthquakes(state.min_magnitude_filter)
-            dis_task = DisasterService.fetch_active_disasters(
-                state.selected_hazard_type
-            )
-            atmo_task = AtmosphericService.fetch_location_telemetry(
-                state.current_lat, state.current_lon
-            )
-            space_task = SpaceWeatherService.fetch_space_weather()
-
-            results = await asyncio.gather(
-                eq_task,
-                dis_task,
-                atmo_task,
-                space_task,
-                return_exceptions=True,
-            )
-
-            if isinstance(results[0], list):
-                state.earthquakes = results[0]
-            if isinstance(results[1], list):
-                state.disasters = results[1]
-            if isinstance(results[2], dict) and results[2]:
-                atmo = results[2]
-                state.weather_data = atmo.get("weather", {})
-                state.air_quality_data = atmo.get("air_quality", {})
-                state.flood_data = atmo.get("flood", {})
-                state.marine_data = atmo.get("marine", {})
-            if isinstance(results[3], dict) and results[3]:
-                state.space_weather = results[3]
-
-            # Cache local telemetry envelope
-            if self.storage:
-                payload = {
-                    "weather": state.weather_data,
-                    "air_quality": state.air_quality_data,
-                    "flood": state.flood_data,
-                    "marine": state.marine_data,
-                }
-                await self.storage.set_cached_telemetry(
-                    cache_key, payload, ttl_seconds=300.0
-                )
+            tasks = []
+            if fetch_global:
+                tasks.append(self._fetch_global_feeds())
+            if fetch_local:
+                tasks.append(self._fetch_local_feeds())
+            await asyncio.gather(*tasks)
 
             state.telemetry_version += 1
-            logger.info("All planetary telemetry feeds updated successfully")
+            logger.info("%s telemetry feeds updated successfully", scope.capitalize())
             if self.page:
                 self.page.update()
 
@@ -308,6 +337,58 @@ class AppController:
             state.is_loading = False
             if self.page:
                 self.page.update()
+
+    async def _fetch_global_feeds(self) -> None:
+        """Location-independent feeds: USGS quakes, NASA EONET, NOAA space weather."""
+        results = await asyncio.gather(
+            SeismicService.fetch_earthquakes(state.min_magnitude_filter),
+            DisasterService.fetch_active_disasters(state.selected_hazard_type),
+            SpaceWeatherService.fetch_space_weather(),
+            return_exceptions=True,
+        )
+        if isinstance(results[0], list):
+            state.earthquakes = results[0]
+        if isinstance(results[1], list):
+            state.disasters = results[1]
+        if isinstance(results[2], dict) and results[2]:
+            state.space_weather = results[2]
+
+    async def _fetch_local_feeds(self) -> None:
+        """Location-keyed atmospheric telemetry for the current focus point."""
+        lat, lon = state.current_lat, state.current_lon
+        cache_key = f"telemetry_{lat:.2f}_{lon:.2f}"
+
+        # Paint the last-known envelope instantly while fresh data streams in
+        if self.storage:
+            cached = await self.storage.get_cached_telemetry(cache_key)
+            if cached:
+                logger.info(
+                    "Using fresh cached telemetry envelope for (%s, %s)", lat, lon
+                )
+                state.weather_data = cached.get("weather", {})
+                state.air_quality_data = cached.get("air_quality", {})
+                state.flood_data = cached.get("flood", {})
+                state.marine_data = cached.get("marine", {})
+
+        atmo = await AtmosphericService.fetch_location_telemetry(lat, lon)
+        if isinstance(atmo, dict) and any(
+            atmo.get(k) for k in ("weather", "air_quality", "flood", "marine")
+        ):
+            state.weather_data = atmo.get("weather", {})
+            state.air_quality_data = atmo.get("air_quality", {})
+            state.flood_data = atmo.get("flood", {})
+            state.marine_data = atmo.get("marine", {})
+            if self.storage:
+                await self.storage.set_cached_telemetry(
+                    cache_key,
+                    {
+                        "weather": state.weather_data,
+                        "air_quality": state.air_quality_data,
+                        "flood": state.flood_data,
+                        "marine": state.marine_data,
+                    },
+                    ttl_seconds=300.0,
+                )
 
     async def select_coordinates(
         self,
@@ -359,10 +440,24 @@ class AppController:
         except Exception:
             pass
 
+        # Persist the focus point (with elevation if it resolved) so the next
+        # launch reopens on this place
+        if self.storage:
+            await self.storage.set(
+                STORAGE_LAST_LOCATION,
+                {
+                    "name": name,
+                    "country": country,
+                    "lat": lat,
+                    "lon": lon,
+                    "elevation": state.current_elevation,
+                },
+            )
+
         if self.page:
             self.page.update()
 
-        await self.refresh_all()
+        await self.refresh_local_feeds()
 
     async def open_report(self) -> None:
         """Open Situation Report with strategic interstitial transition on mobile."""
@@ -399,7 +494,7 @@ class AppController:
         state.telemetry_version += 1
 
     async def locate_user(self) -> None:
-        """Locate user using native GPS with universal IP fallback and reverse geocoding."""
+        """Locate user using device GPS and reverse geocoding — no IP estimates."""
         await DeviceServices.locate_user(
             self.geolocator,
             self.page,
@@ -409,11 +504,16 @@ class AppController:
         )
 
     async def _auto_locate_on_startup(self) -> None:
-        """Silently detect user locality on initial startup (GPS/IP fallback).
+        """Silently detect user locality on initial startup (native GPS only).
 
-        If user has not manually selected another location yet, dynamically centers
-        the map and localized feeds on their actual city anywhere in the world.
+        Runs off-web only — browsers suppress geolocation permission prompts
+        that fire without a user gesture, so on web locality comes from the
+        onboarding GPS button or the home search-bar locate button instead.
+        If user has not manually selected another location yet, dynamically
+        centers the map and localized feeds on their actual city.
         """
+        if getattr(self.page, "web", False):
+            return
         if state.current_location_name == "Global Telemetry":
             await DeviceServices.locate_user(
                 self.geolocator,

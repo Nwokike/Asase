@@ -62,5 +62,9 @@ class AppState:
     theme_version: int = 0
     ad_service: Any = None
 
+    # Updates (set by AppController.check_for_updates at startup)
+    update_available: bool = False
+    update_data: dict | None = None
+
 
 state = AppState()

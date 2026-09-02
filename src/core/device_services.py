@@ -20,6 +20,8 @@ logger = logging.getLogger("asase.device")
 class DeviceServices:
     """Helper methods for interacting with native mobile/desktop hardware APIs."""
 
+    _locate_in_flight: bool = False
+
     @staticmethod
     async def locate_user(
         geolocator: Geolocator | None,
@@ -27,19 +29,44 @@ class DeviceServices:
         on_success: Callable[[float, float, str, str], Any],
         silent: bool = False,
     ) -> None:
-        """Locate user using native device GPS with universal IP fallback and reverse geocoding.
+        """Locate user via real device geolocation only — no IP estimates.
 
-        Works across all platforms (Android, iOS, Web, Linux, Windows, macOS).
-        If native GPS/Geolocator fails, is denied, or is unsupported, automatically
-        falls back to IP geolocation. In all cases, coordinates are reverse-geocoded
-        to a real city name and country instead of a generic 'My Location'.
+        Works across all platforms (Android, iOS, Web, Linux, Windows, macOS):
+        the geolocator plugin uses native GPS off-web and the browser
+        Geolocation API on web. If geolocation is denied, unsupported, or
+        times out, we stay unlocated (Global Telemetry) and guide the user to
+        search — never guessing a city from an IP address. Coordinates are
+        always reverse-geocoded to a real city name and country.
         """
+        # One locate at a time — double-taps on the GPS button must not run
+        # two permission requests / two reverse-geocode chains.
+        if DeviceServices._locate_in_flight:
+            logger.info("Locate already in progress — ignoring duplicate call")
+            return
+        DeviceServices._locate_in_flight = True
+        try:
+            await DeviceServices._locate_user_inner(
+                geolocator, page, on_success, silent
+            )
+        finally:
+            DeviceServices._locate_in_flight = False
+
+    @staticmethod
+    async def _locate_user_inner(
+        geolocator: Geolocator | None,
+        page: ft.Page,
+        on_success: Callable[[float, float, str, str], Any],
+        silent: bool = False,
+    ) -> None:
         lat: float | None = None
         lon: float | None = None
         resolved_name: str = ""
         resolved_country: str = ""
 
-        # ── 1. Attempt Native Geolocator (Mobile / Web / Desktop with GeoClue) ──
+        # Browser permission dialogs need time to answer; native GPS is faster.
+        timeout = 15.0 if getattr(page, "web", False) else 8.0
+
+        # ── 1. Native / Browser Geolocator ──
         if geolocator:
             try:
                 is_enabled = await geolocator.is_location_service_enabled()
@@ -62,7 +89,7 @@ class DeviceServices:
                         pos = None
                         try:
                             pos = await _aio.wait_for(
-                                geolocator.get_current_position(), timeout=8.0
+                                geolocator.get_current_position(), timeout=timeout
                             )
                         except Exception:
                             pos = None
@@ -78,24 +105,7 @@ class DeviceServices:
             except Exception as ex:
                 logger.debug("Native geolocator attempt bypassed/failed: %s", ex)
 
-        # ── 2. Universal IP Geolocation Fallback (Linux / Desktop / GPS Timeout) ──
-        if lat is None or lon is None:
-            logger.info("Attempting IP-based geolocation fallback...")
-            try:
-                ip_loc = await GeocodingService.locate_by_ip()
-                if ip_loc:
-                    lat, lon, resolved_name, resolved_country = ip_loc
-                    logger.info(
-                        "IP Geolocation succeeded: %s, %s (%s, %s)",
-                        resolved_name,
-                        resolved_country,
-                        lat,
-                        lon,
-                    )
-            except Exception as ex:
-                logger.warning("IP geolocation fallback failed: %s", ex)
-
-        # ── 3. Resolve Real City & Country via Reverse Geocoding ──
+        # ── 2. Resolve Real City & Country via Reverse Geocoding ──
         if lat is not None and lon is not None:
             if not resolved_name or resolved_name == "My Location":
                 try:
@@ -120,7 +130,7 @@ class DeviceServices:
             except Exception as ex:
                 logger.warning("Location success callback error: %s", ex)
 
-        # ── 4. Final Failure Guidance (only if user explicitly triggered locate) ──
+        # ── 3. Final Failure Guidance (only if user explicitly triggered locate) ──
         if not silent:
             show_snack(
                 page,
