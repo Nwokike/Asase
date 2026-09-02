@@ -7,13 +7,13 @@ on:
   workflow_dispatch:
     inputs:
       build_version:
-        description: "Build version"
-        required: true
-        default: "1.0.0"
+        description: "Build version (defaults to pyproject.toml)"
+        required: false
+        default: ""
       build_number:
-        description: "Build number"
-        required: true
-        default: "1"
+        description: "Build number (defaults to pyproject.toml)"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -28,8 +28,6 @@ env:
   PYTHONUTF8: "1"
   FLET_CLI_NO_RICH_OUTPUT: "1"
   UV_PYTHON: "3.14"
-  BUILD_VERSION: ${{ inputs.build_version || '1.0.0' }}
-  BUILD_NUMBER: ${{ inputs.build_number || '1' }}
 
 jobs:
   # ─── 0. Run Tests & Linter ─────────────────────────────
@@ -53,8 +51,23 @@ jobs:
       TAG_NAME: ${{ steps.tag_info.outputs.TAG_NAME }}
       RELEASE_NAME: ${{ steps.tag_info.outputs.RELEASE_NAME }}
       IS_PRERELEASE: ${{ steps.tag_info.outputs.IS_PRERELEASE }}
+      BUILD_VERSION: ${{ steps.versions.outputs.BUILD_VERSION }}
+      BUILD_NUMBER: ${{ steps.versions.outputs.BUILD_NUMBER }}
     steps:
       - uses: actions/checkout@v4
+      - name: Resolve Build Version & Number
+        id: versions
+        run: |
+          # Single source of truth: [tool.flet] in pyproject.toml.
+          # workflow_dispatch inputs (if given) override; tag pushes always
+          # use pyproject so the AAB versionCode never regresses.
+          PY_VERSION=$(grep -m1 '^version = ' pyproject.toml | sed 's/version = //;s/"//g')
+          PY_NUMBER=$(grep -A6 '^\[tool.flet\]' pyproject.toml | grep -m1 '^build_number' | sed 's/build_number = //')
+          INPUT_VERSION="${{ inputs.build_version }}"
+          INPUT_NUMBER="${{ inputs.build_number }}"
+          echo "BUILD_VERSION=${INPUT_VERSION:-$PY_VERSION}" >> $GITHUB_OUTPUT
+          echo "BUILD_NUMBER=${INPUT_NUMBER:-$PY_NUMBER}" >> $GITHUB_OUTPUT
+          echo "Resolved: version=${INPUT_VERSION:-$PY_VERSION} build_number=${INPUT_NUMBER:-$PY_NUMBER}"
       - name: Generate Release Tag & Name
         id: tag_info
         run: |
@@ -84,6 +97,13 @@ jobs:
   build-apk-split:
     needs: [prepare-release]
     runs-on: ubuntu-latest
+    env:
+      BUILD_VERSION: ${{ needs.prepare-release.outputs.BUILD_VERSION }}
+      BUILD_NUMBER: ${{ needs.prepare-release.outputs.BUILD_NUMBER }}
+      FLET_ANDROID_SIGNING_KEY_STORE: ${{ github.workspace }}/kiri_keystore.jks
+      FLET_ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      FLET_ANDROID_SIGNING_KEY_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      FLET_ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -96,18 +116,9 @@ jobs:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: echo "$KEYSTORE_BASE64" | base64 --decode > kiri_keystore.jks
       - name: Build APK (split per ABI)
-        env:
-          FLET_ANDROID_SIGNING_KEY_STORE: ${{ github.workspace }}/kiri_keystore.jks
-          FLET_ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          FLET_ANDROID_SIGNING_KEY_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          FLET_ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: uv run flet build apk --yes --project asase --product "Asase" --org ng.kiri --build-version ${{ env.BUILD_VERSION }} --build-number ${{ env.BUILD_NUMBER }} --split-per-abi -v
       - name: Inject icon & rebuild split APKs
         env:
-          FLET_ANDROID_SIGNING_KEY_STORE: ${{ github.workspace }}/kiri_keystore.jks
-          FLET_ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          FLET_ANDROID_SIGNING_KEY_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          FLET_ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           SERIOUS_PYTHON_SITE_PACKAGES: ${{ github.workspace }}/build/site-packages
         run: |
           RES=build/flutter/android/app/src/main/res
@@ -136,6 +147,13 @@ jobs:
   build-aab:
     needs: [prepare-release]
     runs-on: ubuntu-latest
+    env:
+      BUILD_VERSION: ${{ needs.prepare-release.outputs.BUILD_VERSION }}
+      BUILD_NUMBER: ${{ needs.prepare-release.outputs.BUILD_NUMBER }}
+      FLET_ANDROID_SIGNING_KEY_STORE: ${{ github.workspace }}/kiri_keystore.jks
+      FLET_ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      FLET_ANDROID_SIGNING_KEY_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      FLET_ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -148,18 +166,9 @@ jobs:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: echo "$KEYSTORE_BASE64" | base64 --decode > kiri_keystore.jks
       - name: Build AAB
-        env:
-          FLET_ANDROID_SIGNING_KEY_STORE: ${{ github.workspace }}/kiri_keystore.jks
-          FLET_ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          FLET_ANDROID_SIGNING_KEY_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          FLET_ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: uv run flet build aab --yes --project asase --product "Asase" --org ng.kiri --build-version ${{ env.BUILD_VERSION }} --build-number ${{ env.BUILD_NUMBER }} -v
       - name: Inject icon & rebuild AAB
         env:
-          FLET_ANDROID_SIGNING_KEY_STORE: ${{ github.workspace }}/kiri_keystore.jks
-          FLET_ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          FLET_ANDROID_SIGNING_KEY_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          FLET_ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           SERIOUS_PYTHON_SITE_PACKAGES: ${{ github.workspace }}/build/site-packages
         run: |
           RES=build/flutter/android/app/src/main/res
@@ -185,6 +194,9 @@ jobs:
   build-windows:
     needs: [prepare-release]
     runs-on: windows-latest
+    env:
+      BUILD_VERSION: ${{ needs.prepare-release.outputs.BUILD_VERSION }}
+      BUILD_NUMBER: ${{ needs.prepare-release.outputs.BUILD_NUMBER }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -250,6 +262,9 @@ jobs:
   build-linux:
     needs: [prepare-release]
     runs-on: ubuntu-latest
+    env:
+      BUILD_VERSION: ${{ needs.prepare-release.outputs.BUILD_VERSION }}
+      BUILD_NUMBER: ${{ needs.prepare-release.outputs.BUILD_NUMBER }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -351,6 +366,9 @@ jobs:
   build-web:
     needs: [prepare-release]
     runs-on: ubuntu-latest
+    env:
+      BUILD_VERSION: ${{ needs.prepare-release.outputs.BUILD_VERSION }}
+      BUILD_NUMBER: ${{ needs.prepare-release.outputs.BUILD_NUMBER }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
