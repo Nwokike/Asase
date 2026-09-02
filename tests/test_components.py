@@ -1,7 +1,7 @@
 """Comprehensive tests for Asase UI components."""
 
 import flet as ft
-from flet_tree import walk, walk_icons, walk_texts
+from flet_tree import walk, walk_buttons, walk_icons, walk_texts
 
 from components.banner_ad import build_banner_ad
 from components.hazard_map import (
@@ -391,7 +391,7 @@ def test_app_header():
 
 def test_about_card_and_onboarding_use_reactive_logo():
     from components.settings.sections_about import build_about_card
-    from screens.onboarding_screen import build_onboarding_view
+    from screens.onboarding_screen import _SLIDES, build_onboarding_view
 
     # page=None resolves to dark mode → white-wordmark logo variant.
     about = build_about_card(page=None)
@@ -400,14 +400,30 @@ def test_about_card_and_onboarding_use_reactive_logo():
     about_texts = [t.value for t in walk_texts(about)]
     assert "Asase" not in about_texts  # wordmark is inside the logo asset
 
-    onboarding = build_onboarding_view(page=None)
-    onboard_images = [c for c in walk(onboarding) if isinstance(c, ft.Image)]
-    assert any(img.src == "/logo_dark.svg" for img in onboard_images)
-    onboard_texts = [t.value for t in walk_texts(onboarding)]
-    assert "Asase" not in onboard_texts  # wordmark is inside the logo asset
-    # Modern hero onboarding showcases the feature set without repeating the brand wordmark.
-    assert any("Live Seismic Network" in t for t in onboard_texts)
-    assert any("Enter Planetary Command" in t for t in onboard_texts)
+    # Family-standard slide deck (Sherlock pattern): the brand slide shows the
+    # theme-reactive wordmark, feature slides render one capability each, and
+    # the wordmark never appears as plain text anywhere in the deck.
+    def _noop(*_args):
+        pass
+
+    deck_texts = []
+    for idx in range(len(_SLIDES)):
+        view = build_onboarding_view(None, idx, _noop, _noop, _noop, _noop)
+        deck_texts += [t.value for t in walk_texts(view)]
+        # String button labels (e.g. TextButton("Skip")) live on .content
+        deck_texts += [
+            b.content
+            for b in walk_buttons(view)
+            if isinstance(getattr(b, "content", None), str)
+        ]
+        if idx == 0:
+            slide_images = [c for c in walk(view) if isinstance(c, ft.Image)]
+            assert any(img.src == "/logo_dark.svg" for img in slide_images)
+    assert "Asase" not in deck_texts  # wordmark is inside the logo asset
+    assert "Enter Planetary Command" in deck_texts  # final-slide CTA
+    assert "Skip" in deck_texts  # top-right skip on non-final slides
+    assert "Next" in deck_texts  # non-final CTA label
+    assert "Planetary\nCommand Center" in deck_texts  # brand-slide title
 
 
 def test_location_search_bar():
