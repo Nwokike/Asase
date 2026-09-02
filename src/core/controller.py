@@ -310,22 +310,33 @@ class AppController:
                 self.page.update()
 
     async def select_coordinates(
-        self, lat: float, lon: float, name: str, country: str = ""
+        self,
+        lat: float,
+        lon: float,
+        name: str,
+        country: str = "",
+        silent: bool = False,
     ) -> None:
-        """Update active focus point and fetch hyper-local telemetry."""
+        """Update active focus point and fetch hyper-local telemetry.
+
+        silent=True (used by onboarding background localization) skips the
+        confirmation snackbar, interstitial, and haptics — the observable
+        state writes still re-render every screen.
+        """
         state.current_lat = lat
         state.current_lon = lon
         state.current_location_name = name
         state.current_country = country
         # Visible confirmation — the observable writes re-render every screen,
         # but the user still needs an explicit "this happened" signal.
-        show_snack(self.page, f"Now tracking: {name}", bgcolor=AppColors.SUCCESS)
+        if not silent:
+            show_snack(self.page, f"Now tracking: {name}", bgcolor=AppColors.SUCCESS)
 
-        if self.ad_service:
+        if not silent and self.ad_service:
             with contextlib.suppress(Exception):
                 await self.ad_service.show_interstitial(min_interval_seconds=120.0)
 
-        if self.haptics:
+        if not silent and self.haptics:
             with contextlib.suppress(Exception):
                 await self.haptics.selection_click()
 

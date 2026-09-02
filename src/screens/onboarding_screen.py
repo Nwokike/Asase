@@ -1,6 +1,15 @@
-"""OnboardingScreen — first-launch 3-slide introduction to Asase.
+"""OnboardingScreen — functional first-launch deck that works while it waits.
 
-Premium onboarding with swipe gestures, animated dots, and gradient backdrop.
+Modern web-pattern onboarding: the deck does real work instead of showing
+marketing bullets. The controller's refresh_all already streams telemetry in
+the background while onboarding is open — the deck surfaces that progress:
+
+- Slide 1 (brand): logo + live "telemetry systems" progress panel
+- Slide 2 (locality): debounced city search that pre-localizes feeds —
+  select_coordinates fires immediately, so the dashboard opens localized
+- Slide 3 (readiness): per-system Live/Syncing checklist; Enter Planetary
+  Command always lands on an instant, ready dashboard
+
 @ft.component — reads/writes observable state via AppStateCtx.
 """
 
@@ -13,71 +22,123 @@ import logging
 import flet as ft
 from flet import Control
 
+from components.home.location_search_bar import build_location_search_bar
 from core import tokens
 from core.constants import STORAGE_ONBOARDING_DONE
-from core.theme import AppColors, build_logo
+from core.state import state as app_state
+from core.theme import AppColors, AppStyles, build_logo
+from hooks.use_debounce import use_debounce
+from services.geocoding_service import GeocodingService
 from state.app_state import AppStateCtx
 from state.controller_ctx import ControllerMethodsCtx
 
 logger = logging.getLogger("asase.onboarding")
 
 _HERO_ICON = 56  # family-standard onboarding hero icon size (Sherlock ICON_FEATURE)
-
-_SLIDES = [
-    {
-        "use_logo": True,
-        "icon": None,
-        "color": AppColors.PRIMARY,
-        "title": "Planetary\nCommand Center",
-        "body": (
-            "Real-time USGS earthquakes, NASA EONET wildfires & storms, "
-            "GloFAS river floods, and global air quality — fused into a "
-            "single live hazard radar."
-        ),
-    },
-    {
-        "icon": ft.Icons.CRISIS_ALERT_ROUNDED,
-        "color": AppColors.SEVERITY_CRITICAL,
-        "title": "Every Hazard,\nGrounded",
-        "body": (
-            "Tap any event for a full risk dossier: seismic shockwave radii, "
-            "magnitude, depth, proximity distance, and safety scores computed "
-            "from live measured telemetry — never invented data."
-        ),
-    },
-    {
-        "icon": ft.Icons.PSYCHOLOGY_ROUNDED,
-        "color": AppColors.ATMOSPHERE,
-        "title": "Kiri Intelligence\nBriefings",
-        "body": (
-            "AI risk briefings and visual map scans grounded on live telemetry "
-            "for any point on Earth. 100% free & open public-domain data. "
-            "No account required."
-        ),
-    },
+_SYSTEMS = [
+    ("Seismic Network", "earthquakes"),
+    ("Hazard Watch", "disasters"),
+    ("Atmosphere", "weather_data"),
+    ("Space Weather", "space_weather"),
 ]
 
 
-def _build_slide(s: dict, page: ft.Page | None) -> ft.Column:
-    if s.get("use_logo"):
-        # Brand slide: the wide reactive wordmark, shown big — never squeezed
-        # into the round icon-badge treatment used by feature slides.
-        visual: Control = build_logo(page, height=72)
-    else:
-        visual = ft.Container(
-            content=ft.Icon(s["icon"], size=_HERO_ICON, color=s["color"]),
-            width=_HERO_ICON + 54,
-            height=_HERO_ICON + 54,
-            border_radius=(_HERO_ICON + 54) // 2,
-            bgcolor=ft.Colors.with_opacity(tokens.OPACITY_SUBTLE, s["color"]),
-            alignment=ft.Alignment.CENTER,
-        )
+def _is_live(field: str) -> bool:
+    """A telemetry system is live when its observable feed has data."""
+    return bool(getattr(app_state, field, None))
+
+
+def _systems_ready() -> int:
+    return sum(1 for _, f in _SYSTEMS if _is_live(f))
+
+
+def _sys_row(label: str, ready: bool) -> ft.Control:
+    return ft.Row(
+        [
+            ft.Icon(
+                (
+                    ft.Icons.CHECK_CIRCLE_ROUNDED
+                    if ready
+                    else ft.Icons.RADIO_BUTTON_UNCHECKED_ROUNDED
+                ),
+                size=tokens.ICON_SM,
+                color=AppColors.PRIMARY if ready else ft.Colors.ON_SURFACE_VARIANT,
+            ),
+            ft.Text(
+                label,
+                size=tokens.FONT_SM,
+                weight=ft.FontWeight.W_500,
+                color=ft.Colors.ON_SURFACE if ready else ft.Colors.ON_SURFACE_VARIANT,
+                expand=True,
+            ),
+            ft.Text(
+                "Live" if ready else "Syncing",
+                size=tokens.FONT_XS,
+                color=AppColors.PRIMARY if ready else ft.Colors.ON_SURFACE_VARIANT,
+                weight=ft.FontWeight.W_600,
+            ),
+        ],
+        spacing=tokens.SPACE_MD,
+    )
+
+
+def _hero_icon(icon, color: str, ready: bool = True) -> ft.Container:
+    return ft.Container(
+        content=ft.Icon(
+            icon,
+            size=_HERO_ICON,
+            color=color if ready else ft.Colors.ON_SURFACE_VARIANT,
+        ),
+        width=_HERO_ICON + 54,
+        height=_HERO_ICON + 54,
+        border_radius=(_HERO_ICON + 54) // 2,
+        bgcolor=ft.Colors.with_opacity(
+            tokens.OPACITY_SUBTLE, color if ready else ft.Colors.ON_SURFACE_VARIANT
+        ),
+        alignment=ft.Alignment.CENTER,
+    )
+
+
+def _systems_panel(systems_ready: int, page) -> ft.Container:
+    return AppStyles.glass_card(
+        ft.Column(
+            [
+                ft.Text(
+                    "TELEMETRY SYSTEMS",
+                    size=tokens.FONT_XS,
+                    weight=ft.FontWeight.W_700,
+                    color=ft.Colors.ON_SURFACE_VARIANT,
+                ),
+                ft.ProgressBar(
+                    value=min(1.0, systems_ready / len(_SYSTEMS)),
+                    color=AppColors.PRIMARY,
+                    bgcolor=ft.Colors.with_opacity(
+                        tokens.OPACITY_SUBTLE, ft.Colors.ON_SURFACE
+                    ),
+                    bar_height=4,
+                    width=240,
+                ),
+                ft.Text(
+                    f"{systems_ready} of {len(_SYSTEMS)} systems live",
+                    size=tokens.FONT_XS,
+                    color=ft.Colors.ON_SURFACE_VARIANT,
+                ),
+            ],
+            spacing=tokens.SPACE_XS,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        ),
+        page=page,
+        padding=tokens.SPACE_LG,
+    )
+
+
+def _build_brand_slide(page, systems_ready: int) -> ft.Column:
     return ft.Column(
         [
-            visual,
-            ft.Container(height=tokens.SPACE_XL),
+            build_logo(page, height=72),
+            ft.Container(height=tokens.SPACE_LG),
             ft.Text(
-                s["title"],
+                "Planetary\nCommand Center",
                 size=tokens.FONT_XXL,
                 weight=ft.FontWeight.W_800,
                 text_align=ft.TextAlign.CENTER,
@@ -86,11 +147,64 @@ def _build_slide(s: dict, page: ft.Page | None) -> ft.Column:
             ),
             ft.Container(height=tokens.SPACE_MD),
             ft.Text(
-                s["body"],
+                "Live earthquakes, wildfires, floods, air quality and space "
+                "weather — fused into one command view for any point on Earth.",
                 size=tokens.FONT_MD,
                 color=ft.Colors.ON_SURFACE_VARIANT,
                 text_align=ft.TextAlign.CENTER,
                 font_family="Outfit",
+            ),
+            ft.Container(height=tokens.SPACE_LG),
+            _systems_panel(systems_ready, page),
+        ],
+        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        alignment=ft.MainAxisAlignment.CENTER,
+        spacing=0,
+    )
+
+
+def _build_location_slide(
+    page,
+    search_query: str,
+    search_results: list[dict],
+    on_search_change,
+    on_pick_city,
+    on_locate_gps,
+) -> ft.Column:
+    """Locality slide — reuses the home search bar (inline suggestions + GPS
+    trailing button with IP fallback) so the deck and dashboard behave alike."""
+    return ft.Column(
+        [
+            _hero_icon(ft.Icons.EXPLORE_ROUNDED, AppColors.OCEAN),
+            ft.Container(height=tokens.SPACE_LG),
+            ft.Text(
+                "Where should we\nstand watch?",
+                size=tokens.FONT_XXL,
+                weight=ft.FontWeight.W_800,
+                text_align=ft.TextAlign.CENTER,
+                color=ft.Colors.ON_SURFACE,
+                font_family="Outfit",
+            ),
+            ft.Container(height=tokens.SPACE_MD),
+            ft.Text(
+                "Pick a city — feeds localize in the background while you finish here.",
+                size=tokens.FONT_MD,
+                color=ft.Colors.ON_SURFACE_VARIANT,
+                text_align=ft.TextAlign.CENTER,
+                font_family="Outfit",
+            ),
+            ft.Container(height=tokens.SPACE_LG),
+            ft.Container(
+                content=build_location_search_bar(
+                    page,
+                    search_query,
+                    search_results,
+                    on_search_change,
+                    on_pick_city,
+                    on_locate_gps,
+                ),
+                width=420,
+                alignment=ft.Alignment.CENTER,
             ),
         ],
         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -99,39 +213,104 @@ def _build_slide(s: dict, page: ft.Page | None) -> ft.Column:
     )
 
 
-def _build_dots(count: int, active_idx: int, on_dot_click) -> list[ft.Control]:
-    """Tappable dot indicators; the active dot stretches into a pill."""
-    dots = []
-    for i in range(count):
-        is_active = i == active_idx
-        dot_container = ft.Container(
-            width=24 if is_active else 8,
-            height=8,
-            border_radius=4,
-            bgcolor=AppColors.PRIMARY
-            if is_active
-            else ft.Colors.with_opacity(tokens.OPACITY_MEDIUM, ft.Colors.ON_SURFACE),
-            animate=ft.Animation(tokens.ANIM_SLOW, "easeOut"),
-        )
-        dots.append(
-            ft.GestureDetector(
-                content=dot_container,
-                on_tap=lambda e, idx=i: on_dot_click(idx),
-            )
-        )
-    return dots
+def _build_ready_slide(page, systems_ready: int) -> ft.Column:
+    ready = systems_ready >= len(_SYSTEMS)
+    return ft.Column(
+        [
+            _hero_icon(
+                (
+                    ft.Icons.ROCKET_LAUNCH_ROUNDED
+                    if ready
+                    else ft.Icons.SATELLITE_ROUNDED
+                ),
+                AppColors.PRIMARY,
+                ready=ready,
+            ),
+            ft.Container(height=tokens.SPACE_LG),
+            ft.Text(
+                "All Systems\nOperational" if ready else "Systems\nSyncing",
+                size=tokens.FONT_XXL,
+                weight=ft.FontWeight.W_800,
+                text_align=ft.TextAlign.CENTER,
+                color=ft.Colors.ON_SURFACE,
+                font_family="Outfit",
+            ),
+            ft.Container(height=tokens.SPACE_MD),
+            ft.Text(
+                "Enter now — anything still syncing finishes as you explore.",
+                size=tokens.FONT_MD,
+                color=ft.Colors.ON_SURFACE_VARIANT,
+                text_align=ft.TextAlign.CENTER,
+                font_family="Outfit",
+            ),
+            ft.Container(height=tokens.SPACE_LG),
+            AppStyles.glass_card(
+                ft.Column(
+                    [_sys_row(label, _is_live(f)) for label, f in _SYSTEMS],
+                    spacing=tokens.SPACE_SM,
+                ),
+                page=page,
+                padding=tokens.SPACE_LG,
+            ),
+        ],
+        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        alignment=ft.MainAxisAlignment.CENTER,
+        spacing=0,
+    )
 
 
 def build_onboarding_view(
     page: ft.Page | None,
     page_idx: int,
+    systems_ready: int,
+    search_query: str,
+    search_results: list[dict],
+    picked_name: str,
     on_next,
     on_skip,
     on_swipe,
     on_dot_click,
+    on_search_change,
+    on_pick_city,
+    on_locate_gps,
 ) -> Control:
     """Builds the onboarding slide deck for the given slide index (testable)."""
-    is_last = page_idx == len(_SLIDES) - 1
+    is_last = page_idx == 2
+
+    if page_idx == 0:
+        middle = _build_brand_slide(page, systems_ready)
+    elif page_idx == 1:
+        middle = _build_location_slide(
+            page,
+            search_query,
+            search_results,
+            on_search_change,
+            on_pick_city,
+            on_locate_gps,
+        )
+    else:
+        middle = _build_ready_slide(page, systems_ready)
+
+    # Dot indicators (tappable, active dot stretches into a pill)
+    dots = [
+        ft.GestureDetector(
+            content=ft.Container(
+                width=24 if i == page_idx else 8,
+                height=8,
+                border_radius=4,
+                bgcolor=AppColors.PRIMARY
+                if i == page_idx
+                else ft.Colors.with_opacity(
+                    tokens.OPACITY_MEDIUM, ft.Colors.ON_SURFACE
+                ),
+                animate=ft.Animation(tokens.ANIM_SLOW, "easeOut"),
+            ),
+            on_tap=lambda e, idx=i: on_dot_click(idx),
+        )
+        for i in range(3)
+    ]
+
+    cta_label = "Enter Planetary Command" if is_last else "Next"
 
     return ft.Container(
         expand=True,
@@ -172,14 +351,14 @@ def build_onboarding_view(
                     alignment=ft.Alignment.CENTER,
                     content=ft.GestureDetector(
                         content=ft.Container(
-                            content=_build_slide(_SLIDES[page_idx], page),
+                            content=middle,
                             alignment=ft.Alignment.CENTER,
                             padding=ft.Padding(tokens.SPACE_XL, 0, tokens.SPACE_XL, 0),
                         ),
                         on_horizontal_drag_end=on_swipe,
                     ),
                 ),
-                # Bottom — dots + CTA button + disclaimer pinned to bottom
+                # Bottom — dots + CTA + disclaimer pinned to bottom
                 ft.Container(
                     padding=ft.Padding(
                         tokens.SPACE_LG, 0, tokens.SPACE_LG, tokens.SPACE_LG
@@ -189,15 +368,13 @@ def build_onboarding_view(
                         spacing=tokens.SPACE_MD,
                         controls=[
                             ft.Row(
-                                controls=_build_dots(
-                                    len(_SLIDES), page_idx, on_dot_click
-                                ),
+                                controls=dots,
                                 alignment=ft.MainAxisAlignment.CENTER,
                                 spacing=tokens.SPACE_SM,
                             ),
                             ft.FilledButton(
                                 content=ft.Text(
-                                    "Enter Planetary Command" if is_last else "Next",
+                                    cta_label,
                                     size=tokens.FONT_MD,
                                     weight=ft.FontWeight.W_600,
                                     font_family="Outfit",
@@ -217,7 +394,12 @@ def build_onboarding_view(
                                 ),
                             ),
                             ft.Text(
-                                "Live telemetry from USGS, NASA, NOAA, Copernicus & Open-Meteo. No account required.",
+                                "Live telemetry from USGS, NASA, NOAA, Copernicus & "
+                                "Open-Meteo. No account required."
+                                if picked_name == ""
+                                else f"Standing watch over {picked_name}. Live "
+                                "telemetry from USGS, NASA, NOAA, Copernicus & "
+                                "Open-Meteo.",
                                 size=tokens.FONT_XXS,
                                 color=ft.Colors.with_opacity(
                                     tokens.OPACITY_DIM, ft.Colors.ON_SURFACE
@@ -239,11 +421,55 @@ def OnboardingScreen() -> Control:
     controller = ft.use_context(ControllerMethodsCtx)
     page_idx, set_page_idx = ft.use_state(0)
 
+    search_query, set_search_query = ft.use_state("")
+    search_results, set_search_results = ft.use_state([])
+    picked_name, set_picked_name = ft.use_state("")
+    _is_searching, set_is_searching = ft.use_state(False)
+    debounced_q = use_debounce(search_query, 350)
+
     from flet import context as flet_context
 
     page = flet_context.page
 
-    is_last = page_idx == len(_SLIDES) - 1
+    # Live readiness — re-renders as background telemetry lands
+    systems_ready = _systems_ready()
+
+    is_last = page_idx == 2
+
+    async def _do_search(q: str) -> None:
+        if len(q.strip()) >= 2:
+            set_is_searching(True)
+            try:
+                results = await GeocodingService.search_cities(q)
+                set_search_results(results)
+            except Exception as ex:
+                logger.warning("Onboarding city search failed: %s", ex)
+                set_search_results([])
+            finally:
+                set_is_searching(False)
+        else:
+            set_search_results([])
+
+    async def _on_pick_city(r: dict) -> None:
+        """Pre-localize feeds in the background — select_coordinates ends with
+        refresh_all, so the localized refetch streams while the deck finishes."""
+        set_search_query("")
+        set_search_results([])
+        set_picked_name(r["name"])
+        if controller.select_coordinates:
+            await controller.select_coordinates(
+                r["latitude"],
+                r["longitude"],
+                r["name"],
+                r.get("country", ""),
+                silent=True,
+            )
+
+    async def _on_locate_gps(self=None, *args):
+        """GPS/IP locate from onboarding — native geolocator with IP fallback."""
+        if controller.locate_user:
+            await controller.locate_user()
+            set_picked_name(app_state.current_location_name)
 
     async def _finish():
         state.has_accepted_terms = True
@@ -282,8 +508,29 @@ def OnboardingScreen() -> Control:
         _tap_haptic()
         set_page_idx(idx)
 
+    def _on_search_change(e):
+        q = e.control.value or ""
+        set_search_query(q)
+
+    ft.use_effect(
+        lambda: asyncio.create_task(_do_search(debounced_q)),
+        [debounced_q],
+    )
+
     return build_onboarding_view(
-        page, page_idx, _on_next, _on_skip, _on_swipe, _on_dot_click
+        page,
+        page_idx,
+        systems_ready,
+        search_query,
+        search_results,
+        picked_name,
+        _on_next,
+        _on_skip,
+        _on_swipe,
+        _on_dot_click,
+        _on_search_change,
+        _on_pick_city,
+        _on_locate_gps,
     )
 
 
