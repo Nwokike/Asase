@@ -54,6 +54,61 @@
 
 ---
 
+## 📸 Screenshots
+
+### Radar Dashboard
+
+<p align="center">
+  <img src="screenshots/radar_home_mobile_light.png" width="90%" alt="Radar Dashboard — light mode" />
+</p>
+<p align="center"><em>Radar Dashboard — elevation, temperature, AQI & Kp-index chips for your pinned location, nearest-hazard warning, one-tap full dossier, and the live global hazard radar below</em></p>
+
+<p align="center">
+  <img src="screenshots/search_mobile_light.png" width="360" alt="Global place search" />
+</p>
+<p align="center"><em>Typeahead geocoding — search any city, region, or coordinate with live elevation and lat/lon results</em></p>
+
+### Live Hazard Feeds
+
+<table>
+  <tr>
+    <td width="50%"><img src="screenshots/seismic_feed_mobile_light.png" width="100%" alt="Recent seismic activity" /></td>
+    <td width="50%"><img src="screenshots/wildfire_event_mobile_dark.png" width="100%" alt="Expanded wildfire event detail" /></td>
+  </tr>
+  <tr>
+    <td align="center"><em>Recent seismic activity — USGS 24h feed with magnitude, depth, MMI, severity badges, and distance-from-you chips</em></td>
+    <td align="center"><em>Tap a wildfire to expand inline — coordinates, view full dossier, share, and source attribution</em></td>
+  </tr>
+</table>
+
+### Global Hazard Map
+
+<table>
+  <tr>
+    <td width="50%"><img src="screenshots/full_map_mobile_light.png" width="100%" alt="Global hazard map — satellite view" /></td>
+    <td width="50%"><img src="screenshots/full_map_event_mobile_dark.png" width="100%" alt="Selected earthquake on the map" /></td>
+  </tr>
+  <tr>
+    <td align="center"><em>Satellite basemap with wildfire, seismic, and flood markers, proximity shockwave rings, and the AI Scan action</em></td>
+    <td align="center"><em>Tap any marker to inspect the event — magnitude, depth, and one-tap full dossier right on the map</em></td>
+  </tr>
+</table>
+
+### Space Weather & Location Intelligence
+
+<table>
+  <tr>
+    <td width="50%"><img src="screenshots/space_weather_mobile_light.png" width="100%" alt="Space weather Kp-index and solar flux charts" /></td>
+    <td width="50%"><img src="screenshots/risk_dossier_mobile_light.png" width="100%" alt="Location risk dossier with AI briefing" /></td>
+  </tr>
+  <tr>
+    <td align="center"><em>Space weather — NOAA Kp-index with 12-reading progression and GOES solar X-ray flux live charts</em></td>
+    <td align="center"><em>Location risk dossier — safety score, 5-axis multi-hazard threat radar, and the Kiri Intelligence AI briefing</em></td>
+  </tr>
+</table>
+
+---
+
 ## ✨ Features
 
 - **100% Free & Auth-Free** — Zero API keys required. Direct client connections to official open public domain planetary telemetry endpoints.
