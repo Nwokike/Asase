@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import collections
 import contextlib
+import copy
 import gzip
 import hashlib
 import json
@@ -239,14 +240,19 @@ class StorageService:
             logger.debug("Web tcache write failed: %s", e)
 
     async def get_cached_telemetry(self, key: str) -> Any | None:
-        """Retrieve telemetry from L1 Memory or L2 Cache (with legacy fallback)."""
+        """Retrieve telemetry from L1 Memory or L2 Cache (with legacy fallback).
+
+        Returns a deep copy: callers (e.g. controller telemetry merge)
+        mutate the result, and handing out the live cached object would
+        corrupt the cache for every later reader.
+        """
         now = time.time()
         # 1. L1 Memory
         if key in self._l1_cache:
             item = self._l1_cache[key]
             if now < item["expires_at"]:
                 self._l1_cache.move_to_end(key)
-                return item["data"]
+                return copy.deepcopy(item["data"])
             del self._l1_cache[key]
 
         # 2. L2 Disk MsgPack (native) / SharedPreferences (web, legacy gzip fallback)
@@ -262,12 +268,12 @@ class StorageService:
                     if now < envelope.get("expires_at", 0):
                         data = envelope.get("data")
                         self._l1_cache[key] = {
-                            "data": data,
+                            "data": copy.deepcopy(data),
                             "expires_at": envelope["expires_at"],
                         }
                         if len(self._l1_cache) > self._max_l1_items:
                             self._l1_cache.popitem(last=False)
-                        return data
+                        return copy.deepcopy(data)
                     await asyncio.to_thread(path.unlink, True)
                 except Exception as e:
                     logger.debug("MsgPack cache read error for %s: %s", key, e)
@@ -281,12 +287,12 @@ class StorageService:
                     if now < envelope.get("expires_at", 0):
                         data = envelope.get("data")
                         self._l1_cache[key] = {
-                            "data": data,
+                            "data": copy.deepcopy(data),
                             "expires_at": envelope["expires_at"],
                         }
                         if len(self._l1_cache) > self._max_l1_items:
                             self._l1_cache.popitem(last=False)
-                        return data
+                        return copy.deepcopy(data)
                     await asyncio.to_thread(legacy_path.unlink, True)
                 except Exception as e:
                     logger.debug("Legacy cache read error for %s: %s", key, e)
@@ -299,12 +305,12 @@ class StorageService:
                 if now < envelope.get("expires_at", 0):
                     data = envelope.get("data")
                     self._l1_cache[key] = {
-                        "data": data,
+                        "data": copy.deepcopy(data),
                         "expires_at": envelope["expires_at"],
                     }
                     if len(self._l1_cache) > self._max_l1_items:
                         self._l1_cache.popitem(last=False)
-                    return data
+                    return copy.deepcopy(data)
                 # Expired — drop it from the store so the cap counts live keys
                 store.pop(key, None)
                 await self._save_web_tcache(store)

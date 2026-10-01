@@ -47,6 +47,8 @@ class ResilientRetryTransport(httpx.AsyncHTTPTransport):
         httpx.ConnectError,
         httpx.ConnectTimeout,
         httpx.ReadTimeout,
+        httpx.WriteTimeout,
+        httpx.PoolTimeout,
         httpx.RemoteProtocolError,
     )
 
@@ -138,15 +140,21 @@ class NetworkManager:
     @classmethod
     def get_client(cls) -> httpx.AsyncClient:
         if cls._client is None or cls._client.is_closed:
+            # HTTP/2 multiplexes the 4 Open-Meteo calls over one connection
+            # (desktop/mobile). Skipped in Pyodide, where requests go through
+            # browser fetch (already h2) and the h2 package may be absent.
+            # NOTE: the flag must go to the TRANSPORT, not the client —
+            # AsyncClient discards http2= whenever transport= is supplied
+            # (it returns the given transport verbatim), so a client-level
+            # flag here would silently leave everything on HTTP/1.1.
+            use_http2 = sys.platform != "emscripten"
             transport = ResilientRetryTransport(
                 max_retries=3,
                 backoff_factor=0.4,
                 limits=LIMITS,
+                http1=True,
+                http2=use_http2,
             )
-            # HTTP/2 multiplexes the 4 Open-Meteo calls over one connection
-            # (desktop/mobile). Skipped in Pyodide, where requests go through
-            # browser fetch (already h2) and the h2 package may be absent.
-            use_http2 = sys.platform != "emscripten"
             cls._client = httpx.AsyncClient(
                 transport=transport,
                 timeout=DEFAULT_TIMEOUT,
@@ -155,8 +163,11 @@ class NetworkManager:
                     "response": [on_response_hook],
                 },
                 follow_redirects=True,
-                http2=use_http2,
             )
+            if use_http2:
+                pool = getattr(transport, "_pool", None)
+                h2_active = pool is not None and getattr(pool, "_http2", False)
+                logger.info("Network pool HTTP/2 active: %s", h2_active)
         return cls._client
 
     @classmethod

@@ -105,8 +105,8 @@ async def test_stream_briefing_assembles_tokens():
     client = MagicMock()
     client.stream = MagicMock(return_value=_FakeStreamContext(chunks))
     with patch(
-        "services.ai_service.httpx.AsyncClient",
-        return_value=_mock_httpx_client(client),
+        "services.ai_service.NetworkManager.get_client",
+        return_value=client,
     ):
         tokens: list[str] = []
         result = await stream_briefing("brief me", tokens.append)
@@ -121,8 +121,8 @@ async def test_stream_briefing_reports_model_attribution():
     client = MagicMock()
     client.stream = MagicMock(return_value=_FakeStreamContext(chunks))
     with patch(
-        "services.ai_service.httpx.AsyncClient",
-        return_value=_mock_httpx_client(client),
+        "services.ai_service.NetworkManager.get_client",
+        return_value=client,
     ):
         result = await stream_briefing("brief me", lambda t: None)
     assert result.model == "qwen/qwen3.8-27b"
@@ -134,8 +134,8 @@ async def test_stream_briefing_non_200_returns_empty():
     ctx.status_code = 503
     client.stream = MagicMock(return_value=ctx)
     with patch(
-        "services.ai_service.httpx.AsyncClient",
-        return_value=_mock_httpx_client(client),
+        "services.ai_service.NetworkManager.get_client",
+        return_value=client,
     ):
         result = await stream_briefing("brief me", lambda t: None)
     assert result == AIResult()
@@ -143,7 +143,7 @@ async def test_stream_briefing_non_200_returns_empty():
 
 async def test_stream_briefing_fails_soft():
     with patch(
-        "services.ai_service.httpx.AsyncClient",
+        "services.ai_service.NetworkManager.get_client",
         side_effect=OSError("gateway unreachable"),
     ):
         result = await stream_briefing("brief me", lambda t: None)
@@ -155,8 +155,8 @@ async def test_stream_map_scan_sends_multimodal_image_payload():
     client = MagicMock()
     client.stream = MagicMock(return_value=_FakeStreamContext(chunks))
     with patch(
-        "services.ai_service.httpx.AsyncClient",
-        return_value=_mock_httpx_client(client),
+        "services.ai_service.NetworkManager.get_client",
+        return_value=client,
     ) as _:
         result = await stream_map_scan(b"fakepng", "scan it", lambda t: None)
     assert result.text == "One cluster visible."
@@ -173,7 +173,7 @@ async def test_stream_map_scan_sends_multimodal_image_payload():
 
 async def test_stream_map_scan_rejects_oversized_capture():
     # Fail soft without any HTTP call when the capture exceeds the body cap
-    with patch("services.ai_service.httpx.AsyncClient") as ctor:
+    with patch("services.ai_service.NetworkManager.get_client") as ctor:
         result = await stream_map_scan(b"\x00" * 12_000_000, "scan", lambda t: None)
     assert result.text == ""
     ctor.assert_not_called()

@@ -18,6 +18,7 @@ from dataclasses import dataclass
 import httpx
 
 from core.constants import GATEWAY_APP_SECRET, GATEWAY_CHAT_URL
+from core.network import NetworkManager
 from core.state import state
 
 logger = logging.getLogger("asase.ai")
@@ -162,12 +163,16 @@ async def _stream_chat(payload: dict, on_token: Callable[[str], None]) -> AIResu
     collected: list[str] = []
     model = ""
     try:
-        async with (
-            httpx.AsyncClient(timeout=httpx.Timeout(90.0, connect=10.0)) as client,
-            client.stream(
-                "POST", GATEWAY_CHAT_URL, json=payload, headers=headers
-            ) as response,
-        ):
+        # Shared pool (retry + limits + hooks) with a per-request stream
+        # timeout — a fresh AsyncClient per briefing would bypass all of it.
+        client = NetworkManager.get_client()
+        async with client.stream(
+            "POST",
+            GATEWAY_CHAT_URL,
+            json=payload,
+            headers=headers,
+            timeout=httpx.Timeout(90.0, connect=10.0),
+        ) as response:
             if response.status_code != 200:
                 logger.warning("Gateway chat non-200: %s", response.status_code)
                 return AIResult()

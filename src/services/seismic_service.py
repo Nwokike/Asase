@@ -9,9 +9,21 @@ from core.constants import (
     USGS_EARTHQUAKES_SIGNIFICANT,
 )
 from core.network import NetworkManager
-from models.seismic import EarthquakeFeatureCollection
+from models.seismic import EarthquakeFeature, EarthquakeFeatureCollection
 
 logger = logging.getLogger("asase.seismic")
+
+
+def _parse_features(raw_features: list) -> list[EarthquakeFeature]:
+    """Validate features one at a time so a single malformed record
+    cannot poison the whole batch — skip it and keep the rest."""
+    parsed: list[EarthquakeFeature] = []
+    for raw in raw_features:
+        try:
+            parsed.append(EarthquakeFeature.model_validate(raw))
+        except Exception as ex:
+            logger.debug("USGS: skipping malformed feature: %s", ex)
+    return parsed
 
 
 class SeismicService:
@@ -28,17 +40,31 @@ class SeismicService:
             client = NetworkManager.get_client()
             res = await client.get(url)
             if res.status_code == 200:
-                # Fast zero-copy Rust-accelerated parsing
-                collection = EarthquakeFeatureCollection.model_validate_json(
-                    res.content
-                )
-                for feat in collection.features:
-                    if feat.properties.mag >= min_magnitude:
-                        events.append(feat.to_map_dict())
+                try:
+                    # Fast path: whole-collection Rust-accelerated parse.
+                    collection = EarthquakeFeatureCollection.model_validate_json(
+                        res.content
+                    )
+                    features = collection.features
+                except Exception:
+                    # Slow path: one malformed record must not poison the
+                    # batch — validate per-feature and keep the survivors.
+                    raw = res.json().get("features", [])
+                    features = _parse_features(raw)
+                for feat in features:
+                    try:
+                        if feat.properties.mag >= min_magnitude:
+                            events.append(feat.to_map_dict())
+                    except Exception as ex:
+                        logger.debug("USGS: skipping unrenderable event: %s", ex)
                 logger.info(
                     "USGS: Validated %d seismic events (min M%.1f)",
                     len(events),
                     min_magnitude,
+                )
+            else:
+                logger.warning(
+                    "USGS Earthquake fetch: HTTP %d (no events)", res.status_code
                 )
         except Exception as ex:
             logger.warning("USGS Earthquake fetch failed: %s", ex)
@@ -59,14 +85,27 @@ class SeismicService:
             client = NetworkManager.get_client()
             res = await client.get(url)
             if res.status_code == 200:
-                collection = EarthquakeFeatureCollection.model_validate_json(
-                    res.content
-                )
-                events = [feat.to_map_dict() for feat in collection.features]
+                try:
+                    collection = EarthquakeFeatureCollection.model_validate_json(
+                        res.content
+                    )
+                    features = collection.features
+                except Exception:
+                    raw = res.json().get("features", [])
+                    features = _parse_features(raw)
+                for feat in features:
+                    try:
+                        events.append(feat.to_map_dict())
+                    except Exception as ex:
+                        logger.debug("USGS FDSN: skipping unrenderable event: %s", ex)
                 logger.info(
                     "USGS FDSN: Found %d historical events within %d km",
                     len(events),
                     int(radius_km),
+                )
+            else:
+                logger.warning(
+                    "USGS FDSN radial query: HTTP %d (no events)", res.status_code
                 )
         except Exception as ex:
             logger.warning("USGS FDSN radial query failed: %s", ex)

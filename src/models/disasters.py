@@ -21,18 +21,33 @@ class EonetGeometry(BaseModel):
 
     @property
     def point_coords(self) -> tuple[float, float]:
-        """Extracts (longitude, latitude) safely from Point or Polygon."""
+        """Extracts (longitude, latitude) safely from Point or Polygon.
+
+        Never raises: non-numeric or ragged upstream coordinates fall back
+        to (0.0, 0.0), which the service filters as "no position".
+        """
+
+        def _pair(a, b) -> tuple[float, float] | None:
+            try:
+                return (float(a), float(b))
+            except (TypeError, ValueError):
+                return None
+
         coords = self.coordinates
-        if not coords:
+        if not isinstance(coords, list) or not coords:
             return (0.0, 0.0)
-        if isinstance(coords[0], (int, float)) and len(coords) >= 2:
-            return (float(coords[0]), float(coords[1]))
-        if isinstance(coords[0], list) and coords[0]:
-            first = coords[0]
-            if isinstance(first[0], (int, float)) and len(first) >= 2:
-                return (float(first[0]), float(first[1]))
-            if isinstance(first[0], list) and first[0]:
-                return (float(first[0][0]), float(first[0][1]))
+        first = coords[0]
+        if isinstance(first, (int, float)) and len(coords) >= 2:
+            return _pair(coords[0], coords[1]) or (0.0, 0.0)
+        if isinstance(first, list) and first:
+            inner = first[0]
+            if isinstance(inner, (int, float)) and len(first) >= 2:
+                return _pair(first[0], first[1]) or (0.0, 0.0)
+            if isinstance(inner, list) and len(inner) >= 2:
+                # Polygon ring: first position of the first ring.
+                ring = inner[0] if inner and isinstance(inner[0], list) else inner
+                if isinstance(ring, list) and len(ring) >= 2:
+                    return _pair(ring[0], ring[1]) or (0.0, 0.0)
         return (0.0, 0.0)
 
 
@@ -45,22 +60,44 @@ class EonetEvent(BaseModel):
     categories: list[EonetCategory] = Field(default_factory=list)
     geometry: list[EonetGeometry] = Field(default_factory=list)
 
+    # Stable EONET category ids (exact match first — substring matching
+    # misfires on future categories, e.g. "campfire" containing "fire").
+    _EONET_TYPE_BY_ID = {
+        "wildfires": "wildfire",
+        "severeStorms": "storm",
+        "volcanoes": "volcano",
+        "floods": "flood",
+        "earthquakes": "earthquake",
+        "seaLakeIce": "disaster",
+        "drought": "disaster",
+        "dustHaze": "disaster",
+        "landslides": "disaster",
+        "manmade": "disaster",
+        "snow": "disaster",
+        "tempExtremes": "disaster",
+        "waterColor": "disaster",
+    }
+
     @computed_field
     @property
     def hazard_type(
         self,
-    ) -> Literal["wildfire", "storm", "volcano", "flood", "disaster"]:
-        cat_str = " ".join(
-            c.id.lower() + " " + c.title.lower() for c in self.categories
-        )
-        if "wildfire" in cat_str or "fire" in cat_str:
+    ) -> Literal["wildfire", "storm", "volcano", "flood", "earthquake", "disaster"]:
+        for c in self.categories:
+            mapped = self._EONET_TYPE_BY_ID.get(c.id)
+            if mapped is not None:
+                return mapped  # type: ignore[return-value]
+        # Fallback for unknown future ids: conservative substring scan on the
+        # title only (ids are the stable contract; titles are display text).
+        titles = " ".join(c.title.lower() for c in self.categories)
+        if "wildfire" in titles:
             return "wildfire"
-        if "storm" in cat_str or "cyclone" in cat_str or "hurricane" in cat_str:
-            return "storm"
-        if "volcano" in cat_str:
+        if "volcano" in titles:
             return "volcano"
-        if "flood" in cat_str:
+        if "flood" in titles:
             return "flood"
+        if "storm" in titles or "cyclone" in titles or "hurricane" in titles:
+            return "storm"
         return "disaster"
 
     @computed_field

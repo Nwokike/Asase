@@ -127,19 +127,25 @@ class SpaceWeatherService:
 
         if isinstance(kp_data, list) and len(kp_data) >= 1:
             latest = kp_data[-1]
-            if isinstance(latest, dict):
-                kp_val = float(
-                    latest.get(
-                        "Kp",
+            # A null/garbage Kp on the latest row must not kill the fetch —
+            # fall back to 0.0 (Quiet) and keep the surviving series.
+            try:
+                if isinstance(latest, dict):
+                    kp_val = float(
                         latest.get(
-                            "kp",
-                            latest.get("estimated_kp", latest.get("kp_index", 0.0)),
-                        ),
+                            "Kp",
+                            latest.get(
+                                "kp",
+                                latest.get("estimated_kp", latest.get("kp_index", 0.0)),
+                            ),
+                        )
                     )
-                )
-            elif isinstance(latest, list) and len(latest) > 1:
-                kp_val = float(latest[1])
-            raw_kp = kp_data[-12:]
+                elif isinstance(latest, list) and len(latest) > 1:
+                    kp_val = float(latest[1])
+            except (TypeError, ValueError):
+                logger.debug("NOAA SWPC: unparsable latest Kp row: %r", latest)
+                kp_val = 0.0
+            raw_kp = [row for row in kp_data[-12:] if isinstance(row, (list, dict))]
             if kp_val < 3.0:
                 status = "Quiet (Normal)"
             elif kp_val < 5.0:

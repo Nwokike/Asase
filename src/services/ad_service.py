@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import inspect
 import logging
+import os
 import time
 from collections.abc import Callable
 
@@ -23,10 +24,20 @@ except ImportError:
     _HAS_ADS = False
 
 
+def _use_test_ids() -> bool:
+    """Live IDs only in real builds: any dev/CI run serves Google test ads.
+
+    AdMob treats ad requests from development devices as invalid traffic —
+    a hardcoded ``False`` here once risked the publisher account on every
+    dev-loop run. ``ASASE_AD_TEST_IDS=0`` opts a build back into prod IDs.
+    """
+    return os.getenv("ASASE_AD_TEST_IDS", "1") != "0"
+
+
 class AdService:
     """Manages AdMob lifecycle, UMP consent, banner and interstitial ads."""
 
-    USE_TEST_IDS = False  # Production AdMob IDs active
+    USE_TEST_IDS = _use_test_ids()
 
     BANNER_ID_ANDROID_TEST = "ca-app-pub-3940256099942544/9214589741"
     INTERSTITIAL_ID_ANDROID_TEST = "ca-app-pub-3940256099942544/1033173712"
@@ -172,6 +183,45 @@ class AdService:
             logger.debug("Interstitial ad preload failed: %s", e)
             self.interstitial = None
 
+    def _evict_interstitial(self) -> None:
+        """Remove the current interstitial from page.services by identity.
+
+        InterstitialAd instances are single-use; the shown one is dead
+        weight afterwards. Identity (not ``in``) eviction: dataclass
+        ``__eq__`` on fresh lambdas makes ``in``-dedup unreliable.
+        """
+        current, self.interstitial = self.interstitial, None
+        if current is not None and self.page is not None:
+            try:
+                services = self.page.services
+                self.page.services = [s for s in services if s is not current]
+            except Exception as ex:
+                logger.debug("Interstitial evict failed: %s", ex)
+
+    async def close(self) -> None:
+        """Release all ad services (consent manager + interstitial).
+
+        Called from the app shutdown path in main.py.
+        """
+        self._evict_interstitial()
+        manager, self._consent_manager = self._consent_manager, None
+        if manager is not None and self.page is not None:
+            try:
+                services = self.page.services
+                self.page.services = [s for s in services if s is not manager]
+            except Exception as ex:
+                logger.debug("Consent manager evict failed: %s", ex)
+
+    async def _refresh_consent(self) -> None:
+        """Re-query UMP before showing — consent may have been revoked via
+        the privacy form after the preload."""
+        if self._consent_manager is None:
+            return
+        try:
+            self._can_request_ads = await self._consent_manager.can_request_ads()
+        except Exception as ex:
+            logger.debug("Consent re-check failed, keeping prior state: %s", ex)
+
     async def _handle_close(self, e) -> None:
         if self._on_close:
             try:
@@ -181,6 +231,7 @@ class AdService:
                     self._on_close()
             except Exception as ex:
                 logger.warning("Error in interstitial on_close callback: %s", ex)
+        self._evict_interstitial()
         await self.preload_interstitial(on_close=self._on_close)
 
     async def show_interstitial(self, min_interval_seconds: float = 90.0) -> bool:
@@ -194,7 +245,8 @@ class AdService:
             )
             return False
 
-        if self.interstitial and self._is_mobile():
+        await self._refresh_consent()
+        if self.interstitial and self._is_mobile() and self._can_request_ads:
             try:
                 await self.interstitial.show()
                 self._last_interstitial_time = now

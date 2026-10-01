@@ -32,6 +32,42 @@ from state.controller_ctx import ControllerMethodsCtx
 logger = logging.getLogger("asase.report")
 
 
+def safe_float(value, default=None):
+    """Coerce upstream feed values to float.
+
+    Feed sentinels (``"--"``, ``None``, ``""``) are truthy-or-None but not
+    numeric — ``float(value or 0)`` does NOT guard the ``"--"`` case, so
+    every numeric extraction in this screen goes through here.
+    """
+    if value is None or value == "":
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def storm_risk_from_cape_gust(cape, wind_gust) -> float:
+    """Storm risk 0-100 aligned with CurrentWeather.storm_risk_category.
+
+    CAPE bands (J/kg): >=2500 extreme, >=1000 high, >=300 moderate.
+    Gusts add up to 40 points on top of the CAPE base so severe
+    straight-line wind events register even with modest CAPE.
+    """
+    cape_val = safe_float(cape, 0.0) or 0.0
+    gust_val = safe_float(wind_gust, 0.0) or 0.0
+    if cape_val >= 2500:
+        base = 85.0
+    elif cape_val >= 1000:
+        base = 60.0
+    elif cape_val >= 300:
+        base = 35.0
+    else:
+        base = min(20.0, cape_val / 15.0)
+    gust_component = min(40.0, gust_val * 0.5)
+    return min(100.0, base + gust_component)
+
+
 @ft.component
 def ReportScreen() -> Control:
     state = ft.use_context(AppStateCtx)
@@ -52,16 +88,25 @@ def ReportScreen() -> Control:
     so2 = aqi_data.get("sulphur_dioxide", 0)
     dust = aqi_data.get("dust", 0)
 
-    # Hourly AQI trend
+    # Hourly AQI trend — most recent 12 readings; hourly arrays are
+    # oldest-first, so the tail is the freshest window near "now".
     hourly_aqi = state.air_quality_data.get("hourly", {}).get("us_aqi", [])
-    aqi_trend = [float(v) for v in hourly_aqi[:12] if v is not None]
+    aqi_trend = [
+        parsed for v in hourly_aqi[-12:] if (parsed := safe_float(v)) is not None
+    ]
 
     # Extract Hydrology & Marine
     flood_daily = state.flood_data.get("daily", {})
     river_discharge = flood_daily.get("river_discharge", [])
-    discharge_trend = [float(v) for v in river_discharge[:7] if v is not None]
+    discharge_trend = [
+        parsed for v in river_discharge[:7] if (parsed := safe_float(v)) is not None
+    ]
     river_discharge_mean = flood_daily.get("river_discharge_mean", [])
-    mean_trend = [float(v) for v in river_discharge_mean[:7] if v is not None]
+    mean_trend = [
+        parsed
+        for v in river_discharge_mean[:7]
+        if (parsed := safe_float(v)) is not None
+    ]
     max_discharge = max(discharge_trend) if discharge_trend else None
 
     marine_current = state.marine_data.get("current", {})
@@ -84,21 +129,22 @@ def ReportScreen() -> Control:
 
     # Overall Threat Dimensions (0 - 100 for Radar Chart)
     seismic_risk_val = min(100.0, len(state.earthquakes) * 2.5)
-    storm_risk_val = min(
-        100.0, (float(cape or 0) / 30.0) + (float(wind_gust or 0) * 0.8)
-    )
+    storm_risk_val = storm_risk_from_cape_gust(cape, wind_gust)
     flood_risk_val = min(100.0, float(max_discharge) * 0.15) if max_discharge else 10.0
-    pollution_risk_val = min(100.0, float(us_aqi or 0) * 0.5)
-    geomagnetic_risk_val = min(100.0, float(kp_val) * 11.0)
+    pollution_risk_val = min(100.0, (safe_float(us_aqi, 0.0) or 0.0) * 0.5)
+    geomagnetic_risk_val = min(100.0, (safe_float(kp_val, 0.0) or 0.0) * 11.0)
 
     # Overall Safety Score Computation (0 - 100)
     risk_deductions = 0
-    if us_aqi and us_aqi > 50:
-        risk_deductions += min(30, (us_aqi - 50) * 0.3)
-    if wind_gust and isinstance(wind_gust, (int, float)) and wind_gust > 40:
-        risk_deductions += min(20, (wind_gust - 40) * 0.5)
-    if cape and cape > 1000:
-        risk_deductions += min(20, (cape - 1000) * 0.01)
+    us_aqi_num = safe_float(us_aqi)
+    if us_aqi_num is not None and us_aqi_num > 50:
+        risk_deductions += min(30, (us_aqi_num - 50) * 0.3)
+    gust_num = safe_float(wind_gust)
+    if gust_num is not None and gust_num > 40:
+        risk_deductions += min(20, (gust_num - 40) * 0.5)
+    cape_num = safe_float(cape)
+    if cape_num is not None and cape_num > 1000:
+        risk_deductions += min(20, (cape_num - 1000) * 0.01)
     if max_discharge and max_discharge > 500:
         risk_deductions += min(20, (max_discharge - 500) * 0.02)
 
@@ -145,11 +191,11 @@ def ReportScreen() -> Control:
                 summary_text, f"Planetary Risk Dossier - {state.current_location_name}"
             )
         else:
+            # Flet 1.0.3 exposes clipboard only via the ft.Clipboard service
+            # (Page has no set_clipboard/clipboard attributes) — a mounted
+            # instance is required; transient locals are never registered.
             try:
-                if hasattr(page, "set_clipboard"):
-                    await page.set_clipboard(summary_text)
-                elif hasattr(page, "clipboard"):
-                    await page.clipboard.set(summary_text)
+                await ft.Clipboard().set(summary_text)
                 if page:
                     show_snack(
                         page, "Dossier copied to clipboard!", bgcolor=AppColors.SUCCESS
@@ -354,7 +400,7 @@ def ReportScreen() -> Control:
                             content=ft.Row(
                                 [
                                     ft.Text(
-                                        f"M{float(e.get('magnitude', 0)):.1f}",
+                                        f"M{(safe_float(e.get('magnitude'), 0.0) or 0.0):.1f}",
                                         size=tokens.FONT_XS,
                                         weight=ft.FontWeight.BOLD,
                                         color=AppColors.SEVERITY_HIGH,
@@ -431,7 +477,7 @@ def ReportScreen() -> Control:
                                         spacing=tokens.SPACE_XS,
                                     ),
                                     ft.Text(
-                                        f"Coordinates: {state.current_lat:.4f}° N, {state.current_lon:.4f}° E • Elevation: {int(state.current_elevation)}m",
+                                        f"Coordinates: {(safe_float(state.current_lat, 0.0) or 0.0):.4f}° N, {(safe_float(state.current_lon, 0.0) or 0.0):.4f}° E • Elevation: {int(safe_float(state.current_elevation, 0.0) or 0.0)}m",
                                         size=tokens.FONT_XS,
                                         color=ft.Colors.ON_SURFACE_VARIANT,
                                         font_family="Outfit",

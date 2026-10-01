@@ -19,6 +19,7 @@ import flet as ft
 
 from core.changelog import notes_for
 from core.constants import APP_VERSION, GITHUB_RELEASES_URL
+from core.notify import show_snack
 from core.state import state
 from core.theme import AppColors
 
@@ -59,7 +60,7 @@ async def check_from_dialog(page: ft.Page):
         state.update_data = result
         show_version_dialog(page, result)
     else:
-        page.open(ft.SnackBar(ft.Text(f"✓ {APP_VERSION} is up to date")))
+        show_snack(page, f"✓ {APP_VERSION} is up to date")
 
 
 def _build_update_buttons(page: ft.Page, data: dict) -> list[ft.Control]:

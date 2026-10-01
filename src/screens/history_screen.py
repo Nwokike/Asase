@@ -1,8 +1,9 @@
-"""HistoryScreen — chronological recent searches & bookmarks with clear-all."""
+"""HistoryScreen — chronological recent searches & bookmarks."""
 
 from __future__ import annotations
 
 import asyncio
+import logging
 
 import flet as ft
 from flet import Control
@@ -14,6 +15,26 @@ from core import tokens
 from core.theme import AppColors, AppStyles
 from state.app_state import AppStateCtx
 from state.controller_ctx import ControllerMethodsCtx
+
+logger = logging.getLogger("asase.history")
+
+
+def parse_history_coords(item: dict) -> tuple[float, float] | None:
+    """Parse a history/bookmark entry's coordinates; None when corrupt.
+
+    Pure function (no hooks) so corrupt-entry safety is unit-testable.
+    Missing keys and non-numeric values both yield None — callers must
+    not render a (0.0, 0.0) Null Island point for unparseable entries.
+    """
+    lat_raw = item.get("lat", item.get("latitude"))
+    lon_raw = item.get("lon", item.get("longitude"))
+    if lat_raw is None or lon_raw is None:
+        return None
+    try:
+        return (float(lat_raw), float(lon_raw))
+    except (TypeError, ValueError):
+        logger.debug("Skipping history entry with corrupt coordinates: %r", item)
+        return None
 
 
 @ft.component
@@ -60,7 +81,9 @@ def HistoryScreen() -> Control:
                         color=ft.Colors.ON_SURFACE_VARIANT,
                         expand=True,
                     ),
-                    ft.TextButton("Clear All", on_click=_clear)
+                    # Honest label: this clears recent searches only;
+                    # bookmarks are managed from their own rows.
+                    ft.TextButton("Clear searches", on_click=_clear)
                     if state.recent_searches
                     else ft.Container(),
                 ],
@@ -75,11 +98,12 @@ def HistoryScreen() -> Control:
     def _row(item: dict, is_bookmark: bool = False):
         loc_name = item.get("name", "—")
         country = item.get("country", "")
-        lat = float(item.get("lat", item.get("latitude", 0)))
-        lon = float(item.get("lon", item.get("longitude", 0)))
+        coords = parse_history_coords(item)
+        lat = coords[0] if coords else 0.0
+        lon = coords[1] if coords else 0.0
 
         def _tap(e=None):
-            if controller.select_coordinates:
+            if controller.select_coordinates and coords is not None:
                 asyncio.create_task(
                     controller.select_coordinates(lat, lon, loc_name, country)
                 )

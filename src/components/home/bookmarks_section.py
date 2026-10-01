@@ -2,13 +2,27 @@
 
 from __future__ import annotations
 
-import asyncio
+import logging
 from collections.abc import Callable
 
 import flet as ft
 
 from core import tokens
 from core.theme import AppColors
+
+logger = logging.getLogger("asase.bookmarks")
+
+
+def _safe_coords(bookmark: dict) -> tuple[float, float] | None:
+    """Parse bookmark coordinates; None when corrupt (never raise in UI)."""
+    try:
+        return (
+            float(bookmark.get("latitude", bookmark.get("lat"))),
+            float(bookmark.get("longitude", bookmark.get("lon"))),
+        )
+    except (TypeError, ValueError):
+        logger.debug("Skipping bookmark with corrupt coordinates: %r", bookmark)
+        return None
 
 
 def build_bookmarks_section(
@@ -49,16 +63,17 @@ def build_bookmarks_section(
                                 1,
                                 ft.Colors.with_opacity(0.25, AppColors.WARNING),
                             ),
+                            # NOTE: on_select_bookmark is the (sync) screen
+                            # wrapper that schedules the async controller
+                            # call itself — do NOT wrap it in create_task
+                            # (create_task(None) raises TypeError).
                             on_click=lambda _, loc=b: (
-                                asyncio.create_task(
-                                    on_select_bookmark(
-                                        loc["latitude"],
-                                        loc["longitude"],
-                                        loc["name"],
-                                        loc.get("country", ""),
-                                    )
+                                on_select_bookmark(
+                                    *_safe_coords(loc),
+                                    loc.get("name", "Saved"),
+                                    loc.get("country", ""),
                                 )
-                                if on_select_bookmark
+                                if on_select_bookmark and _safe_coords(loc)
                                 else None
                             ),
                         )

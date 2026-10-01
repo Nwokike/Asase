@@ -17,16 +17,21 @@ def show_snack(
     bgcolor: str = AppColors.PRIMARY,
     duration: int = 4000,
 ) -> None:
-    """Best-effort snackbar: logs failures, never raises."""
+    """Best-effort snackbar: logs failures, never raises.
+
+    Flet 1.0.3's Page has no ``show_snack_bar`` (or ``open``) method — the
+    only dialog entry points are ``show_dialog``/``pop_dialog``. ``SnackBar``
+    subclasses ``DialogControl``, so ``show_dialog`` renders it correctly.
+    """
     try:
+        if page is None:
+            logger.warning("show_snack dropped (no page): %s", message)
+            return
         snack = ft.SnackBar(
             content=ft.Text(message, color=ft.Colors.WHITE),
             bgcolor=bgcolor,
             duration=duration,
         )
-        try:
-            page.show_snack_bar(snack)
-        except AttributeError:
-            page.show_dialog(snack)
+        page.show_dialog(snack)
     except Exception as ex:
-        logger.warning("show_snack fallback: %s", ex)
+        logger.warning("show_snack failed: %s", ex)

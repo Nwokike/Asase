@@ -6,6 +6,7 @@ import logging
 
 import flet as ft
 from flet import Control
+from flet import context as flet_context
 
 from core import tokens
 from core.theme import AppColors
@@ -28,6 +29,29 @@ _TAB_ICONS = (
     ft.Icons.HISTORY_ROUNDED,
     ft.Icons.SETTINGS_ROUNDED,
 )
+
+# Name → index lookup so navigation wiring cannot silently swap when tabs
+# are reordered; always resolve through this instead of magic indices.
+_TAB_INDEX = {name: i for i, name in enumerate(_TAB_NAMES)}
+
+
+def resolve_dashboard_screen(active_tab: int):
+    """Map a dashboard tab index to its screen factory.
+
+    Pure function (no hooks) so route wiring is unit-testable.
+    Unknown indices fall through to Settings, matching shell history.
+    """
+    if active_tab == 0:
+        return HomeScreen
+    if active_tab == 1:
+        return MapScreen
+    if active_tab == 2:
+        return SpaceScreen
+    if active_tab == _TAB_INDEX["History"]:
+        from screens.history_screen import HistoryScreen
+
+        return HistoryScreen
+    return SettingsScreen
 
 
 def _should_show_onboarding(state) -> bool:
@@ -87,12 +111,19 @@ def AppShell() -> Control:
     controller.show_map = lambda: (set_active_view("dashboard"), set_active_tab(1))
     controller.show_space = lambda: set_active_view("space")
     controller.show_report = lambda: set_active_view("report")
-    controller.show_settings = lambda: (set_active_view("dashboard"), set_active_tab(3))
-    controller.show_history = lambda: (set_active_view("dashboard"), set_active_tab(4))
+    controller.show_settings = lambda: (
+        set_active_view("dashboard"),
+        set_active_tab(_TAB_INDEX["Settings"]),
+    )
+    controller.show_history = lambda: (
+        set_active_view("dashboard"),
+        set_active_tab(_TAB_INDEX["History"]),
+    )
     controller.back = lambda: set_active_view("dashboard")
-    controller.navigate_tab = lambda idx: set_active_tab(idx)
-
-    from flet import context as flet_context
+    controller.navigate_tab = lambda idx: (
+        set_active_view("dashboard"),
+        set_active_tab(idx),
+    )
 
     def _sync_chrome():
         page = flet_context.page
@@ -169,18 +200,7 @@ def AppShell() -> Control:
     elif active_view == "space":
         screen = SpaceScreen()
     else:
-        if active_tab == 0:
-            screen = HomeScreen()
-        elif active_tab == 1:
-            screen = MapScreen()
-        elif active_tab == 2:
-            screen = SpaceScreen()
-        elif active_tab == 3:
-            from screens.history_screen import HistoryScreen
-
-            screen = HistoryScreen()
-        else:
-            screen = SettingsScreen()
+        screen = resolve_dashboard_screen(active_tab)()
 
     return ft.SafeArea(
         content=ft.Container(

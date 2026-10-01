@@ -5,13 +5,15 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 
 class GeoJsonPointGeometry(BaseModel):
     model_config = ConfigDict(frozen=True)
     type: Literal["Point"] = "Point"
-    coordinates: list[float]  # [longitude, latitude, depth_km]
+    coordinates: list[float] = Field(
+        default_factory=list
+    )  # [longitude, latitude, depth_km]
 
     @property
     def longitude(self) -> float:
@@ -30,6 +32,14 @@ class EarthquakeProperties(BaseModel):
     model_config = ConfigDict(frozen=True, extra="ignore")
 
     mag: float = Field(default=0.0, description="Earthquake magnitude")
+
+    @field_validator("mag", mode="before")
+    @classmethod
+    def _null_mag_to_zero(cls, v):
+        # USGS occasionally emits explicit null magnitudes; a null on one
+        # feature must not reject the whole batch. Coerce to the default.
+        return 0.0 if v is None else v
+
     place: str = Field(default="Unknown location")
     time: int = Field(description="Epoch time in milliseconds")
     updated: int | None = None
@@ -79,18 +89,20 @@ class EarthquakeFeature(BaseModel):
     id: str
     type: Literal["Feature"] = "Feature"
     properties: EarthquakeProperties
-    geometry: GeoJsonPointGeometry
+    # USGS emits explicit null geometry for deleted/superseded events.
+    geometry: GeoJsonPointGeometry | None = None
 
     def to_map_dict(self) -> dict:
         """Normalized dictionary for UI consumption and flet-map markers."""
+        geometry = self.geometry or GeoJsonPointGeometry()
         return {
             "id": self.id,
             "title": self.properties.title,
             "place": self.properties.place,
             "magnitude": self.properties.mag,
-            "depth_km": self.geometry.depth_km,
-            "longitude": self.geometry.longitude,
-            "latitude": self.geometry.latitude,
+            "depth_km": geometry.depth_km,
+            "longitude": geometry.longitude,
+            "latitude": geometry.latitude,
             "tsunami": self.properties.has_tsunami_warning,
             "alert": self.properties.alert or "green",
             "mmi": self.properties.mmi or 0.0,
