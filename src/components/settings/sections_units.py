@@ -75,10 +75,14 @@ def build_units_section(
                     "Temperature Unit",
                     "Choose Celsius (°C) or Fahrenheit (°F)",
                     ft.Dropdown(
-                        value="Celsius" if temp_unit == "celsius" else "Fahrenheit",
+                        # Canonical lowercase keys match state.temp_unit
+                        # ("celsius" | "fahrenheit") — no case mapping needed.
+                        value=temp_unit
+                        if temp_unit in ("celsius", "fahrenheit")
+                        else "celsius",
                         options=[
-                            ft.DropdownOption("Celsius", "Celsius (°C)"),
-                            ft.DropdownOption("Fahrenheit", "Fahrenheit (°F)"),
+                            ft.DropdownOption("celsius", "Celsius (°C)"),
+                            ft.DropdownOption("fahrenheit", "Fahrenheit (°F)"),
                         ],
                         width=140,
                         height=44,

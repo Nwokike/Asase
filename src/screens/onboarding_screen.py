@@ -8,14 +8,12 @@ locality; onboarding just shows what Asase does.
 
 from __future__ import annotations
 
-import asyncio
-import contextlib
-
 import flet as ft
 from flet import Control
 
 from core import tokens
 from core.constants import STORAGE_ONBOARDING_DONE
+from core.tasks import schedule
 from core.theme import AppColors, build_logo, is_dark_mode
 from state.app_state import AppStateCtx
 from state.controller_ctx import ControllerMethodsCtx
@@ -272,19 +270,20 @@ def OnboardingScreen() -> Control:
             await controller.save_setting(STORAGE_ONBOARDING_DONE, "true")
 
     def _tap_haptic():
-        with contextlib.suppress(Exception):
-            asyncio.create_task(ft.HapticFeedback().light_impact())
+        # Mounted controller haptics — no more per-tap transient service.
+        if controller.tap_haptic:
+            schedule(controller.tap_haptic, page=page)
 
     def _on_next(e=None):
         _tap_haptic()
         if is_last:
-            asyncio.create_task(_finish())
+            schedule(_finish, page=page)
         else:
             set_page_idx(page_idx + 1)
 
     def _on_skip(e):
         _tap_haptic()
-        asyncio.create_task(_finish())
+        schedule(_finish, page=page)
 
     def _on_swipe(e: ft.DragEndEvent):
         if e.primary_velocity is not None:

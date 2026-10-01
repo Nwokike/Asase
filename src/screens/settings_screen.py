@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 
 import flet as ft
@@ -23,6 +22,7 @@ from core.constants import (
     STORAGE_THEME,
 )
 from core.notify import show_snack
+from core.tasks import schedule
 from core.theme import AppColors
 from state.app_state import AppStateCtx
 from state.controller_ctx import ControllerMethodsCtx
@@ -68,24 +68,27 @@ def SettingsScreen() -> Control:
             m = float(val)
             state.min_magnitude_filter = m
             if controller.save_setting:
-                asyncio.create_task(controller.save_setting(STORAGE_MIN_MAGNITUDE, m))
+                schedule(controller.save_setting, STORAGE_MIN_MAGNITUDE, m, page=page)
             if controller.refresh_all:
-                asyncio.create_task(controller.refresh_all())
+                schedule(controller.refresh_all, page=page)
         except Exception:
             pass
 
     def _on_temp_unit_change(val: str):
         state.temp_unit = val.lower()
         if controller.save_setting:
-            asyncio.create_task(
-                controller.save_setting(STORAGE_TEMP_UNIT, state.temp_unit)
+            schedule(
+                controller.save_setting, STORAGE_TEMP_UNIT, state.temp_unit, page=page
             )
 
     def _on_speed_unit_change(val: str):
         state.speed_unit = val.lower()
         if controller.save_setting:
-            asyncio.create_task(
-                controller.save_setting(STORAGE_SPEED_UNIT, state.speed_unit)
+            schedule(
+                controller.save_setting,
+                STORAGE_SPEED_UNIT,
+                state.speed_unit,
+                page=page,
             )
 
     def _clear_history_dialog():
@@ -95,8 +98,8 @@ def SettingsScreen() -> Control:
         def _do_clear():
             state.recent_searches = []
             if controller.save_setting:
-                asyncio.create_task(
-                    controller.save_setting("asase.recent_searches", [])
+                schedule(
+                    controller.save_setting, "asase.recent_searches", [], page=page
                 )
             page.pop_dialog()
             show_snack(page, "Search history cleared", bgcolor=AppColors.SUCCESS)

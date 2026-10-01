@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import time
 
@@ -24,6 +23,7 @@ from components.report.weather_indicators_section import (
 from components.section_header import SectionHeader
 from core import tokens
 from core.notify import show_snack
+from core.tasks import schedule
 from core.theme import AppColors, AppStyles, is_dark_mode
 from services.ai_service import DEFAULT_QUESTION, stream_briefing
 from state.app_state import AppStateCtx
@@ -171,15 +171,17 @@ def ReportScreen() -> Control:
                 "longitude": state.current_lon,
                 "country": state.current_country,
             }
-            asyncio.create_task(controller.toggle_bookmark(loc))
+            schedule(controller.toggle_bookmark, loc, page=page)
 
     async def _export_dossier():
+        from core.units import format_speed_verbose, format_temp_verbose
+
         summary_text = (
             f"🌍 ASASE PLANETARY DOSSIER: {state.current_location_name}\n"
             f"Coordinates: {state.current_lat:.4f}° N, {state.current_lon:.4f}° E\n"
             f"Safety Score: {safety_score}/100\n\n"
             f"• AQI: {us_aqi} (PM2.5: {pm25} µg/m³)\n"
-            f"• Surface Temp: {temp}°C (Gusts: {wind_gust} km/h)\n"
+            f"• Surface Temp: {format_temp_verbose(temp)} (Gusts: {format_speed_verbose(wind_gust)})\n"
             f"• CAPE Storm Index: {cape} J/kg\n"
             f"• Hydrology River Discharge: {max_discharge or 0:.1f} m³/s\n"
             f"• Geomagnetic Kp: {kp_val}\n"
@@ -287,13 +289,13 @@ def ReportScreen() -> Control:
     def _generate_briefing(e=None):
         if ai_busy:
             return
-        asyncio.create_task(_run_ai(DEFAULT_QUESTION))
+        schedule(_run_ai, DEFAULT_QUESTION, page=page)
 
     def _ask_followup(e=None):
         q = ai_question
         set_ai_question("")
         if q.strip():
-            asyncio.create_task(_run_ai(q))
+            schedule(_run_ai, q, page=page)
 
     # The briefing is a function of the tracked LOCATION, not of screen
     # mounts: the effect fires on Dossier open and RE-FIRES for every
@@ -311,7 +313,7 @@ def ReportScreen() -> Control:
             set_ai_answer(str(cache["answer"]))
             set_ai_model(str(cache.get("model", "")))
             return
-        asyncio.create_task(_run_ai(DEFAULT_QUESTION))
+        schedule(_run_ai, DEFAULT_QUESTION, page=page)
 
     ft.use_effect(_brief_for_location, [state.current_lat, state.current_lon])
 
@@ -327,7 +329,7 @@ def ReportScreen() -> Control:
         is_dark=is_dark_mode(page),
         on_open_link=(
             lambda url: (
-                asyncio.create_task(controller.launch_url(url))
+                schedule(controller.launch_url, url, page=page)
                 if controller.launch_url
                 else None
             )
@@ -368,15 +370,15 @@ def ReportScreen() -> Control:
                         ft.Container(expand=True),
                         ft.TextButton(
                             "Load",
-                            on_click=lambda _: asyncio.create_task(
-                                _load_radius_history()
+                            on_click=lambda _: schedule(
+                                _load_radius_history, page=page
                             ),
                         )
                         if radius_events is None
                         else ft.TextButton(
                             "Reload",
-                            on_click=lambda _: asyncio.create_task(
-                                _load_radius_history()
+                            on_click=lambda _: schedule(
+                                _load_radius_history, page=page
                             ),
                         ),
                     ],
@@ -549,7 +551,7 @@ def ReportScreen() -> Control:
                                     radius=tokens.RADIUS_MD
                                 ),
                             ),
-                            on_click=lambda _: asyncio.create_task(_export_dossier()),
+                            on_click=lambda _: schedule(_export_dossier, page=page),
                         ),
                         ft.OutlinedButton(
                             content=ft.Row(

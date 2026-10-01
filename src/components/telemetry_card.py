@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import asyncio
-
 import flet as ft
 
 from core import tokens
 from core.geo_utils import calculate_haversine_distance_km, format_distance
+from core.tasks import schedule
 from core.theme import AppColors, AppStyles
 from state.app_state import AppStateCtx
 from state.controller_ctx import ControllerMethodsCtx
@@ -84,17 +83,21 @@ def TelemetryCard(
             )
             dist_str = format_distance(dist_km)
 
+        from flet import context as flet_context
+
+        _card_page = flet_context.page
+
         def _on_share_click(e):
             if controller.share_text:
                 msg = (
                     f"\U0001f30d ASASE PLANETARY ALERT:\n{title}\n{subtitle}"
                     f"\nSeverity: {badge_text}\nLocation: {dist_str if dist_str else 'Global'}\n{event_url}"
                 )
-                asyncio.create_task(controller.share_text(msg, title))
+                schedule(controller.share_text, msg, title, page=_card_page)
 
         def _on_link_click(e):
             if controller.launch_url and event_url:
-                asyncio.create_task(controller.launch_url(event_url))
+                schedule(controller.launch_url, event_url, page=_card_page)
 
         return AppStyles.glass_card(
             ft.Column(

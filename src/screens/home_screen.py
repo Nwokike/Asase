@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 
 import flet as ft
@@ -22,6 +21,7 @@ from components.skeleton_loader import TelemetrySkeletonCard
 from components.telemetry_card import TelemetryCard
 from core import tokens
 from core.geo_utils import calculate_haversine_distance_km, format_distance
+from core.tasks import schedule
 from core.theme import AppColors, is_dark_mode
 from hooks.use_debounce import use_debounce
 from hooks.use_map_center import use_map_center
@@ -37,25 +37,38 @@ def HomeScreen() -> Control:
     state = ft.use_context(AppStateCtx)
     controller = ft.use_context(ControllerMethodsCtx)
 
+    from flet import context as flet_context
+
+    page = flet_context.page
+
     search_query, set_search_query = ft.use_state("")
     search_results, set_search_results = ft.use_state([])
-    _is_searching, set_is_searching = ft.use_state(False)
+    is_searching, set_is_searching = ft.use_state(False)
     debounced_q = use_debounce(search_query, 350)
     selected_event, set_selected_event = ft.use_state(None)
     focus_expanded, set_focus_expanded = ft.use_state(False)
     home_map_ref = ft.use_ref(None)
+    # Generation counter: overlapping debounced searches resolve out of
+    # order — only the latest generation may publish its results.
+    search_generation = ft.use_ref(0)
 
     # Keep the embedded radar centered on the active focus point
     use_map_center(home_map_ref, state.current_lat, state.current_lon, 9.0)
 
     async def _do_search(q: str):
-        if len(q.strip()) >= 2:
-            set_is_searching(True)
-            results = await GeocodingService.search_cities(q)
+        search_generation.current += 1
+        generation = search_generation.current
+        if len(q.strip()) < 2:
+            set_search_results([])
+            set_is_searching(False)
+            return
+        set_is_searching(True)
+        results = await GeocodingService.search_cities(q)
+        # A newer search started while we were in flight — drop our stale
+        # results; the newer generation owns the spinner and the list.
+        if generation == search_generation.current:
             set_search_results(results)
             set_is_searching(False)
-        else:
-            set_search_results([])
 
     def _on_search_change(e):
         q = e.control.value or ""
@@ -64,19 +77,19 @@ def HomeScreen() -> Control:
     # NOTE: use_effect invokes the setup with ZERO arguments — the closure must
     # capture debounced_q itself (Flet does not pass deps to the setup fn).
     ft.use_effect(
-        lambda: asyncio.create_task(_do_search(debounced_q)),
+        lambda: schedule(_do_search, debounced_q, page=page),
         [debounced_q],
     )
 
     def _select_city(city: dict):
         if controller.select_coordinates:
-            asyncio.create_task(
-                controller.select_coordinates(
-                    city["latitude"],
-                    city["longitude"],
-                    city["name"],
-                    city.get("country", ""),
-                )
+            schedule(
+                controller.select_coordinates,
+                city["latitude"],
+                city["longitude"],
+                city["name"],
+                city.get("country", ""),
+                page=page,
             )
         set_search_query("")
         set_search_results([])
@@ -85,7 +98,7 @@ def HomeScreen() -> Control:
 
     def _on_bookmark_select(lat: float, lon: float, name: str, country: str = ""):
         if controller.select_coordinates:
-            asyncio.create_task(controller.select_coordinates(lat, lon, name, country))
+            schedule(controller.select_coordinates, lat, lon, name, country, page=page)
         set_focus_expanded(True)
 
     # Find closest active hazard to user (Memoized across coordinates & feeds)
@@ -145,10 +158,6 @@ def HomeScreen() -> Control:
     kp_val = state.space_weather.get("kp_index", "--")
     space_status = state.space_weather.get("geomagnetic_status", "Normal")
 
-    from flet import context as flet_context
-
-    page = flet_context.page
-
     header_view = build_app_header(
         page,
         title="Asase",
@@ -167,6 +176,7 @@ def HomeScreen() -> Control:
         _on_search_change,
         _select_city,
         controller.locate_user,
+        is_searching=is_searching,
     )
 
     def _on_chip_select(key: str):
@@ -176,11 +186,11 @@ def HomeScreen() -> Control:
         state.selected_hazard_type = key
         # Server-side EONET category refresh (throttled by _refresh_lock)
         if controller.refresh_all:
-            asyncio.create_task(controller.refresh_all())
+            schedule(controller.refresh_all, page=page)
 
     def _on_focus_pill_click(_e=None):
         if controller.open_report:
-            asyncio.create_task(controller.open_report())
+            schedule(controller.open_report, page=page)
 
     # Two-state Now-Tracking banner: pill when collapsed, full summary card
     # (with the obvious "Open Full Dossier" button) when expanded.
@@ -253,11 +263,11 @@ def HomeScreen() -> Control:
             if controller.open_report:
                 await controller.open_report()
 
-        asyncio.create_task(_go())
+        schedule(_go, page=page)
 
     def _share_event_text(msg: str):
         if controller.share_text:
-            asyncio.create_task(controller.share_text(msg, "Asase Hazard Alert"))
+            schedule(controller.share_text, msg, "Asase Hazard Alert", page=page)
 
     content_list = ft.ListView(
         controls=[
@@ -408,7 +418,7 @@ def HomeScreen() -> Control:
                         selected_event,
                         on_close=lambda: set_selected_event(None),
                         on_open_url=lambda u: (
-                            asyncio.create_task(controller.launch_url(u))
+                            schedule(controller.launch_url, u, page=page)
                             if controller.launch_url
                             else None
                         ),

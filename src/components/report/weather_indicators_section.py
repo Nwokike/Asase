@@ -7,6 +7,7 @@ import flet as ft
 from components.report.air_quality_section import build_report_metric_row
 from core import tokens
 from core.theme import AppStyles
+from core.units import format_speed, format_temp
 
 
 def build_weather_indicators_section(
@@ -25,8 +26,8 @@ def build_weather_indicators_section(
                 [
                     build_report_metric_row(
                         "Surface Temperature",
-                        f"{temp}°C",
-                        f"Feels like {apparent_temp}°C",
+                        format_temp(temp),
+                        f"Feels like {format_temp(apparent_temp)}",
                         ft.Icons.THERMOSTAT_ROUNDED,
                     ),
                     ft.Divider(
@@ -37,8 +38,8 @@ def build_weather_indicators_section(
                     ),
                     build_report_metric_row(
                         "Peak Wind Gusts",
-                        f"{wind_gust} km/h",
-                        f"Sustained wind: {wind_speed} km/h",
+                        format_speed(wind_gust),
+                        f"Sustained wind: {format_speed(wind_speed)}",
                         ft.Icons.AIR_ROUNDED,
                     ),
                     ft.Divider(

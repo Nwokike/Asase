@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 
 import flet as ft
@@ -11,6 +10,7 @@ from flet import Control
 from components.hazard_map import HazardMap, build_event_detail_sheet
 from components.map.map_scan_section import build_map_scan_section
 from core import tokens
+from core.tasks import schedule
 from core.theme import AppColors, is_dark_mode
 from hooks.use_map_center import use_map_center
 from services.ai_service import DEFAULT_SCAN_QUESTION, stream_map_scan
@@ -30,6 +30,10 @@ def MapScreen() -> Control:
     satellite, set_satellite = ft.use_state(False)
     map_ref = ft.use_ref(None)
     scan_ref = ft.use_ref(None)  # ft.Screenshot wrapping the map — the capture source
+
+    from flet import context as flet_context
+
+    page = flet_context.page
 
     # AI map-scan state — captures the live map view, streams a visual read
     scan_open, set_scan_open = ft.use_state(False)
@@ -83,12 +87,12 @@ def MapScreen() -> Control:
             set_scan_answer("")
             return
         set_scan_open(True)
-        asyncio.create_task(_run_scan(DEFAULT_SCAN_QUESTION))
+        schedule(_run_scan, DEFAULT_SCAN_QUESTION, page=page)
 
     def _on_scan_ask(e=None):
         q = scan_question
         set_scan_question("")
-        asyncio.create_task(_run_scan(q))
+        schedule(_run_scan, q, page=page)
 
     # Follow the active focus point (search / GPS / suggestion selections)
     use_map_center(map_ref, state.current_lat, state.current_lon, 10.0)
@@ -117,10 +121,13 @@ def MapScreen() -> Control:
 
     def _on_map_tap(lat: float, lon: float):
         if controller.select_coordinates:
-            asyncio.create_task(
-                controller.select_coordinates(
-                    lat, lon, f"Coord ({lat:.2f}, {lon:.2f})", ""
-                )
+            schedule(
+                controller.select_coordinates,
+                lat,
+                lon,
+                f"Coord ({lat:.2f}, {lon:.2f})",
+                "",
+                page=page,
             )
 
     def _open_event_dossier():
@@ -137,15 +144,12 @@ def MapScreen() -> Control:
             if controller.open_report:
                 await controller.open_report()
 
-        asyncio.create_task(_go())
+        schedule(_go, page=page)
 
     def _share_event_text(msg: str):
         if controller.share_text:
-            asyncio.create_task(controller.share_text(msg, "Asase Hazard Alert"))
+            schedule(controller.share_text, msg, "Asase Hazard Alert", page=page)
 
-    from flet import context as flet_context
-
-    page = flet_context.page
     is_dark = is_dark_mode(page)
 
     # Filter Chips
@@ -344,7 +348,7 @@ def MapScreen() -> Control:
                             is_dark=is_dark,
                             on_open_link=(
                                 lambda url: (
-                                    asyncio.create_task(controller.launch_url(url))
+                                    schedule(controller.launch_url, url, page=page)
                                     if controller.launch_url
                                     else None
                                 )
@@ -365,7 +369,7 @@ def MapScreen() -> Control:
                         selected_event,
                         on_close=_close_event_sheet,
                         on_open_url=lambda u: (
-                            asyncio.create_task(controller.launch_url(u))
+                            schedule(controller.launch_url, u, page=page)
                             if controller.launch_url
                             else None
                         ),

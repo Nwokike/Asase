@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Callable
 
 import flet as ft
@@ -10,6 +9,7 @@ import flet as ft
 from core import tokens
 from core.constants import APP_VERSION
 from core.state import state as core_state
+from core.tasks import schedule
 from core.theme import AppColors, is_dark_mode
 
 
@@ -109,7 +109,7 @@ def build_app_header(
         state.telemetry_version += 1
 
         if save_setting_fn:
-            asyncio.create_task(save_setting_fn("asase.theme", mode_str))
+            schedule(save_setting_fn, "asase.theme", mode_str, page=page)
         page.update()
 
     def _get_theme_icon() -> ft.IconData:
@@ -169,7 +169,7 @@ def build_app_header(
                 icon=ft.Icons.REFRESH_ROUNDED,
                 icon_size=20,
                 tooltip="Sync Live Feeds",
-                on_click=lambda _: asyncio.create_task(on_refresh()),
+                on_click=lambda _: schedule(on_refresh, page=page),
             )
         )
 

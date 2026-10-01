@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 
 import flet as ft
@@ -12,6 +11,7 @@ from components.app_header import build_app_header
 from components.empty_state import EmptyState
 from components.section_header import SectionHeader
 from core import tokens
+from core.tasks import schedule
 from core.theme import AppColors, AppStyles
 from state.app_state import AppStateCtx
 from state.controller_ctx import ControllerMethodsCtx
@@ -60,7 +60,7 @@ def HistoryScreen() -> Control:
                 except Exception:
                     pass
 
-        asyncio.create_task(_do())
+        schedule(_do, page=page)
 
     header = build_app_header(
         page,
@@ -104,8 +104,13 @@ def HistoryScreen() -> Control:
 
         def _tap(e=None):
             if controller.select_coordinates and coords is not None:
-                asyncio.create_task(
-                    controller.select_coordinates(lat, lon, loc_name, country)
+                schedule(
+                    controller.select_coordinates,
+                    lat,
+                    lon,
+                    loc_name,
+                    country,
+                    page=page,
                 )
 
         return AppStyles.glass_card(

@@ -17,7 +17,7 @@ class MemoryLogHandler(logging.Handler):
             msg = self.format(record)
             MemoryLogHandler._logs.append(msg)
         except Exception:
-            pass
+            self.handleError(record)
 
     @classmethod
     def get_logs(cls) -> list[str]:
@@ -28,15 +28,36 @@ class MemoryLogHandler(logging.Handler):
         cls._logs.clear()
 
 
-# Attach to root logger
-in_memory_log_handler = MemoryLogHandler()
-in_memory_log_handler.setLevel(logging.INFO)
-in_memory_log_handler.setFormatter(
-    logging.Formatter(
-        "%(asctime)s [%(name)s] %(levelname)s: %(message)s", datefmt="%H:%M:%S"
+def _build_handler() -> MemoryLogHandler:
+    handler = MemoryLogHandler()
+    handler.setLevel(logging.INFO)
+    handler.setFormatter(
+        logging.Formatter(
+            "%(asctime)s [%(name)s] %(levelname)s: %(message)s", datefmt="%H:%M:%S"
+        )
     )
-)
+    return handler
 
-root_logger = logging.getLogger()
-if in_memory_log_handler not in root_logger.handlers:
+
+def setup_in_memory_logging() -> MemoryLogHandler:
+    """Attach the ring-buffer handler to the root logger, idempotently.
+
+    The isinstance scan (not identity ``not in``) also dedups across
+    module reloads; a fresh session starts with a cleared buffer so the
+    Activity Terminal never shows the previous session's logs.
+    """
+    global in_memory_log_handler
+    root_logger = logging.getLogger()
+    for existing in root_logger.handlers:
+        if isinstance(existing, MemoryLogHandler):
+            in_memory_log_handler = existing
+            existing.clear_logs()
+            return existing
+    in_memory_log_handler = _build_handler()
     root_logger.addHandler(in_memory_log_handler)
+    return in_memory_log_handler
+
+
+# Attach to root logger at import (kept for back-compat with existing
+# `from core.logger_handler import in_memory_log_handler` imports).
+in_memory_log_handler = setup_in_memory_logging()

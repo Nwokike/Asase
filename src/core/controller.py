@@ -26,6 +26,7 @@ from core.constants import (
     STORAGE_THEME,
 )
 from core.device_services import DeviceServices
+from core.logger_handler import setup_in_memory_logging
 from core.network import NetworkManager
 from core.notify import show_snack
 from core.state import state
@@ -52,12 +53,15 @@ class AppController:
         self.geolocator: Geolocator | None = None
         self.haptics: ft.HapticFeedback | None = None
         self.share: ft.Share | None = None
+        self.clipboard: ft.Clipboard | None = None
         self.url_launcher: ft.UrlLauncher | None = None
         self.storage_paths: ft.StoragePaths | None = None
         self._controller_methods: ControllerMethods | None = None
 
     async def init(self) -> None:
-        """Initialize page configuration, services, storage, and mount AppShell."""
+        """Initialize page configuration, storage, and mount AppShell."""
+        # Fresh session, fresh terminal: never show prior-session logs.
+        setup_in_memory_logging()
         logger.info("Starting %s v%s Earth Intelligence", APP_NAME, APP_VERSION)
 
         self.page.title = f"{APP_NAME} — Earth Intelligence"
@@ -94,6 +98,12 @@ class AppController:
 
             self.share = ft.Share()
             self.page.services.append(self.share)
+
+            # Single mounted Clipboard service for all copy fallbacks
+            # (share_text, activity terminal, report dossier). Flet 1.0.3
+            # requires a registered instance — transient locals never attach.
+            self.clipboard = ft.Clipboard()
+            self.page.services.append(self.clipboard)
 
             self.url_launcher = ft.UrlLauncher()
             self.page.services.append(self.url_launcher)
@@ -143,6 +153,7 @@ class AppController:
             share_text=self.share_text,
             launch_url=self.launch_external_url,
             fetch_radius_history=SeismicService.fetch_radius_history,
+            tap_haptic=self.tap_haptic,
         )
         self._controller_methods = methods
         self.page.render(lambda: ControllerMethodsCtx(methods, lambda: AppShell()))
@@ -467,6 +478,12 @@ class AppController:
         if self._controller_methods and self._controller_methods.show_report:
             self._controller_methods.show_report()
 
+    async def tap_haptic(self) -> None:
+        """Light tap feedback via the mounted Haptics service (no-op if absent)."""
+        if self.haptics:
+            with contextlib.suppress(Exception):
+                await self.haptics.light_impact()
+
     async def toggle_bookmark(self, location: dict) -> None:
         """Toggle bookmark for a location dictionary with haptic feedback."""
         name = location.get("name")
@@ -531,7 +548,9 @@ class AppController:
 
     async def share_text(self, text: str, subject: str = "Planetary Alert") -> None:
         """Share text or report using native OS Share sheet."""
-        await DeviceServices.share_text(self.share, self.page, text, subject)
+        await DeviceServices.share_text(
+            self.share, self.page, text, subject, clipboard=self.clipboard
+        )
 
     async def launch_external_url(self, url: str) -> None:
         """Launch web link in external browser or custom tab."""

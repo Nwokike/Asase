@@ -33,7 +33,19 @@ def show_activity_terminal_dialog(page: ft.Page) -> None:
 
     async def _copy_logs(e=None):
         try:
-            cb = ft.Clipboard()
+            # Reuse the controller-mounted Clipboard service when present
+            # (a transient local is never registered, so never attaches).
+            cb = (
+                next(
+                    (
+                        s
+                        for s in (getattr(page, "services", None) or [])
+                        if isinstance(s, ft.Clipboard)
+                    ),
+                    None,
+                )
+                or ft.Clipboard()
+            )
             await cb.set(logs_str)
             show_snack(
                 page, "Telemetry logs copied to clipboard!", bgcolor=AppColors.SUCCESS

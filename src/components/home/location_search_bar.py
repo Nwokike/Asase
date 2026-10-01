@@ -13,6 +13,7 @@ from collections.abc import Callable
 import flet as ft
 
 from core import tokens
+from core.tasks import schedule
 from core.theme import AppColors
 
 
@@ -23,6 +24,7 @@ def build_location_search_bar(
     on_search_change: Callable,
     on_select_city: Callable,
     on_locate_gps: Callable,
+    is_searching: bool = False,
 ) -> ft.Container:
     """Builds the Material 3 SearchBar with a visible inline suggestions column."""
     bar = ft.SearchBar(
@@ -31,6 +33,13 @@ def build_location_search_bar(
         bar_leading=ft.Icon(
             ft.Icons.SEARCH_ROUNDED,
             color=AppColors.PRIMARY,
+        )
+        if not is_searching
+        else ft.Container(
+            content=ft.ProgressRing(width=20, height=20, stroke_width=2),
+            width=24,
+            height=24,
+            alignment=ft.Alignment.CENTER,
         ),
         bar_trailing=[
             ft.IconButton(
@@ -38,7 +47,7 @@ def build_location_search_bar(
                 tooltip="Locate via GPS",
                 icon_color=AppColors.PRIMARY,
                 on_click=lambda _: (
-                    asyncio.create_task(on_locate_gps()) if on_locate_gps else None
+                    schedule(on_locate_gps, page=page) if on_locate_gps else None
                 ),
             ),
         ],
@@ -80,7 +89,7 @@ def build_location_search_bar(
                 color=ft.Colors.ON_SURFACE_VARIANT,
             ),
             on_click=lambda _, city=c: (
-                asyncio.create_task(on_select_city(city))
+                schedule(on_select_city, city, page=page)
                 if asyncio.iscoroutinefunction(on_select_city)
                 else on_select_city(city)
             ),

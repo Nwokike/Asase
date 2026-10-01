@@ -1,13 +1,12 @@
 """Settings About and Diagnostic Terminal section."""
 
-import asyncio
-
 import flet as ft
 
 from components.activity_terminal import show_activity_terminal_dialog
 from core import tokens
 from core.constants import APP_VERSION
 from core.state import state
+from core.tasks import schedule
 from core.theme import AppColors, AppStyles, build_logo, is_dark_mode
 
 
@@ -109,8 +108,9 @@ def build_about_card(page: ft.Page) -> ft.Container:
                                 "Ad Privacy Preferences (GDPR)",
                                 icon=ft.Icons.PRIVACY_TIP_OUTLINED,
                                 on_click=lambda _: (
-                                    asyncio.create_task(
-                                        state.ad_service.show_privacy_options()
+                                    schedule(
+                                        state.ad_service.show_privacy_options,
+                                        page=page,
                                     )
                                     if getattr(state, "ad_service", None)
                                     else None

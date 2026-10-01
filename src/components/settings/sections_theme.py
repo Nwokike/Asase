@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Callable
 
 import flet as ft
 
 from core import tokens
+from core.tasks import schedule
 from core.theme import AppColors
 
 
@@ -57,7 +57,7 @@ def build_theme_section(
             ),
             expand=True,
             animate=ft.Animation(tokens.ANIM_FAST, "easeOut"),
-            on_click=lambda _: asyncio.create_task(change_theme_fn(mode)),
+            on_click=lambda _: schedule(change_theme_fn, mode, page=page),
         )
 
     light_btn = create_theme_card("light", "Light", ft.Icons.LIGHT_MODE_ROUNDED)

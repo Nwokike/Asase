@@ -136,13 +136,24 @@ async def test_geolocator_success_without_ip_estimates():
     async def _on_success(lat, lon, name, country):
         success_args.append((lat, lon, name, country))
 
+    import time
+    from types import SimpleNamespace
+
     geo = MagicMock()
     geo.is_location_service_enabled = AsyncMock(return_value=True)
     geo.get_permission_status = AsyncMock(
         return_value=GeolocatorPermissionStatus.ALWAYS
     )
+    # Realistic position shape: the freshness gate inspects accuracy /
+    # timestamp, so a bare MagicMock (whose auto-attrs coerce to junk)
+    # would be rejected. Real GeolocatorPosition uses Optional floats.
     geo.get_current_position = AsyncMock(
-        return_value=MagicMock(latitude=6.44, longitude=7.50)
+        return_value=SimpleNamespace(
+            latitude=6.44,
+            longitude=7.50,
+            accuracy=50.0,
+            timestamp=time.time() * 1000.0,
+        )
     )
     geo.get_last_known_position = AsyncMock(return_value=None)
 

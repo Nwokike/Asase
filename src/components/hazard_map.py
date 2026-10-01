@@ -13,6 +13,17 @@ from core.theme import AppColors
 
 logger = logging.getLogger("asase.map")
 
+# Marker budget per map instance (~131 live controls max today). Past the
+# caps, a "+N more — zoom in" chip surfaces the truncation instead of
+# silently dropping events.
+_MAX_QUAKE_MARKERS = 80
+_MAX_DISASTER_MARKERS = 50
+_MAX_SHOCKWAVE_CIRCLES = 40
+
+# Tile UA in the shape tile servers ask for (flet_map TileLayer docs).
+_TILE_USER_AGENT = "Asase/1.0.1 (+https://kiri.ng)"
+_TILE_ATTRIBUTION = "Esri · OpenStreetMap contributors · USGS · NASA · NOAA"
+
 
 def build_hazard_marker(
     item: dict,
@@ -63,19 +74,20 @@ def build_hazard_marker(
         on_click=lambda _: on_click(item) if on_click else None,
     )
 
+    # NOTE: no rotate=True — map rotation gestures are locked out, so
+    # per-marker counter-rotation would be a pure no-op cost.
     return map.Marker(
         content=marker_content,
         coordinates=map.MapLatitudeLongitude(lat, lon),
         width=size,
         height=size,
-        rotate=True,
     )
 
 
 def build_seismic_shockwave_circles(earthquakes: list[dict]) -> list[map.CircleMarker]:
     """Builds true geodesic meter-radius shockwave circles around earthquakes."""
     circles: list[map.CircleMarker] = []
-    for eq in earthquakes[:40]:
+    for eq in earthquakes[:_MAX_SHOCKWAVE_CIRCLES]:
         mag = float(eq.get("magnitude", 2.5))
         lat = float(eq.get("latitude", 0.0))
         lon = float(eq.get("longitude", 0.0))
@@ -291,16 +303,30 @@ def HazardMap(
     markers: list[map.Marker] = []
     circle_markers: list[map.CircleMarker] = []
 
+    shown_quakes = (earthquakes or [])[:_MAX_QUAKE_MARKERS]
+    hidden_quakes = max(0, len(earthquakes or []) - len(shown_quakes))
+    shown_disasters = (disasters or [])[:_MAX_DISASTER_MARKERS]
+    hidden_disasters = max(0, len(disasters or []) - len(shown_disasters))
+
     if earthquakes:
         circle_markers.extend(build_seismic_shockwave_circles(earthquakes))
-        for eq in earthquakes[:80]:
+        for eq in shown_quakes:
             markers.append(build_hazard_marker(eq, on_click=on_marker_click))
 
     if disasters:
-        for dis in disasters[:50]:
+        for dis in shown_disasters:
             markers.append(build_hazard_marker(dis, on_click=on_marker_click))
 
-    # User Focus Marker
+    hidden_total = hidden_quakes + hidden_disasters
+    if hidden_total:
+        logger.debug(
+            "HazardMap: showing %d/%d events (+%d more — zoom in)",
+            len(shown_quakes) + len(shown_disasters),
+            len(earthquakes or []) + len(disasters or []),
+            hidden_total,
+        )
+
+    # User Focus Marker (no rotate=True — see build_hazard_marker).
     user_marker = map.Marker(
         content=ft.Container(
             content=ft.Icon(
@@ -313,11 +339,13 @@ def HazardMap(
         coordinates=map.MapLatitudeLongitude(lat, lon),
         width=32,
         height=32,
-        rotate=True,
     )
     markers.append(user_marker)
 
-    # Auth-free tiles: Esri Canvas Dark/Light or World Imagery (satellite)
+    # Auth-free tiles: Esri Canvas Dark/Light or World Imagery (satellite).
+    # NOTE: no fallback_url — flet_map disables ALL in-memory tile caching
+    # whenever it is set, so fallback episodes cost full re-fetch with zero
+    # cache. Esri endpoints are auth-free and reliable on their own.
     if satellite:
         url_tpl = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
     else:
@@ -327,8 +355,7 @@ def HazardMap(
 
     tile_layer = map.TileLayer(
         url_template=url_tpl,
-        fallback_url="https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-        user_agent_package_name="ng.kiri.asase",
+        user_agent_package_name=_TILE_USER_AGENT,
         keep_buffer=2,
         pan_buffer=1,
     )
@@ -336,7 +363,7 @@ def HazardMap(
     circle_layer = map.CircleLayer(circles=circle_markers)
     marker_layer = map.MarkerLayer(markers=markers)
     attribution_layer = map.SimpleAttribution(
-        text="Esri · USGS · NASA · NOAA",
+        text=_TILE_ATTRIBUTION,
         alignment=ft.Alignment.BOTTOM_LEFT,
         bgcolor=ft.Colors.with_opacity(0.35, ft.Colors.BLACK),
         text_style=ft.TextStyle(size=8, color=ft.Colors.WHITE_70),
@@ -356,7 +383,7 @@ def HazardMap(
         )
     )
 
-    return ft.Container(
+    map_body = ft.Container(
         content=map.Map(
             layers=[tile_layer, circle_layer, marker_layer, attribution_layer],
             initial_center=map.MapLatitudeLongitude(lat, lon),
@@ -378,6 +405,34 @@ def HazardMap(
             else ft.Colors.with_opacity(0.15, ft.Colors.BLACK),
         ),
         clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
+        expand=expand,
+        height=height,
+    )
+
+    if not hidden_total:
+        return map_body
+
+    # Overflow chip: the caps above silently dropped events — surface the
+    # count so users know to zoom in rather than assuming full coverage.
+    return ft.Stack(
+        controls=[
+            map_body,
+            ft.Container(
+                content=ft.Text(
+                    f"+{hidden_total} more — zoom in",
+                    size=tokens.FONT_XS,
+                    weight=ft.FontWeight.W_600,
+                    color=ft.Colors.WHITE,
+                ),
+                bgcolor=ft.Colors.with_opacity(0.65, ft.Colors.BLACK),
+                padding=ft.Padding(
+                    tokens.SPACE_SM, tokens.SPACE_XS, tokens.SPACE_SM, tokens.SPACE_XS
+                ),
+                border_radius=tokens.RADIUS_FULL,
+                bottom=tokens.SPACE_SM,
+                right=tokens.SPACE_SM,
+            ),
+        ],
         expand=expand,
         height=height,
     )

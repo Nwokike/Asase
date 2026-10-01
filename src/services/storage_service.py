@@ -73,12 +73,23 @@ class StorageService:
         )
         self._max_l1_items = 50
 
+        # Loud degradation flag: a failed SharedPreferences mount must be
+        # visible once (not warn-looped on every flush) and must never let
+        # a save overwrite the store with an empty state.
+        self._web_persistence_available = True
         if self._is_web:
             # Flet's own persistent KV store — must be registered as a page
             # service before it can be invoked.
             self._prefs = ft.SharedPreferences()
-            with contextlib.suppress(Exception):
+            try:
                 page.services.append(self._prefs)
+            except Exception as ex:
+                logger.error(
+                    "StorageService: SharedPreferences mount failed — "
+                    "web persistence unavailable this session: %s",
+                    ex,
+                )
+                self._web_persistence_available = False
             self._web_loaded = False
         else:
             self._prefs = None
@@ -149,6 +160,8 @@ class StorageService:
 
     async def _save_now_web(self) -> None:
         """Persist the whole store as one JSON string via SharedPreferences."""
+        if not self._web_persistence_available:
+            return
         try:
             await self._prefs.set(
                 self._WEB_STORAGE_KEY,
@@ -163,10 +176,14 @@ class StorageService:
         if self._pending_write_task and not self._pending_write_task.done():
             self._pending_write_task.cancel()
         try:
-            loop = asyncio.get_event_loop()
-            self._pending_write_task = loop.create_task(self._debounced_flush())
+            loop = asyncio.get_running_loop()
         except RuntimeError:
-            pass
+            # No running loop (e.g. called from sync teardown paths) — write
+            # through synchronously on native instead of dropping the flush.
+            if not self._is_web:
+                self._save_now()
+            return
+        self._pending_write_task = loop.create_task(self._debounced_flush())
 
     async def _debounced_flush(self) -> None:
         try:

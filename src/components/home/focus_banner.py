@@ -19,6 +19,7 @@ import flet as ft
 
 from core import tokens
 from core.theme import AppColors, AppStyles
+from core.units import format_temp
 
 
 def _fmt_num(value: object, pattern: str) -> str:
@@ -119,7 +120,7 @@ def build_focus_banner(
         padding=ft.Padding(tokens.SPACE_LG, tokens.SPACE_XS, tokens.SPACE_LG, 0),
     )
 
-    temp_str = _fmt_num(temperature, "{:.0f}°C")
+    temp_str = format_temp(temperature)
     aqi_str = _fmt_num(us_aqi, "AQI {:.0f}")
     kp_str = _fmt_num(kp_index, "Kp {:.1f}")
     elev_str = _fmt_num(elevation_m, "{:,.0f} m")
