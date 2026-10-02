@@ -20,7 +20,7 @@ import logging
 import flet as ft
 
 from core import tokens
-from core.theme import AppColors, build_logo
+from core.theme import AppColors, build_logo, is_dark_mode
 
 logger = logging.getLogger("asase.nav")
 
@@ -143,6 +143,7 @@ def build_sidebar(
                                     src="/icon.svg",
                                     width=28,
                                     height=28,
+                                    color=ft.Colors.WHITE if is_dark_mode() else None,
                                 )
                             ]
                         ),
