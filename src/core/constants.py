@@ -26,6 +26,7 @@ STORAGE_RECENT_SEARCHES = "asase.recent_searches"
 STORAGE_OFFLINE_CACHE = "asase.offline_cache"
 STORAGE_ONBOARDING_DONE = "asase.onboarding_done"
 STORAGE_LAST_LOCATION = "asase.last_location"  # {name, country, lat, lon, elevation}
+STORAGE_SIDEBAR_COLLAPSED = "asase.sidebar_collapsed"  # "true" | "false"
 
 # UI Messages
 MSG_OFFLINE = "Offline Mode: Displaying cached planetary intelligence data."

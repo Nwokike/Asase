@@ -56,6 +56,9 @@ class AppState:
     speed_unit: str = "kmh"  # kmh | mph
     selected_hazard_type: str = "all"  # all | earthquake | fire | flood | storm
 
+    # Adaptive chrome (persisted per device)
+    sidebar_collapsed: bool = False
+
     # Detail Selection
     selected_marker: dict | None = None
     telemetry_version: int = 0

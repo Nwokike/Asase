@@ -221,7 +221,7 @@ def build_onboarding_view(
                                 if is_last
                                 else ft.Icons.ARROW_FORWARD_ROUNDED,
                                 on_click=on_next,
-                                width=340,
+                                expand=True,
                                 height=52,
                                 style=ft.ButtonStyle(
                                     bgcolor=AppColors.PRIMARY,

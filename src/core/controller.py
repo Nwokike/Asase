@@ -21,6 +21,7 @@ from core.constants import (
     STORAGE_MIN_MAGNITUDE,
     STORAGE_ONBOARDING_DONE,
     STORAGE_RECENT_SEARCHES,
+    STORAGE_SIDEBAR_COLLAPSED,
     STORAGE_SPEED_UNIT,
     STORAGE_TEMP_UNIT,
     STORAGE_THEME,
@@ -193,6 +194,9 @@ class AppController:
             saved_bookmarks = await self.storage.get(STORAGE_BOOKMARKS)
             if isinstance(saved_bookmarks, list):
                 state.bookmarks = saved_bookmarks
+
+            collapsed = await self.storage.get(STORAGE_SIDEBAR_COLLAPSED)
+            state.sidebar_collapsed = collapsed == "true"
 
             recent = await self.storage.get(STORAGE_RECENT_SEARCHES)
             if isinstance(recent, list):

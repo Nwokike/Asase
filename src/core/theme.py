@@ -53,6 +53,45 @@ class AppColors:
     INFO = "#0EA5E9"
     GREY = "#64748B"
 
+    # Colorblind-safe severity spectrum (light-first ops console).
+    # Never encode severity by hue alone — pair with icon + label text.
+    SEVERITY_CRITICAL_BG = "#FEE2E2"
+    SEVERITY_HIGH_BG = "#FFEDD5"
+    SEVERITY_MODERATE_BG = "#FEF3C7"
+    SEVERITY_LOW_BG = "#D1FAE5"
+    SEVERITY_INFO_BG = "#E0F2FE"
+    SEVERITY_CRITICAL_BG_DARK = "#7F1D1D"
+    SEVERITY_HIGH_BG_DARK = "#7C2D12"
+    SEVERITY_MODERATE_BG_DARK = "#78350F"
+    SEVERITY_LOW_BG_DARK = "#065F46"
+    SEVERITY_INFO_BG_DARK = "#0C4A6E"
+
+    @staticmethod
+    def severity_bg(severity: str, page: ft.Page | None = None) -> str:
+        """Tinted severity background honoring the active theme."""
+        from core.theme import is_dark_mode as _is_dark
+
+        dark = _is_dark(page)
+        table = {
+            "critical": (
+                AppColors.SEVERITY_CRITICAL_BG_DARK
+                if dark
+                else AppColors.SEVERITY_CRITICAL_BG
+            ),
+            "high": (
+                AppColors.SEVERITY_HIGH_BG_DARK if dark else AppColors.SEVERITY_HIGH_BG
+            ),
+            "moderate": (
+                AppColors.SEVERITY_MODERATE_BG_DARK
+                if dark
+                else AppColors.SEVERITY_MODERATE_BG
+            ),
+            "low": (
+                AppColors.SEVERITY_LOW_BG_DARK if dark else AppColors.SEVERITY_LOW_BG
+            ),
+        }
+        return table.get((severity or "low").lower(), table["low"])
+
     # Dark Surface System
     DARK_BG = "#0B0F17"  # Deep Obsidian Space
     DARK_BG_2 = "#111827"  # Slate Dark Surface
@@ -121,6 +160,40 @@ class AppColors:
     def get_text_dim(page: ft.Page | None = None) -> str:
         resolved = AppColors._resolve_page(page)
         return AppColors.DARK_MUTED if is_dark_mode(resolved) else AppColors.LIGHT_MUTED
+
+    @staticmethod
+    def data_text_style(
+        size: float | None = None,
+        color: str | None = None,
+        weight: ft.FontWeight | None = None,
+    ) -> ft.TextStyle:
+        """Tabular-numeral style for coordinates, magnitudes, Kp, timestamps."""
+        from core import tokens as _tokens
+
+        return ft.TextStyle(
+            font_family=tokens.DATA_FONT_FAMILY,
+            size=size if size is not None else _tokens.FONT_SM,
+            color=color,
+            weight=weight,
+        )
+
+    @staticmethod
+    def ui_text_style(
+        size: float | None = None,
+        color: str | None = None,
+        weight: ft.FontWeight | None = None,
+        letter_spacing: float | None = None,
+    ) -> ft.TextStyle:
+        """UI-face style. letter_spacing lives here — never on ft.Text."""
+        from core import tokens as _tokens
+
+        return ft.TextStyle(
+            font_family=tokens.UI_FONT_FAMILY,
+            size=size if size is not None else _tokens.FONT_MD,
+            color=color,
+            weight=weight,
+            letter_spacing=letter_spacing,
+        )
 
 
 LIGHT_GLASS_BG = "#F1F5F9"

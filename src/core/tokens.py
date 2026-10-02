@@ -56,7 +56,29 @@ ANIM_FAST = 150
 ANIM_NORMAL = 250
 ANIM_SLOW = 400
 
-# Responsive Breakpoints
+# Responsive Breakpoints (M3 window-size classes)
+# Compact (<600): bottom navigation · Medium (600-840): navigation rail ·
+# Expanded (>840): collapsible sidebar. Kept legacy aliases (SM/MD/LG map to
+# the class edges) because tests pin them; prefer WINDOW_* below.
 BREAKPOINT_SM = 360
 BREAKPOINT_MD = 600
 BREAKPOINT_LG = 900
+
+WINDOW_COMPACT_MAX = 599.0
+WINDOW_MEDIUM_MAX = 839.0
+
+# Adaptive chrome widths
+SIDEBAR_EXPANDED_WIDTH = 264.0
+SIDEBAR_RAIL_WIDTH = 72.0
+CONTENT_MAX_WIDTH = 1120.0
+CONTENT_NARROW_MAX_WIDTH = 720.0
+
+# Typography — UI face + data (mono) face. Outfit ships as the bundled app
+# font; DATA_FONT_FAMILY falls back to platform monospace where JetBrains
+# Mono is unavailable (add the TTF under src/assets to use it verbatim).
+UI_FONT_FAMILY = "Outfit"
+DATA_FONT_FAMILY = "JetBrains Mono"
+
+# Type scale additions for dashboard hero numerals
+FONT_DISPLAY = 36
+FONT_OVERLINE = 10

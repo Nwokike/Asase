@@ -95,8 +95,9 @@ def show_activity_terminal_dialog(page: ft.Page) -> None:
                 spacing=tokens.SPACE_SM,
                 expand=True,
             ),
-            width=540,
-            height=480,
+            # No fixed dialog size: the AlertDialog sizes to the viewport
+            # and the inner column scrolls (540x480 overflowed small phones).
+            expand=True,
         ),
         actions=[
             ft.IconButton(
