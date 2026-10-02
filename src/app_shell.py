@@ -194,10 +194,6 @@ def AppShell() -> Control:
         page = flet_context.page
         if not page:
             return
-        try:
-            set_viewport_width(page.width)
-        except Exception:
-            pass
 
         def _on_resize(e):
             try:
@@ -209,6 +205,24 @@ def AppShell() -> Control:
             page.on_resize = _on_resize
         except Exception:
             pass
+
+        # page.width is often None at first paint (Flet reports the viewport
+        # after the session handshake) and on_resize may not fire afterwards
+        # — poll briefly on the page loop until a real width arrives.
+        async def _poll_width():
+            import asyncio as _aio
+
+            for _ in range(60):  # ~6s bounded
+                w = getattr(page, "width", None)
+                if w:
+                    set_viewport_width(w)
+                    return
+                await _aio.sleep(0.1)
+            set_viewport_width(getattr(page, "width", None))
+
+        from core.tasks import schedule as _schedule
+
+        _schedule(_poll_width, page=page)
 
     ft.use_effect(_track_viewport, [])
     ft.use_effect(
