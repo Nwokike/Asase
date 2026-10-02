@@ -11,20 +11,39 @@ from core.constants import (
     OPEN_METEO_FORECAST,
     OPEN_METEO_MARINE,
 )
-from core.network import NetworkManager
+from core.validators import conditional_get_json
+from models.atmospheric import (
+    CurrentAirQuality,
+    CurrentMarine,
+    CurrentWeather,
+    GloFASDaily,
+)
 
 logger = logging.getLogger("asase.atmospheric")
 
 
 async def _fetch_json(url: str) -> dict:
-    try:
-        client = NetworkManager.get_client()
-        res = await client.get(url)
-        if res.status_code == 200:
-            return res.json()
-    except Exception as e:
-        logger.warning("Atmospheric fetch failed for %s: %s", url[:80], e)
+    status, payload = await conditional_get_json(url, log_name="Open-Meteo")
+    if status in (200, 304) and isinstance(payload, dict):
+        return payload
     return {}
+
+
+def _validate_section(model, data: dict, name: str) -> dict:
+    """Validate a feed section through its pydantic model.
+
+    Returns the validated dump on success; on shape drift the RAW data
+    passes through untouched (today's behavior) with a debug log — a
+    model/upstream mismatch must never blank a working feed.
+    """
+    if not isinstance(data, dict) or not data:
+        return data
+    try:
+        validated = model.model_validate(data)
+        return validated.model_dump()
+    except Exception as ex:
+        logger.debug("%s shape drift, passing raw: %s", name, ex)
+        return data
 
 
 class AtmosphericService:
@@ -64,6 +83,38 @@ class AtmosphericService:
 
         if not marine:
             logger.debug("Marine fetch (likely inland) for (%s, %s)", lat, lon)
+
+        # Typed validation with raw passthrough on drift — the models are
+        # the contract, but a contract mismatch must not blank live feeds.
+        # Empty sections stay empty (no shape change on total failure).
+        if isinstance(weather, dict) and weather.get("current"):
+            weather = {
+                **weather,
+                "current": _validate_section(
+                    CurrentWeather, weather["current"], "weather.current"
+                ),
+            }
+        if isinstance(air_quality, dict) and air_quality.get("current"):
+            air_quality = {
+                **air_quality,
+                "current": _validate_section(
+                    CurrentAirQuality,
+                    air_quality["current"],
+                    "air_quality.current",
+                ),
+            }
+        if isinstance(flood, dict) and flood.get("daily"):
+            flood = {
+                **flood,
+                "daily": _validate_section(GloFASDaily, flood["daily"], "flood.daily"),
+            }
+        if isinstance(marine, dict) and marine.get("current"):
+            marine = {
+                **marine,
+                "current": _validate_section(
+                    CurrentMarine, marine["current"], "marine.current"
+                ),
+            }
 
         return {
             "weather": weather,

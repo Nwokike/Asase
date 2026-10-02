@@ -3,10 +3,77 @@
 from __future__ import annotations
 
 import flet as ft
+import flet_charts as fc
 
 from components.sparkline_chart import TelemetryLineChart
 from core import tokens
 from core.theme import AppColors, AppStyles
+
+
+def _safe_pollutant(value: object) -> float | None:
+    """Coerce a pollutant reading; None when missing/non-numeric.
+
+    Missing pollutants are SKIPPED from the comparison chart, never
+    zeroed — a zero bar would read as "clean air" for a dead feed.
+    """
+    try:
+        if value is None or value == "":
+            return None
+        return float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+
+
+def build_pollutant_bars(
+    pollutants: list[tuple[str, object, str]],
+    height: float = 150.0,
+) -> ft.Container | None:
+    """At-a-glance pollutant comparison BarChart.
+
+    ``pollutants``: (short label, raw value, rod color). Entries with
+    missing values are skipped. Returns None when nothing is plottable.
+    Pure function (no hooks) so bar construction is unit-testable.
+    """
+    groups: list[fc.BarChartGroup] = []
+    for i, (label, raw, color) in enumerate(pollutants):
+        value = _safe_pollutant(raw)
+        if value is None:
+            continue
+        groups.append(
+            fc.BarChartGroup(
+                x=i,
+                rods=[
+                    fc.BarChartRod(
+                        from_y=0,
+                        to_y=max(value, 0.0),
+                        color=color,
+                        width=22,
+                        border_radius=tokens.RADIUS_XS,
+                        tooltip=f"{label}: {value:g} µg/m³",
+                    )
+                ],
+            )
+        )
+    if not groups:
+        return None
+    bottom_labels = [
+        fc.ChartAxisLabel(value=g.x, label=pollutants[g.x][0]) for g in groups
+    ]
+    return ft.Container(
+        content=fc.BarChart(
+            groups=groups,
+            bottom_axis=fc.ChartAxis(
+                show_labels=True,
+                labels=bottom_labels,
+                label_size=20,
+            ),
+            left_axis=fc.ChartAxis(show_labels=False),
+            interactive=True,
+            expand=True,
+        ),
+        height=height,
+        padding=tokens.SPACE_XS,
+    )
 
 
 def build_report_metric_row(
@@ -182,6 +249,34 @@ def build_air_quality_section(
                         "Saharan & Mineral Dust",
                         f"{dust} µg/m³",
                         "Atmospheric aerosol optical depth",
+                    ),
+                    *(
+                        [
+                            ft.Divider(
+                                height=1,
+                                color=ft.Colors.with_opacity(
+                                    tokens.OPACITY_SUBTLE, ft.Colors.OUTLINE
+                                ),
+                            ),
+                            build_report_metric_row(
+                                "Pollutant Comparison",
+                                "µg/m³ · hover bars for values",
+                                "At-a-glance mix (skips dead feeds)",
+                                ft.Icons.BAR_CHART_ROUNDED,
+                            ),
+                            build_pollutant_bars(
+                                [
+                                    ("PM2.5", pm25, AppColors.PRIMARY),
+                                    ("PM10", pm10, AppColors.OCEAN),
+                                    ("CO", co, AppColors.WARNING),
+                                    ("NO₂", no2, AppColors.ATMOSPHERE),
+                                    ("O₃", o3, AppColors.INFO),
+                                    ("SO₂", so2, AppColors.ERROR),
+                                    ("Dust", dust, AppColors.GREY),
+                                ]
+                            )
+                            or ft.Container(),
+                        ]
                     ),
                 ],
                 spacing=0,

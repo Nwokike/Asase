@@ -107,6 +107,37 @@ class EonetEvent(BaseModel):
             return (0.0, 0.0)
         return self.geometry[-1].point_coords
 
+    @property
+    def polygon_ring(self) -> list[list[float]] | None:
+        """Outer ring of the latest Polygon geometry, if any.
+
+        Returns [[lon, lat], ...] with ≥3 valid positions, else None.
+        Point geometries (and degenerate rings) yield None — callers keep
+        the point marker as fallback.
+        """
+        if not self.geometry:
+            return None
+        coords = self.geometry[-1].coordinates
+        if not isinstance(coords, list) or not coords:
+            return None
+        first = coords[0]
+        # Polygon: [[[lon, lat], ...]] — outer ring is coords[0].
+        ring = (
+            first
+            if isinstance(first, list) and first and isinstance(first[0], list)
+            else None
+        )
+        if ring is None:
+            return None
+        cleaned: list[list[float]] = []
+        for pt in ring:
+            try:
+                if isinstance(pt, list) and len(pt) >= 2:
+                    cleaned.append([float(pt[0]), float(pt[1])])
+            except (TypeError, ValueError):
+                continue
+        return cleaned if len(cleaned) >= 3 else None
+
     def to_map_dict(self) -> dict:
         lon, lat = self.primary_coordinates
         cat_id = self.categories[0].id if self.categories else "hazard"
@@ -120,6 +151,7 @@ class EonetEvent(BaseModel):
             "date": latest_date,
             "longitude": lon,
             "latitude": lat,
+            "polygon_ring": self.polygon_ring,
             "url": self.link,
             "type": self.hazard_type,
         }

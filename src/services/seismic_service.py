@@ -8,7 +8,7 @@ from core.constants import (
     USGS_EARTHQUAKES_DAY,
     USGS_EARTHQUAKES_SIGNIFICANT,
 )
-from core.network import NetworkManager
+from core.validators import conditional_get_json
 from models.seismic import EarthquakeFeature, EarthquakeFeatureCollection
 
 logger = logging.getLogger("asase.seismic")
@@ -37,19 +37,16 @@ class SeismicService:
         )
         events: list[dict] = []
         try:
-            client = NetworkManager.get_client()
-            res = await client.get(url)
-            if res.status_code == 200:
+            status, payload = await conditional_get_json(url, log_name="USGS")
+            if status in (200, 304) and isinstance(payload, dict):
                 try:
                     # Fast path: whole-collection Rust-accelerated parse.
-                    collection = EarthquakeFeatureCollection.model_validate_json(
-                        res.content
-                    )
+                    collection = EarthquakeFeatureCollection.model_validate(payload)
                     features = collection.features
                 except Exception:
                     # Slow path: one malformed record must not poison the
                     # batch — validate per-feature and keep the survivors.
-                    raw = res.json().get("features", [])
+                    raw = payload.get("features", [])
                     features = _parse_features(raw)
                 for feat in features:
                     try:
@@ -58,13 +55,10 @@ class SeismicService:
                     except Exception as ex:
                         logger.debug("USGS: skipping unrenderable event: %s", ex)
                 logger.info(
-                    "USGS: Validated %d seismic events (min M%.1f)",
+                    "USGS: Validated %d seismic events (min M%.1f)%s",
                     len(events),
                     min_magnitude,
-                )
-            else:
-                logger.warning(
-                    "USGS Earthquake fetch: HTTP %d (no events)", res.status_code
+                    " (cached 304)" if status == 304 else "",
                 )
         except Exception as ex:
             logger.warning("USGS Earthquake fetch failed: %s", ex)
@@ -82,16 +76,13 @@ class SeismicService:
         )
         events: list[dict] = []
         try:
-            client = NetworkManager.get_client()
-            res = await client.get(url)
-            if res.status_code == 200:
+            status, payload = await conditional_get_json(url, log_name="USGS FDSN")
+            if status in (200, 304) and isinstance(payload, dict):
                 try:
-                    collection = EarthquakeFeatureCollection.model_validate_json(
-                        res.content
-                    )
+                    collection = EarthquakeFeatureCollection.model_validate(payload)
                     features = collection.features
                 except Exception:
-                    raw = res.json().get("features", [])
+                    raw = payload.get("features", [])
                     features = _parse_features(raw)
                 for feat in features:
                     try:
@@ -99,13 +90,10 @@ class SeismicService:
                     except Exception as ex:
                         logger.debug("USGS FDSN: skipping unrenderable event: %s", ex)
                 logger.info(
-                    "USGS FDSN: Found %d historical events within %d km",
+                    "USGS FDSN: Found %d historical events within %d km%s",
                     len(events),
                     int(radius_km),
-                )
-            else:
-                logger.warning(
-                    "USGS FDSN radial query: HTTP %d (no events)", res.status_code
+                    " (cached 304)" if status == 304 else "",
                 )
         except Exception as ex:
             logger.warning("USGS FDSN radial query failed: %s", ex)

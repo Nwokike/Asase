@@ -47,11 +47,11 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "flet", specifier = ">=1.0.3" },
-    { name = "flet-ads", specifier = ">=1.0.3" },
-    { name = "flet-charts", specifier = ">=1.0.3" },
-    { name = "flet-geolocator", specifier = ">=1.0.3" },
-    { name = "flet-map", specifier = ">=1.0.3" },
+    { name = "flet", specifier = "==1.0.3" },
+    { name = "flet-ads", specifier = "==1.0.3" },
+    { name = "flet-charts", specifier = "==1.0.3" },
+    { name = "flet-geolocator", specifier = "==1.0.3" },
+    { name = "flet-map", specifier = "==1.0.3" },
     { name = "httpx", extras = ["http2"], specifier = ">=0.28.1" },
     { name = "pydantic", specifier = ">=2.10.0" },
 ]

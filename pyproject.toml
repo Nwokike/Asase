@@ -4,14 +4,16 @@ version = "1.0.1"
 description = "Asase — Global Earth Intelligence & Multi-Hazard Planetary Defense Platform"
 readme = "README.md"
 requires-python = ">=3.12"
+# Flet family pinned exact: the audit verified every API against 1.0.3
+# installed source. Unpin only with a re-verification pass.
 dependencies = [
-    "flet>=1.0.3",
-    "flet-ads>=1.0.3",
-    "flet-map>=1.0.3",
-    "flet-geolocator>=1.0.3",
+    "flet==1.0.3",
+    "flet-ads==1.0.3",
+    "flet-map==1.0.3",
+    "flet-geolocator==1.0.3",
     "httpx[http2]>=0.28.1",
     "pydantic>=2.10.0",
-    "flet-charts>=1.0.3",
+    "flet-charts==1.0.3",
 ]
 
 [tool.flet]

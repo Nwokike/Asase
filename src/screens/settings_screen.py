@@ -91,24 +91,25 @@ def SettingsScreen() -> Control:
                 page=page,
             )
 
-    def _clear_history_dialog():
-        if not page:
-            return
+    show_clear_confirm, set_show_clear_confirm = ft.use_state(False)
 
-        def _do_clear():
-            state.recent_searches = []
-            if controller.save_setting:
-                schedule(
-                    controller.save_setting, "asase.recent_searches", [], page=page
-                )
-            page.pop_dialog()
-            show_snack(page, "Search history cleared", bgcolor=AppColors.SUCCESS)
+    def _do_clear():
+        state.recent_searches = []
+        if controller.save_setting:
+            schedule(controller.save_setting, "asase.recent_searches", [], page=page)
+        set_show_clear_confirm(False)
+        show_snack(page, "Search history cleared", bgcolor=AppColors.SUCCESS)
 
-        dlg = ft.AlertDialog(
+    # Lifecycle-bound dialog: visibility is component state, so unmount
+    # auto-dismisses and no manual pop_dialog bookkeeping can leak.
+    ft.use_dialog(
+        ft.AlertDialog(
             title=ft.Text("Clear Search History?"),
             content=ft.Text("This will remove all recent location queries."),
             actions=[
-                ft.TextButton("Cancel", on_click=lambda _: page.pop_dialog()),
+                ft.TextButton(
+                    "Cancel", on_click=lambda _: set_show_clear_confirm(False)
+                ),
                 ft.FilledButton(
                     "Clear All",
                     on_click=lambda _: _do_clear(),
@@ -116,7 +117,14 @@ def SettingsScreen() -> Control:
                 ),
             ],
         )
-        page.show_dialog(dlg)
+        if show_clear_confirm
+        else None
+    )
+
+    def _clear_history_dialog():
+        if not page:
+            return
+        set_show_clear_confirm(True)
 
     # Sub-component cards
     theme_card = build_theme_section(page, _current_theme_str(), _on_theme_change)

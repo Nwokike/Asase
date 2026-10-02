@@ -19,6 +19,52 @@ logger = logging.getLogger("asase.map")
 _MAX_QUAKE_MARKERS = 80
 _MAX_DISASTER_MARKERS = 50
 _MAX_SHOCKWAVE_CIRCLES = 40
+_MAX_POLYGONS = 25
+
+
+def build_hazard_polygons(
+    disasters: list[dict],
+    on_click: Callable[[dict], None] | None = None,
+) -> list[map.PolygonMarker]:
+    """Wildfire perimeters / GDACS footprints from preserved EONET rings.
+
+    Only events whose ``polygon_ring`` survived (≥3 valid positions) get a
+    polygon; everything else keeps its point marker fallback. Colors follow
+    the marker severity scheme.
+    """
+    polygons: list[map.PolygonMarker] = []
+    for dis in disasters[:_MAX_POLYGONS]:
+        ring = dis.get("polygon_ring")
+        if not isinstance(ring, list) or len(ring) < 3:
+            continue
+        coords: list[map.MapLatitudeLongitude] = []
+        for pt in ring:
+            try:
+                if isinstance(pt, list) and len(pt) >= 2:
+                    coords.append(map.MapLatitudeLongitude(float(pt[1]), float(pt[0])))
+            except (TypeError, ValueError):
+                continue
+        if len(coords) < 3:
+            continue
+        dtype = dis.get("type", "disaster")
+        color = (
+            AppColors.SEVERITY_CRITICAL
+            if dtype == "wildfire"
+            else AppColors.OCEAN
+            if dtype == "flood"
+            else AppColors.WARNING
+        )
+        polygons.append(
+            map.PolygonMarker(
+                coordinates=coords,
+                color=ft.Colors.with_opacity(0.18, color),
+                border_color=color,
+                border_stroke_width=2.0,
+                label=dis.get("title", "")[:40],
+            )
+        )
+    return polygons
+
 
 # Tile UA in the shape tile servers ask for (flet_map TileLayer docs).
 _TILE_USER_AGENT = "Asase/1.0.1 (+https://kiri.ng)"
@@ -317,6 +363,14 @@ def HazardMap(
         for dis in shown_disasters:
             markers.append(build_hazard_marker(dis, on_click=on_marker_click))
 
+    # Wildfire perimeters / footprints sit between tiles and markers so
+    # point markers stay tappable on top of the filled areas.
+    polygon_layer = map.PolygonLayer(
+        polygons=build_hazard_polygons(shown_disasters),
+        polygon_culling=True,
+        simplification_tolerance=0.5,
+    )
+
     hidden_total = hidden_quakes + hidden_disasters
     if hidden_total:
         logger.debug(
@@ -385,7 +439,13 @@ def HazardMap(
 
     map_body = ft.Container(
         content=map.Map(
-            layers=[tile_layer, circle_layer, marker_layer, attribution_layer],
+            layers=[
+                tile_layer,
+                circle_layer,
+                polygon_layer,
+                marker_layer,
+                attribution_layer,
+            ],
             initial_center=map.MapLatitudeLongitude(lat, lon),
             initial_zoom=zoom,
             min_zoom=2.0,
