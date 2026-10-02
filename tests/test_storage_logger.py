@@ -57,20 +57,15 @@ async def test_web_save_after_failed_mount_is_noop():
     assert svc._dirty is True
 
 
-def test_schedule_write_without_running_loop_writes_through(tmp_path):
-    import os
+def test_schedule_write_without_running_loop_writes_through(tmp_path, monkeypatch):
+    monkeypatch.setenv("FLET_APP_STORAGE_DATA", str(tmp_path))
+    from services.storage_service import StorageService
 
-    os.environ["FLET_APP_STORAGE_DATA"] = str(tmp_path)
-    try:
-        from services.storage_service import StorageService
-
-        page = MagicMock()
-        page.web = False
-        svc = StorageService(page)
-        svc._data = {"k": "v"}
-        svc._dirty = True
-        # No running loop in a sync test -> sync write-through, no drop.
-        svc._schedule_write()
-        assert svc._dirty is False
-    finally:
-        del os.environ["FLET_APP_STORAGE_DATA"]
+    page = MagicMock()
+    page.web = False
+    svc = StorageService(page)
+    svc._data = {"k": "v"}
+    svc._dirty = True
+    # No running loop in a sync test -> sync write-through, no drop.
+    svc._schedule_write()
+    assert svc._dirty is False

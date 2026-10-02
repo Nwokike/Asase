@@ -1,6 +1,6 @@
 [project]
 name = "asase"
-version = "1.0.1"
+version = "1.0.2"
 description = "Asase — Global Earth Intelligence & Multi-Hazard Planetary Defense Platform"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -20,7 +20,7 @@ dependencies = [
 org = "ng.kiri"
 product = "Asase"
 company = "Kiri Research Labs"
-build_number = 3
+build_number = 4
 
 [tool.flet.app]
 path = "src"

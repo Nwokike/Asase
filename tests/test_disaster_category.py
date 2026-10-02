@@ -1,9 +1,8 @@
 """Disaster category param."""
 
-from unittest.mock import patch
-
 import httpx
 import pytest
+from conftest import mock_pool_response
 
 from services.disaster_service import DisasterService
 
@@ -26,10 +25,10 @@ async def test_fetch_all():
     resp = httpx.Response(
         200, json=EONET, request=httpx.Request("GET", "https://eonet.gsfc.nasa.gov")
     )
-    with patch.object(httpx.AsyncClient, "get", return_value=resp) as m:
+    with mock_pool_response("services.disaster_service", resp) as (client, _m):
         evs = await DisasterService.fetch_active_disasters("all")
         assert len(evs) == 1
-        called = str(m.call_args[0][0])
+        called = str(client.get.call_args[0][0])
         assert "category=" not in called
 
 
@@ -38,12 +37,14 @@ async def test_fetch_wildfire_category():
     resp = httpx.Response(
         200, json=EONET, request=httpx.Request("GET", "https://eonet.gsfc.nasa.gov")
     )
-    with patch.object(httpx.AsyncClient, "get", return_value=resp) as m:
+    with mock_pool_response("services.disaster_service", resp) as (client, _m):
         await DisasterService.fetch_active_disasters("wildfire")
-        assert "wildfires" in str(m.call_args[0][0])
+        assert "wildfires" in str(client.get.call_args[0][0])
 
 
 @pytest.mark.asyncio
 async def test_fetch_network_failure():
-    with patch.object(httpx.AsyncClient, "get", side_effect=httpx.ConnectError("down")):
+    with mock_pool_response(
+        "services.disaster_service", exc=httpx.ConnectError("down")
+    ):
         assert await DisasterService.fetch_active_disasters() == []

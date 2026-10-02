@@ -12,7 +12,7 @@
   <a href="#download"><img src="https://img.shields.io/badge/Download_Windows_EXE-0078D6?style=for-the-badge&logo=windows&logoColor=white" alt="Windows EXE" /></a>
   <a href="#download"><img src="https://img.shields.io/badge/Download_Linux_DEB-FCC624?style=for-the-badge&logo=linux&logoColor=black" alt="Linux DEB" /></a>
   <a href="#download"><img src="https://img.shields.io/badge/Download_Linux_RPM-E91E63?style=for-the-badge&logo=redhat&logoColor=white" alt="Linux RPM" /></a>
-  <img src="https://img.shields.io/badge/Built_with-Flet_0.86-00B0FF?style=for-the-badge&logo=flutter&logoColor=white" alt="Flet" />
+  <img src="https://img.shields.io/badge/Built_with-Flet_1.0-00B0FF-00B0FF?style=for-the-badge&logo=flutter&logoColor=white" alt="Flet" />
   <img src="https://img.shields.io/badge/Python-3.14-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
 </p>
 
@@ -55,6 +55,10 @@
 ---
 
 ## 📸 Screenshots
+
+> **Note (v1.0.2):** captures below predate the 1.0.2 UI additions (pollutant
+> comparison chart, wildfire perimeter polygons, °F/mph unit formatting) and
+> will be re-captured before store submission.
 
 ### Radar Dashboard
 
@@ -112,14 +116,15 @@
 ## ✨ Features
 
 - **100% Free & Auth-Free** — Zero API keys required. Direct client connections to official open public domain planetary telemetry endpoints.
-- **Watermark-Free Esri Dark Gray Map** — Auth-free Esri Dark Gray Canvas tiles with OpenStreetMap fallback and interactive shockwave circles.
+- **Watermark-Free Esri Map** — Auth-free Esri Canvas Dark/Light + World Imagery satellite tiles with interactive shockwave circles and wildfire perimeter polygons.
 - **Instant Reactive Theme Mode Switcher** — Real-time switching between **Light** ☀️, **Dark** 🌙, and **System** 🖥️ modes across all screens with transparent vector branding.
-- **Hardware-Accelerated Charts** — Live geomagnetic curves and multi-axis planetary threat radar charts with `flet-charts`.
+- **Hardware-Accelerated Charts** — Live geomagnetic curves, multi-axis planetary threat radar, and a 7-pollutant AQI comparison chart with `flet-charts`.
 - **Proximity Geodesic Engine** — Haversine distance engine warning users of nearest active hazards (e.g. *"142 km from you"*).
-- **Offline Telemetry Caching** — L1 LRU Memory + L2 Gzip Disk caching (`.json.gz`) with atomic swaps and corruption recovery.
+- **Offline Telemetry Caching** — L1 LRU Memory + L2 MsgPack Disk caching with atomic swaps, corruption recovery, and ETag/Last-Modified conditional refresh (304 skips re-download).
 - **Live Activity Terminal** — Real-time event and connection logging with one-tap clipboard copy and diagnostic inspection.
 - **Native Sharing & Links** — 1-tap report sharing via `ft.Share` and official agency deep linking via `ft.UrlLauncher`.
 - **Monetization & Privacy** — Responsive Google AdMob banners and interstitial ads with consent management.
+- **Unit Preferences** — Temperature (°C/°F) and wind speed (km/h/mph) follow your Settings across the banner, weather card, and exported dossier.
 
 ---
 
@@ -133,7 +138,7 @@ uv sync --dev
 uv run ruff check . --fix
 uv run ruff format .
 
-# Run comprehensive test suite (51 tests)
+# Run comprehensive test suite (300+ tests)
 uv run pytest -v
 
 # Start local desktop development server

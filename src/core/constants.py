@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 APP_NAME = "Asase"
-APP_VERSION = "1.0.1"
-APP_BUILD_NUMBER = 3
+APP_VERSION = "1.0.2"
+APP_BUILD_NUMBER = 4
 APP_SUBTITLE = "Global Earth Intelligence & Planetary Telemetry"
 
 # ── Update & Distribution URLs ─────────────────────────────────────────

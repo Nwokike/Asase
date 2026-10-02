@@ -6,10 +6,11 @@
 - Announcements pass the build gate; explicit nulls fall back.
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
+from conftest import mock_pool_response
 
 from core.network import NetworkManager, ResilientRetryTransport
 from services.ad_service import AdService
@@ -103,7 +104,7 @@ async def test_announcement_passes_same_build_gate():
         "type": "announcement",
         "title": "Hello",
     }
-    with patch.object(httpx.AsyncClient, "get", return_value=_update_resp(payload)):
+    with mock_pool_response("services.update_service", _update_resp(payload)):
         info = await UpdateService().check_for_update()
     assert info is not None
     assert info["type"] == "announcement"
@@ -121,7 +122,7 @@ async def test_update_explicit_nulls_fall_back():
         "release_notes": None,
         "github_url": None,
     }
-    with patch.object(httpx.AsyncClient, "get", return_value=_update_resp(payload)):
+    with mock_pool_response("services.update_service", _update_resp(payload)):
         info = await UpdateService().check_for_update()
     assert info is not None
     assert info["version"] == APP_VERSION
@@ -138,5 +139,5 @@ async def test_update_same_build_non_announcement_suppressed():
         "build_number": APP_BUILD_NUMBER,
         "type": "update",
     }
-    with patch.object(httpx.AsyncClient, "get", return_value=_update_resp(payload)):
+    with mock_pool_response("services.update_service", _update_resp(payload)):
         assert await UpdateService().check_for_update() is None

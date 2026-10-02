@@ -1,9 +1,8 @@
 """Deep testing of NASA EONET and Disaster Services."""
 
-from unittest.mock import patch
-
 import httpx
 import pytest
+from conftest import mock_pool_response
 
 from services.disaster_service import DisasterService
 
@@ -40,7 +39,7 @@ async def test_disaster_multi_category_parsing():
         json=mock_eonet,
         request=httpx.Request("GET", "https://eonet.gsfc.nasa.gov"),
     )
-    with patch.object(httpx.AsyncClient, "get", return_value=mock_resp):
+    with mock_pool_response("services.disaster_service", mock_resp):
         disasters = await DisasterService.fetch_active_disasters()
         assert len(disasters) == 3
         assert disasters[0]["type"] == "wildfire"
@@ -65,6 +64,6 @@ async def test_disaster_malformed_coordinates():
         json=mock_eonet,
         request=httpx.Request("GET", "https://eonet.gsfc.nasa.gov"),
     )
-    with patch.object(httpx.AsyncClient, "get", return_value=mock_resp):
+    with mock_pool_response("services.disaster_service", mock_resp):
         disasters = await DisasterService.fetch_active_disasters()
         assert disasters == []

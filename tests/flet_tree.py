@@ -9,7 +9,14 @@ import flet as ft
 
 
 def walk(c: Any) -> Iterable[Any]:
-    """Yield all controls in the tree depth-first."""
+    """Yield all controls in the tree depth-first.
+
+    Covers the slots Flet spreads children across: ``controls`` lists,
+    single ``content``, dialog ``actions``, app-bar ``leading``/``title``,
+    search-bar adornments, list-tile parts, and map ``layers``. A slot
+    holding a non-control (plain string title) is yielded as-is so text
+    assertions still see it.
+    """
     yield c
     children = getattr(c, "controls", None) or []
     if isinstance(children, list):
@@ -18,6 +25,25 @@ def walk(c: Any) -> Iterable[Any]:
     content = getattr(c, "content", None)
     if content is not None:
         yield from walk(content)
+    for slot in (
+        "actions",
+        "leading",
+        "title",
+        "bar_leading",
+        "bar_trailing",
+        "view_leading",
+        "subtitle",
+        "layers",
+        "trailing",
+    ):
+        extra = getattr(c, slot, None)
+        if extra is None:
+            continue
+        if isinstance(extra, list):
+            for ch in extra:
+                yield from walk(ch)
+        else:
+            yield from walk(extra)
 
 
 def walk_buttons(root: Any) -> Iterable[Any]:

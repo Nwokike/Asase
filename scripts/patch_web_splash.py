@@ -187,6 +187,7 @@ DISMISS_BRIDGE = """window.__asaseSignalReady && window.__asaseSignalReady();
 
 def patch_web():
     patched = 0
+    splash_present = False
     for INDEX_PATH in INDEX_PATHS:
         if not os.path.exists(INDEX_PATH):
             continue
@@ -209,6 +210,8 @@ def patch_web():
                 f"Patched {INDEX_PATH} with theme-reactive boot splash + resource hints"
             )
             patched += 1
+        else:
+            splash_present = True
 
     for PYTHON_JS_PATH in PYTHON_JS_PATHS:
         if not os.path.exists(PYTHON_JS_PATH):
@@ -222,8 +225,28 @@ def patch_web():
             print(f"Patched {PYTHON_JS_PATH} with readiness & dismiss signal bridge")
             patched += 1
 
-    if patched == 0:
+    if patched == 0 and not splash_present:
         print("No web build found to patch (run flet build web first)", file=sys.stderr)
+        return 0
+    # Anchor-miss guard: splash overlay present but the JS dismiss bridge
+    # not found means the boot overlay would cover the app FOREVER. Any
+    # Flet / Flutter upgrade can rename the python.js anchor — fail loudly
+    # so CI catches it instead of shipping a permanently veiled app.
+    splash_present = splash_present or patched > 0
+    js_paths = [p for p in PYTHON_JS_PATHS if os.path.exists(p)]
+
+    def _has_bridge(path: str) -> bool:
+        with open(path, encoding="utf-8") as f:
+            return "__asaseSignalReady" in f.read()
+
+    bridge_found = any(_has_bridge(p) for p in js_paths)
+    if splash_present and js_paths and not bridge_found:
+        print(
+            "FATAL: splash overlay present but dartOnMessage anchor not found — "
+            "boot overlay would never dismiss. Update DISMISS_BRIDGE anchor.",
+            file=sys.stderr,
+        )
+        return 2
     return 0
 
 

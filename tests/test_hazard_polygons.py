@@ -66,20 +66,8 @@ def test_hazard_map_includes_polygon_layer():
             {"type": "wildfire", "title": "Fire", "polygon_ring": ring},
         ],
     )
-    layers = []
+    from flet_tree import walk
 
-    def _collect(c):
-        if isinstance(c, fmap.Map):
-            layers.extend(c.layers or [])
-
-    _collect(hmap)
-    # HazardMap returns Container or Stack(chip) — descend one level.
-    for child in getattr(hmap, "controls", None) or []:
-        _collect(child)
-        inner = getattr(child, "content", None)
-        if inner is not None:
-            _collect(inner)
-    content = getattr(hmap, "content", None)
-    if content is not None:
-        _collect(content)
+    # walk() descends into Map.layers since the Batch S slot fix.
+    layers = [c for c in walk(hmap) if isinstance(c, fmap.MapLayer)]
     assert any(isinstance(layer, fmap.PolygonLayer) for layer in layers)

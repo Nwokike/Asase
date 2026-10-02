@@ -1,9 +1,8 @@
 """Deep testing of Open-Meteo Atmospheric, AQI, and Flood Service."""
 
-from unittest.mock import patch
-
 import httpx
 import pytest
+from conftest import mock_pool_response
 
 from services.atmospheric_service import AtmosphericService
 
@@ -76,7 +75,7 @@ async def test_atmospheric_success():
             404, request=httpx.Request("GET", url_str or "https://api.open-meteo.com")
         )
 
-    with patch.object(httpx.AsyncClient, "get", side_effect=_mock_get):
+    with mock_pool_response("services.atmospheric_service", exc=_mock_get):
         telemetry = await AtmosphericService.fetch_location_telemetry(6.5, 3.3)
         assert telemetry["weather"]["current"]["temperature_2m"] == 28.5
         assert telemetry["air_quality"]["current"]["us_aqi"] == 55
@@ -94,7 +93,7 @@ async def test_atmospheric_partial_failures():
             )
         raise httpx.ReadTimeout("Timeout")
 
-    with patch.object(httpx.AsyncClient, "get", side_effect=_mock_get_error):
+    with mock_pool_response("services.atmospheric_service", exc=_mock_get_error):
         telemetry = await AtmosphericService.fetch_location_telemetry(51.5, -0.1)
         assert telemetry["weather"] == {}
         assert telemetry["air_quality"] == {}

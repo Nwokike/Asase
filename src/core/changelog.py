@@ -14,6 +14,13 @@ CHANGELOG: dict[str, str] = {
         "• Web caching + simple theme-reactive onboarding & boot screen\n"
         "• In-app What's New dialog (mobile/desktop)"
     ),
+    "1.0.2": (
+        "• Faster refresh: unchanged feeds skip re-download (ETag caching)\n"
+        "• New pollutant comparison chart in the air-quality dossier\n"
+        "• Wildfire perimeters & hazard footprints drawn on the map\n"
+        "• Temperature (°C/°F) and wind (km/h/mph) follow your settings\n"
+        "• Reliability pass: feeds survive bad records, search + cache hardened"
+    ),
 }
 
 

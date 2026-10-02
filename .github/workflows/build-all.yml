@@ -21,8 +21,8 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   PYTHONUTF8: "1"
@@ -38,10 +38,10 @@ jobs:
       - uses: astral-sh/setup-uv@v6
       - name: Lint and Test
         run: |
-          uv sync --dev
-          uv run ruff check .
-          uv run ruff format --check .
-          uv run pytest -v
+          uv sync --dev --frozen
+          uv run --frozen ruff check .
+          uv run --frozen ruff format --check .
+          uv run --frozen pytest -v
 
   # ─── 1. Create Release Tag & Placeholder ───────────────
   prepare-release:
@@ -81,6 +81,15 @@ jobs:
             echo "RELEASE_NAME=Automated Build (${SHORT_SHA})" >> $GITHUB_OUTPUT
             echo "IS_PRERELEASE=true" >> $GITHUB_OUTPUT
           fi
+      - name: Generate release notes from changelog
+        if: github.event_name != 'pull_request'
+        run: |
+          uv sync --dev --frozen
+          uv run --frozen python scripts/generate_release_notes.py \
+            --version "${{ steps.versions.outputs.BUILD_VERSION }}" \
+            --build "${{ steps.versions.outputs.BUILD_NUMBER }}" \
+            --output release_notes.md
+          cat release_notes.md
       - name: Create GitHub Release Placeholder
         if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
@@ -116,7 +125,7 @@ jobs:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: echo "$KEYSTORE_BASE64" | base64 --decode > kiri_keystore.jks
       - name: Build APK (split per ABI)
-        run: uv run flet build apk --yes --project asase --product "Asase" --org ng.kiri --build-version ${{ env.BUILD_VERSION }} --build-number ${{ env.BUILD_NUMBER }} --split-per-abi -v
+        run: uv run --frozen flet build apk --yes --project asase --product "Asase" --org ng.kiri --build-version ${{ env.BUILD_VERSION }} --build-number ${{ env.BUILD_NUMBER }} --split-per-abi -v
       - name: Inject icon & rebuild split APKs
         env:
           SERIOUS_PYTHON_SITE_PACKAGES: ${{ github.workspace }}/build/site-packages
@@ -166,7 +175,7 @@ jobs:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: echo "$KEYSTORE_BASE64" | base64 --decode > kiri_keystore.jks
       - name: Build AAB
-        run: uv run flet build aab --yes --project asase --product "Asase" --org ng.kiri --build-version ${{ env.BUILD_VERSION }} --build-number ${{ env.BUILD_NUMBER }} -v
+        run: uv run --frozen flet build aab --yes --project asase --product "Asase" --org ng.kiri --build-version ${{ env.BUILD_VERSION }} --build-number ${{ env.BUILD_NUMBER }} -v
       - name: Inject icon & rebuild AAB
         env:
           SERIOUS_PYTHON_SITE_PACKAGES: ${{ github.workspace }}/build/site-packages
@@ -202,12 +211,11 @@ jobs:
       - uses: astral-sh/setup-uv@v6
 
       - name: Build Windows Portable
-        run: uv run flet build windows --yes --project asase --product "Asase" --org ng.kiri --build-version ${{ env.BUILD_VERSION }} --build-number ${{ env.BUILD_NUMBER }} -v
+        run: uv run --frozen flet build windows --yes --project asase --product "Asase" --org ng.kiri --build-version ${{ env.BUILD_VERSION }} --build-number ${{ env.BUILD_NUMBER }} -v
 
       - name: Generate Icon for Installer
         run: |
-          uv add pillow
-          uv run python -c "from PIL import Image; Image.open('src/assets/icon.png').save('src/assets/icon.ico', format='ICO', sizes=[(256, 256)])"
+          uv run --frozen --with pillow python -c "from PIL import Image; Image.open('src/assets/icon.png').save('src/assets/icon.ico', format='ICO', sizes=[(256, 256)])"
 
       - name: Build Windows Installer (Inno Setup)
         run: |
@@ -274,7 +282,7 @@ jobs:
           sudo apt-get install -y libgtk-3-dev pkg-config rpm ruby ruby-dev
           sudo gem install --no-document fpm
       - name: Build Linux Bundle
-        run: uv run flet build linux --yes --project asase --product "Asase" --org ng.kiri --build-version ${{ env.BUILD_VERSION }} --build-number ${{ env.BUILD_NUMBER }} -v
+        run: uv run --frozen flet build linux --yes --project asase --product "Asase" --org ng.kiri --build-version ${{ env.BUILD_VERSION }} --build-number ${{ env.BUILD_NUMBER }} -v
       - name: Create Linux Packages (.deb, .rpm, .tar.gz)
         run: |
           mkdir -p build/dist
@@ -374,7 +382,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
       - name: Build Web App
         run: |
-          uv run flet build web --yes --project asase --product "Asase" --org ng.kiri --build-version ${{ env.BUILD_VERSION }} --build-number ${{ env.BUILD_NUMBER }} --base-url "/" -v
+          uv run --frozen flet build web --yes --project asase --product "Asase" --org ng.kiri --build-version ${{ env.BUILD_VERSION }} --build-number ${{ env.BUILD_NUMBER }} --base-url "/" -v
           echo "asase.kiri.ng" > build/web/CNAME
           touch build/web/.nojekyll
           cp src/assets/icon.png build/web/favicon.png

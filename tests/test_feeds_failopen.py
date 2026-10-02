@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 import httpx
 import pytest
+from conftest import mock_pool_response, mock_pool_side_effect
 
 from services import geocoding_service
 from services.atmospheric_service import AtmosphericService
@@ -59,7 +60,7 @@ async def test_seismic_null_mag_feature_does_not_poison_batch():
             },
         ]
     }
-    with patch.object(httpx.AsyncClient, "get", return_value=_resp(payload)):
+    with mock_pool_response("services.seismic_service", _resp(payload)):
         events = await SeismicService.fetch_earthquakes(min_magnitude=2.5)
     assert [e["id"] for e in events] == ["good"]
 
@@ -80,7 +81,7 @@ async def test_seismic_null_geometry_feature_survives():
             }
         ]
     }
-    with patch.object(httpx.AsyncClient, "get", return_value=_resp(payload)):
+    with mock_pool_response("services.seismic_service", _resp(payload)):
         events = await SeismicService.fetch_earthquakes(min_magnitude=2.5)
     assert len(events) == 1
     assert events[0]["latitude"] == 0.0
@@ -105,7 +106,7 @@ async def test_disaster_bad_event_does_not_poison_batch():
             },
         ]
     }
-    with patch.object(httpx.AsyncClient, "get", return_value=_resp(payload)):
+    with mock_pool_response("services.disaster_service", _resp(payload)):
         events = await DisasterService.fetch_active_disasters()
     ids = [e["id"] for e in events]
     assert "E1" in ids
@@ -129,7 +130,7 @@ async def test_geocoding_null_strings_do_not_reject_response():
             }
         ]
     }
-    with patch.object(httpx.AsyncClient, "get", return_value=_resp(payload)):
+    with mock_pool_response("services.geocoding_service", _resp(payload)):
         out = await GeocodingService.search_cities("lagos")
     assert len(out) == 1
     assert out[0]["country"] == ""
@@ -143,7 +144,7 @@ async def test_space_weather_null_kp_does_not_crash_fetch():
             return _resp([{"time_tag": "2026-01-01T00:00:00", "Kp": None}])
         return _resp(None, status=500)
 
-    with patch.object(httpx.AsyncClient, "get", new=_fake_get):
+    with mock_pool_side_effect("services.space_weather_service", _fake_get):
         data = await SpaceWeatherService.fetch_space_weather()
     assert data["kp_index"] == 0.0
     assert data["geomagnetic_status"] == "Quiet (Normal)"

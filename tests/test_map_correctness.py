@@ -27,21 +27,9 @@ def _eq(i):
     }
 
 
-def _maps(root):
-    # walk() does not descend into Map.layers, so find Map nodes first.
-    found = [c for c in walk(root) if isinstance(c, fmap.Map)]
-    if isinstance(root, fmap.Map):
-        found.append(root)
-    return found
-
-
 def _tile_layers(root):
-    layers = []
-    for m in _maps(root):
-        layers.extend(
-            [layer for layer in (m.layers or []) if isinstance(layer, fmap.TileLayer)]
-        )
-    return layers
+    # walk() descends into Map.layers since the Batch S slot fix.
+    return [c for c in walk(root) if isinstance(c, fmap.TileLayer)]
 
 
 def test_tile_layer_has_no_fallback_url():

@@ -10,6 +10,13 @@ from core.state import state
 
 
 @pytest.fixture(autouse=True)
+def _isolate_storage(tmp_path, monkeypatch):
+    """AppController() builds a real StorageService that mkdirs + reads
+    storage.json — pin it at tmp_path so tests never touch ~/.asase."""
+    monkeypatch.setenv("FLET_APP_STORAGE_DATA", str(tmp_path))
+
+
+@pytest.fixture(autouse=True)
 def isolate_state():
     orig: dict[str, object] = {
         "lat": state.current_lat,

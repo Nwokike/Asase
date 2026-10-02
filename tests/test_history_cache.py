@@ -4,10 +4,9 @@ Regression tests: corrupt coordinates never crash row building, and
 mutating a returned cache object never corrupts the cache.
 """
 
-from unittest.mock import patch
-
 import httpx
 import pytest
+from conftest import mock_pool_response
 
 from components.home.bookmarks_section import _safe_coords
 from screens.history_screen import parse_history_coords
@@ -54,7 +53,7 @@ async def test_geocode_cache_mutation_does_not_corrupt():
             }
         ]
     }
-    with patch.object(httpx.AsyncClient, "get", return_value=_resp(payload)):
+    with mock_pool_response("services.geocoding_service", _resp(payload)):
         first = await GeocodingService.search_cities("lagos")
         first.append({"name": "POISON"})
         first[0]["name"] = "POISON"
@@ -71,7 +70,7 @@ async def test_reverse_cache_mutation_does_not_corrupt():
 
     geocoding_service._REVERSE_GEOCODE_LRU.clear()
     payload = {"results": [{"name": "Lagos", "latitude": 6.5, "longitude": 3.3}]}
-    with patch.object(httpx.AsyncClient, "get", return_value=_resp(payload)):
+    with mock_pool_response("services.geocoding_service", _resp(payload)):
         first = await GeocodingService.reverse_geocode(6.5, 3.3)
         first["name"] = "POISON"
         second = await GeocodingService.reverse_geocode(6.5, 3.3)
@@ -80,10 +79,9 @@ async def test_reverse_cache_mutation_does_not_corrupt():
 
 
 @pytest.mark.asyncio
-async def test_storage_cache_mutation_does_not_corrupt(tmp_path):
-    import os
+async def test_storage_cache_mutation_does_not_corrupt(tmp_path, monkeypatch):
 
-    os.environ["FLET_APP_STORAGE_DATA"] = str(tmp_path)
+    monkeypatch.setenv("FLET_APP_STORAGE_DATA", str(tmp_path))
     from unittest.mock import MagicMock
 
     from services.storage_service import StorageService
@@ -96,4 +94,3 @@ async def test_storage_cache_mutation_does_not_corrupt(tmp_path):
     got["b"] = "POISON"
     again = await svc.get_cached_telemetry("k")
     assert again == {"a": [1, 2]}
-    del os.environ["FLET_APP_STORAGE_DATA"]

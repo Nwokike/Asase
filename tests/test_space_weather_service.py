@@ -1,9 +1,8 @@
 """Deep testing of NOAA SWPC Space Weather Service."""
 
-from unittest.mock import patch
-
 import httpx
 import pytest
+from conftest import mock_pool_response, mock_pool_side_effect
 
 from services.space_weather_service import SpaceWeatherService
 
@@ -26,7 +25,7 @@ async def test_space_weather_storm_levels():
             json=mock_kp,
             request=httpx.Request("GET", "https://services.swpc.noaa.gov"),
         )
-        with patch.object(httpx.AsyncClient, "get", return_value=mock_resp):
+        with mock_pool_response("services.space_weather_service", mock_resp):
             sw = await SpaceWeatherService.fetch_space_weather()
             assert sw["kp_index"] == kp
             assert expected_text in sw["geomagnetic_status"]
@@ -37,7 +36,7 @@ async def test_space_weather_empty_payload():
     mock_resp = httpx.Response(
         200, json=[], request=httpx.Request("GET", "https://services.swpc.noaa.gov")
     )
-    with patch.object(httpx.AsyncClient, "get", return_value=mock_resp):
+    with mock_pool_response("services.space_weather_service", mock_resp):
         sw = await SpaceWeatherService.fetch_space_weather()
         assert sw["kp_index"] == 0.0
         assert "Quiet" in sw["geomagnetic_status"]
@@ -66,7 +65,7 @@ async def test_space_weather_capital_kp_dict_schema():
         json=mock_kp,
         request=httpx.Request("GET", "https://services.swpc.noaa.gov"),
     )
-    with patch.object(httpx.AsyncClient, "get", return_value=mock_resp):
+    with mock_pool_response("services.space_weather_service", mock_resp):
         sw = await SpaceWeatherService.fetch_space_weather()
         assert sw["kp_index"] == 3.33  # reads the capital-Kp schema
         assert "Unsettled" in sw["geomagnetic_status"]
@@ -147,7 +146,6 @@ def test_parse_kp_forecast_keeps_only_future_predicted():
 @pytest.mark.asyncio
 async def test_space_weather_full_fetch_new_fields():
     """Kp + flare + flux series + forecast all land in the model dump."""
-    from unittest.mock import AsyncMock
 
     kp_rows = [{"time_tag": "2026-08-31T00:00:00", "Kp": 2.33}]
     xray_rows = [
@@ -163,7 +161,7 @@ async def test_space_weather_full_fetch_new_fields():
             )
         return httpx.Response(200, json=kp_rows, request=httpx.Request("GET", str(url)))
 
-    with patch.object(httpx.AsyncClient, "get", new=AsyncMock(side_effect=_get)):
+    with mock_pool_side_effect("services.space_weather_service", _get):
         sw = await SpaceWeatherService.fetch_space_weather()
     assert sw["flare_class"] == "M1.0"
     assert sw["xray_flux"] == [500.0]

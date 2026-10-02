@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
+from conftest import mock_pool_response
 from flet_geolocator import GeolocatorPermissionStatus
 
 from core.device_services import DeviceServices
@@ -31,7 +32,7 @@ async def test_geocoding_search_cities_success():
         json=mock_data,
         request=httpx.Request("GET", "https://geocoding-api.open-meteo.com"),
     )
-    with patch.object(httpx.AsyncClient, "get", return_value=mock_resp):
+    with mock_pool_response("services.geocoding_service", mock_resp):
         results = await GeocodingService.search_cities("Accra")
         assert len(results) == 1
         assert results[0]["name"] == "Accra"
@@ -56,15 +57,15 @@ async def test_elevation_lookup():
         json=mock_data,
         request=httpx.Request("GET", "https://api.open-meteo.com/v1/elevation"),
     )
-    with patch.object(httpx.AsyncClient, "get", return_value=mock_resp):
+    with mock_pool_response("services.geocoding_service", mock_resp):
         elev = await GeocodingService.get_elevation(6.5, 3.3)
         assert elev == 128.0
 
 
 @pytest.mark.asyncio
 async def test_elevation_fallback():
-    with patch.object(
-        httpx.AsyncClient, "get", side_effect=httpx.ConnectTimeout("Timeout")
+    with mock_pool_response(
+        "services.geocoding_service", exc=httpx.ConnectTimeout("Timeout")
     ):
         elev = await GeocodingService.get_elevation(6.5, 3.3)
         assert elev == 0.0
@@ -90,7 +91,7 @@ async def test_reverse_geocode_open_meteo_success():
         json=mock_data,
         request=httpx.Request("GET", "https://geocoding-api.open-meteo.com/v1/reverse"),
     )
-    with patch.object(httpx.AsyncClient, "get", return_value=mock_resp):
+    with mock_pool_response("services.geocoding_service", mock_resp):
         res = await GeocodingService.reverse_geocode(6.441, 7.498)
         assert res is not None
         assert res["name"] == "Enugu"
@@ -119,7 +120,7 @@ async def test_reverse_geocode_bigdatacloud_fallback():
             )
         return httpx.Response(404, request=httpx.Request("GET", str(url)))
 
-    with patch.object(httpx.AsyncClient, "get", side_effect=_mock_get):
+    with mock_pool_response("services.geocoding_service", exc=_mock_get):
         res = await GeocodingService.reverse_geocode(6.21, 7.07)
         assert res is not None
         assert res["name"] == "Awka"

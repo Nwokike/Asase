@@ -1,9 +1,8 @@
 """Deep testing of USGS Seismic Hazards Service."""
 
-from unittest.mock import patch
-
 import httpx
 import pytest
+from conftest import mock_pool_response
 
 from services.seismic_service import SeismicService
 
@@ -15,7 +14,7 @@ async def test_seismic_empty_response():
         json={"features": []},
         request=httpx.Request("GET", "https://earthquake.usgs.gov"),
     )
-    with patch.object(httpx.AsyncClient, "get", return_value=mock_resp):
+    with mock_pool_response("services.seismic_service", mock_resp):
         events = await SeismicService.fetch_earthquakes(min_magnitude=2.5)
         assert events == []
 
@@ -50,7 +49,7 @@ async def test_seismic_magnitude_filter():
         },
         request=httpx.Request("GET", "https://earthquake.usgs.gov"),
     )
-    with patch.object(httpx.AsyncClient, "get", return_value=mock_resp):
+    with mock_pool_response("services.seismic_service", mock_resp):
         # Filter M >= 2.5
         events = await SeismicService.fetch_earthquakes(min_magnitude=2.5)
         assert len(events) == 1
@@ -60,8 +59,8 @@ async def test_seismic_magnitude_filter():
 
 @pytest.mark.asyncio
 async def test_seismic_network_failure():
-    with patch.object(
-        httpx.AsyncClient, "get", side_effect=httpx.ConnectError("Network Down")
+    with mock_pool_response(
+        "services.seismic_service", exc=httpx.ConnectError("Network Down")
     ):
         events = await SeismicService.fetch_earthquakes(min_magnitude=2.5)
         assert events == []
@@ -74,6 +73,6 @@ async def test_seismic_corrupted_json():
         text="Internal Server Error",
         request=httpx.Request("GET", "https://earthquake.usgs.gov"),
     )
-    with patch.object(httpx.AsyncClient, "get", return_value=mock_resp):
+    with mock_pool_response("services.seismic_service", mock_resp):
         events = await SeismicService.fetch_earthquakes(min_magnitude=2.5)
         assert events == []
