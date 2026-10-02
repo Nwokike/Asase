@@ -7,7 +7,6 @@ import logging
 import flet as ft
 from flet import Control
 
-from components.app_header import build_app_header
 from components.empty_state import EmptyState
 from components.section_header import SectionHeader
 from core import tokens
@@ -61,13 +60,6 @@ def HistoryScreen() -> Control:
                     pass
 
         schedule(_do, page=page)
-
-    header = build_app_header(
-        page,
-        title="History",
-        subtitle="SAVED LOCATIONS & RECENT SEARCHES",
-        on_refresh=controller.refresh_all,
-    )
 
     # Clear-all action preserved from the old inline header, shown only when
     # there is something to clear.
@@ -199,7 +191,6 @@ def HistoryScreen() -> Control:
 
     return ft.ListView(
         controls=[
-            header,
             clear_row,
             ft.Container(content=body, padding=ft.Padding(0, tokens.SPACE_SM, 0, 0)),
             ft.Container(height=tokens.SPACE_XXXL),

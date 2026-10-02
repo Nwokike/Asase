@@ -47,3 +47,30 @@ def format_speed_verbose(kmh: object) -> str:
     if state.speed_unit == "mph":
         return f"{value * 0.621371:.0f} mph"
     return f"{value:.0f} km/h"
+
+
+def format_feed_age(updated_at: float | None, now: float | None = None) -> str:
+    """Human age for a feed timestamp ("just now", "4m ago", "2h ago").
+
+    ``None`` (never fetched) renders as "—" so chips degrade honestly.
+    """
+    import time as _time
+
+    if updated_at is None:
+        return "—"
+    try:
+        age = max(0.0, (now if now is not None else _time.time()) - float(updated_at))
+    except (TypeError, ValueError):
+        return "—"
+    if age < 60:
+        return "just now"
+    if age < 3600:
+        return f"{int(age // 60)}m ago"
+    if age < 86400:
+        return f"{int(age // 3600)}h ago"
+    return f"{int(age // 86400)}d ago"
+
+
+def feed_age(source: str, now: float | None = None) -> str:
+    """Age chip text for a feed source key in ``state.feed_updated``."""
+    return format_feed_age(state.feed_updated.get(source), now)

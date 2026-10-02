@@ -20,7 +20,7 @@ import logging
 import flet as ft
 
 from core import tokens
-from core.theme import AppColors
+from core.theme import AppColors, build_logo
 
 logger = logging.getLogger("asase.nav")
 
@@ -136,16 +136,15 @@ def build_sidebar(
                 content=ft.Row(
                     [
                         *(
-                            [
-                                ft.Text(
-                                    "ASASE",
-                                    size=tokens.FONT_MD,
-                                    weight=ft.FontWeight.BOLD,
-                                    color=AppColors.PRIMARY,
+                            [build_logo(height=30)]
+                            if not collapsed
+                            else [
+                                ft.Image(
+                                    src="/icon.svg",
+                                    width=28,
+                                    height=28,
                                 )
                             ]
-                            if not collapsed
-                            else []
                         ),
                         ft.IconButton(
                             icon=ft.Icons.MENU_OPEN_ROUNDED
@@ -193,22 +192,133 @@ def build_status_bar(
     kp_text: str,
     on_command_palette,
     is_dark: bool = True,
+    title: str | None = None,
+    subtitle: str | None = None,
+    on_refresh=None,
+    on_settings=None,
+    on_toggle_theme=None,
+    theme_icon: ft.IconData | None = None,
+    on_open_version=None,
+    version_label: str | None = None,
+    update_available: bool = False,
 ) -> ft.Container:
-    """Top status bar for medium/expanded windows: live context at a glance."""
+    """Top status bar for medium/expanded windows: live context at a glance.
+
+    Absorbs the old per-screen AppHeader: screen title/subtitle, refresh,
+    settings gear, theme toggle, and version/update chip all live here and
+    change per active screen — screens no longer render their own header.
+    """
+    actions: list[ft.Control] = []
+    if version_label or update_available:
+        dot = (
+            ft.Container(
+                width=6,
+                height=6,
+                border_radius=3,
+                bgcolor=AppColors.PRIMARY,
+            )
+            if update_available
+            else None
+        )
+        actions.append(
+            ft.Container(
+                content=ft.Row(
+                    [
+                        ft.Text(
+                            version_label or "",
+                            size=tokens.FONT_XS,
+                            weight=ft.FontWeight.BOLD,
+                            color=AppColors.PRIMARY
+                            if update_available
+                            else ft.Colors.ON_SURFACE_VARIANT,
+                            no_wrap=True,
+                        ),
+                        *([dot] if dot is not None else []),
+                    ],
+                    spacing=6,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                padding=ft.Padding(10, 4, 10, 4),
+                border_radius=10,
+                bgcolor=ft.Colors.with_opacity(
+                    0.15 if update_available else 0.08,
+                    AppColors.PRIMARY
+                    if update_available
+                    else ft.Colors.ON_SURFACE_VARIANT,
+                ),
+                ink=True,
+                tooltip="What's New — version & changelog",
+                on_click=lambda _: on_open_version() if on_open_version else None,
+            )
+        )
+    if on_toggle_theme and theme_icon:
+        actions.append(
+            ft.IconButton(
+                icon=theme_icon,
+                icon_size=20,
+                tooltip="Toggle Color Mode (Dark / Light / System)",
+                on_click=lambda _: on_toggle_theme(),
+            )
+        )
+    if on_refresh:
+        actions.append(
+            ft.IconButton(
+                icon=ft.Icons.REFRESH_ROUNDED,
+                icon_size=20,
+                tooltip="Sync Live Feeds",
+                on_click=lambda _: on_refresh(),
+            )
+        )
+    if on_settings:
+        actions.append(
+            ft.IconButton(
+                icon=ft.Icons.SETTINGS_OUTLINED,
+                icon_size=20,
+                tooltip="Settings",
+                on_click=lambda _: on_settings(),
+            )
+        )
     return ft.Container(
         content=ft.Row(
             [
-                ft.Icon(
-                    ft.Icons.SATELLITE_ALT_ROUNDED,
-                    size=tokens.ICON_SM,
-                    color=AppColors.PRIMARY,
-                ),
-                ft.Text(
-                    location_name or "Global Telemetry",
-                    size=tokens.FONT_SM,
-                    weight=ft.FontWeight.W_600,
-                    max_lines=1,
-                    overflow=ft.TextOverflow.ELLIPSIS,
+                *(
+                    [
+                        ft.Column(
+                            [
+                                ft.Text(
+                                    title or location_name or "Global Telemetry",
+                                    size=tokens.FONT_MD,
+                                    weight=ft.FontWeight.BOLD,
+                                    max_lines=1,
+                                    overflow=ft.TextOverflow.ELLIPSIS,
+                                ),
+                                ft.Text(
+                                    (subtitle or "EARTH INTELLIGENCE").upper(),
+                                    size=tokens.FONT_XXS,
+                                    weight=ft.FontWeight.W_700,
+                                    color=AppColors.PRIMARY,
+                                    max_lines=1,
+                                ),
+                            ],
+                            spacing=0,
+                            expand=True,
+                        )
+                    ]
+                    if (title or subtitle)
+                    else [
+                        ft.Icon(
+                            ft.Icons.SATELLITE_ALT_ROUNDED,
+                            size=tokens.ICON_SM,
+                            color=AppColors.PRIMARY,
+                        ),
+                        ft.Text(
+                            location_name or "Global Telemetry",
+                            size=tokens.FONT_SM,
+                            weight=ft.FontWeight.W_600,
+                            max_lines=1,
+                            overflow=ft.TextOverflow.ELLIPSIS,
+                        ),
+                    ]
                 ),
                 ft.Container(
                     content=ft.Row(
@@ -267,6 +377,7 @@ def build_status_bar(
                     ),
                     on_click=lambda _: on_command_palette(),
                 ),
+                ft.Row(actions, spacing=0),
             ],
             spacing=tokens.SPACE_MD,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,

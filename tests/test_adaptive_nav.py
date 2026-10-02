@@ -1,9 +1,7 @@
 """Adaptive navigation chrome regressions (Phase D1)."""
 
-from unittest.mock import MagicMock
-
 import flet as ft
-from flet_tree import walk, walk_texts
+from flet_tree import walk_texts
 
 from components.adaptive_nav import (
     NAV_ITEMS,

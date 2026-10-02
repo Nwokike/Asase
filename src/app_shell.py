@@ -16,11 +16,11 @@ from components.adaptive_nav import (
     window_class,
 )
 from core import tokens
-from core.constants import STORAGE_SIDEBAR_COLLAPSED
+from core.constants import APP_VERSION, STORAGE_SIDEBAR_COLLAPSED
 from core.theme import is_dark_mode
+from screens.boot_screen import BootScreen
 from screens.home_screen import HomeScreen
 from screens.map_screen import MapScreen
-from screens.onboarding_screen import OnboardingScreen
 from screens.report_screen import ReportScreen
 from screens.settings_screen import SettingsScreen
 from screens.space_screen import SpaceScreen
@@ -62,8 +62,15 @@ def resolve_dashboard_screen(active_tab: int):
     return SettingsScreen
 
 
-def _should_show_onboarding(state) -> bool:
-    return state.is_first_launch or not state.has_accepted_terms
+def _should_show_boot(state) -> bool:
+    """Boot screen while the first telemetry load is in flight.
+
+    Replaces the old 3-slide onboarding deck: one loading view covering
+    init (and Pyodide interpreter load on web), auto-dismissed when the
+    first refresh lands. First-run terms acceptance is a no-op pass —
+    there is no account, no tracking, nothing to consent to.
+    """
+    return state.is_loading and not state.telemetry_version
 
 
 def _build_appbar(active_view: str, active_tab: int, controller) -> ft.AppBar | None:
@@ -106,18 +113,12 @@ def AppShell() -> Control:
     active_tab, set_active_tab = ft.use_state(0)
     active_view, set_active_view = ft.use_state("dashboard")
     theme_ver, set_theme_ver = ft.use_state(state.theme_version)
-    onboarding_done, set_onboarding_done = ft.use_state(state.has_accepted_terms)
     # Viewport width drives the chrome class (compact/medium/expanded).
     # Unknown at first paint → compact (bottom nav, the safe default).
     viewport_width, set_viewport_width = ft.use_state(None)
 
     # Wire navigation and theme closures
     controller.set_theme_mode = lambda _mode: set_theme_ver(state.theme_version)
-    controller.dismiss_onboarding = lambda: (
-        set_onboarding_done(True),
-        set_active_view("dashboard"),
-        set_active_tab(0),
-    )
     controller.go_home = lambda: (set_active_view("dashboard"), set_active_tab(0))
     controller.show_map = lambda: (set_active_view("dashboard"), set_active_tab(1))
     controller.show_space = lambda: set_active_view("space")
@@ -165,8 +166,7 @@ def AppShell() -> Control:
         except Exception:
             pass
 
-        show_onboarding = not onboarding_done and _should_show_onboarding(state)
-        if show_onboarding:
+        if _should_show_boot(state):
             page.views[0].navigation_bar = None
             try:
                 page.update()
@@ -216,10 +216,8 @@ def AppShell() -> Control:
         [
             active_tab,
             active_view,
-            onboarding_done,
             theme_ver,
             viewport_width,
-            state.has_accepted_terms,
             state.theme_version,
         ],
     )
@@ -229,10 +227,10 @@ def AppShell() -> Control:
         theme_ver,
         state.theme_version,
         state.telemetry_version,
-        state.has_accepted_terms,
+        state.telemetry_version,
     )
-    if not onboarding_done and _should_show_onboarding(state):
-        screen = OnboardingScreen()
+    if _should_show_boot(state):
+        screen = BootScreen()
     elif active_view == "report":
         screen = ReportScreen()
     elif active_view == "space":
@@ -240,10 +238,10 @@ def AppShell() -> Control:
     else:
         screen = resolve_dashboard_screen(active_tab)()
 
-    show_onboarding_now = not onboarding_done and _should_show_onboarding(state)
+    show_boot_now = _should_show_boot(state)
     wclass = window_class(viewport_width)
     use_side_chrome = (
-        not show_onboarding_now
+        not show_boot_now
         and active_view == "dashboard"
         and wclass in ("medium", "expanded")
     )
@@ -295,12 +293,84 @@ def AppShell() -> Control:
         kp_text = f"Kp {float(kp_raw):.1f}"
     except (TypeError, ValueError):
         kp_text = "Kp --"
+
+    # Per-screen header contents — absorbed from the old per-screen
+    # AppHeader so screens render no chrome of their own. Report/space
+    # overlays get a title here; dashboard tabs show live context.
+    _SCREEN_TITLES = {
+        "report": ("Location Risk Dossier", "MULTI-HAZARD RISK ASSESSMENT"),
+        "space": ("Planetary Magnetosphere", "NOAA SPACE WEATHER PREDICTION"),
+    }
+    _TAB_TITLES = {
+        0: ("Asase", "EARTH INTELLIGENCE"),
+        1: ("Full Map", "PLANETARY HAZARD RADAR"),
+        2: ("Planetary Magnetosphere", "NOAA SPACE WEATHER PREDICTION"),
+        3: ("History", "SAVED LOCATIONS & RECENT SEARCHES"),
+        4: ("Settings", "CONFIGURATION & DIAGNOSTICS"),
+    }
+    if active_view in _SCREEN_TITLES:
+        _sb_title, _sb_subtitle = _SCREEN_TITLES[active_view]
+    else:
+        _sb_title, _sb_subtitle = _TAB_TITLES.get(active_tab, ("Asase", None))
+
+    def _toggle_theme_mode():
+        from core.tasks import schedule as _schedule
+
+        _page = flet_context.page
+        if not _page:
+            return
+        if _page.theme_mode == ft.ThemeMode.DARK:
+            _page.theme_mode = ft.ThemeMode.LIGHT
+            _mode_str = "light"
+        elif _page.theme_mode == ft.ThemeMode.LIGHT:
+            _page.theme_mode = ft.ThemeMode.SYSTEM
+            _mode_str = "system"
+        else:
+            _page.theme_mode = ft.ThemeMode.DARK
+            _mode_str = "dark"
+        state.theme_mode = _page.theme_mode
+        state.theme_version += 1
+        state.telemetry_version += 1
+        if controller.save_setting:
+            _schedule(controller.save_setting, "asase.theme", _mode_str, page=_page)
+        try:
+            _page.update()
+        except Exception:
+            pass
+
+    def _theme_icon():
+        _page = flet_context.page
+        if not _page or _page.theme_mode == ft.ThemeMode.DARK:
+            return ft.Icons.DARK_MODE_ROUNDED
+        if _page and _page.theme_mode == ft.ThemeMode.LIGHT:
+            return ft.Icons.LIGHT_MODE_ROUNDED
+        return ft.Icons.SETTINGS_SYSTEM_DAYDREAM_ROUNDED
+
+    def _open_version_dialog():
+        from components.version_dialog import show_version_dialog as _show
+
+        _show(flet_context.page)
+
+    _update_data = state.update_data or {}
     status = build_status_bar(
         state.current_location_name,
         len(state.earthquakes) + len(state.disasters),
         kp_text,
         lambda: None,  # command palette lands in Phase D4
         is_dark=is_dark_mode(flet_context.page),
+        title=_sb_title,
+        subtitle=_sb_subtitle,
+        on_refresh=controller.refresh_all,
+        on_settings=lambda: _select_tab(_TAB_INDEX["Settings"]),
+        on_toggle_theme=_toggle_theme_mode,
+        theme_icon=_theme_icon(),
+        on_open_version=_open_version_dialog,
+        version_label=(
+            f"Update: {(_update_data.get('version', 'Update'))} Available!"
+            if state.update_available and _update_data.get("type") != "announcement"
+            else ("News" if state.update_available else f"v{APP_VERSION}")
+        ),
+        update_available=bool(state.update_available),
     )
     body = ft.Row(
         [side, ft.Column([status, screen_holder], spacing=0, expand=True)],

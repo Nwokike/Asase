@@ -7,8 +7,9 @@ import logging
 import flet as ft
 from flet import Control
 
-from components.app_header import build_app_header
+from components.adaptive_nav import window_class
 from components.banner_ad import AdMobBanner
+from components.empty_state import EmptyState
 from components.hazard_map import HazardMap, build_event_detail_sheet
 from components.home.active_alert_banner import build_active_alert_banner
 from components.home.bookmarks_section import build_bookmarks_section
@@ -23,6 +24,7 @@ from core import tokens
 from core.geo_utils import calculate_haversine_distance_km, format_distance
 from core.tasks import schedule
 from core.theme import AppColors, is_dark_mode
+from core.units import feed_age
 from hooks.use_debounce import use_debounce
 from hooks.use_map_center import use_map_center
 from services.geocoding_service import GeocodingService
@@ -158,17 +160,6 @@ def HomeScreen() -> Control:
     kp_val = state.space_weather.get("kp_index", "--")
     space_status = state.space_weather.get("geomagnetic_status", "Normal")
 
-    header_view = build_app_header(
-        page,
-        title="Asase",
-        subtitle="EARTH INTELLIGENCE",
-        on_refresh=controller.refresh_all,
-        on_settings=lambda: (
-            controller.navigate_tab(4) if controller.navigate_tab else None
-        ),
-        save_setting_fn=controller.save_setting,
-    )
-
     search_bar = build_location_search_bar(
         page,
         search_query,
@@ -269,9 +260,34 @@ def HomeScreen() -> Control:
         if controller.share_text:
             schedule(controller.share_text, msg, "Asase Hazard Alert", page=page)
 
+    map_widget = HazardMap(
+        lat=state.current_lat,
+        lon=state.current_lon,
+        zoom=2.5,
+        earthquakes=state.earthquakes,
+        disasters=filtered_dis,
+        expand=True,
+        is_dark=is_dark_mode(page),
+        on_marker_click=lambda ev: set_selected_event(ev),
+        map_ref=home_map_ref,
+    )
+    map_header = SectionHeader(
+        "GLOBAL HAZARD RADAR",
+        action_text="EXPAND MAP",
+        on_action=lambda _: controller.show_map() if controller.show_map else None,
+    )
+
+    # Compact windows keep the proven single-column scroll. Medium+ windows
+    # get the full-bleed canvas: map as background layer, controls + feeds
+    # as floating translucent panels over it.
+    try:
+        _vw = float(page.width) if page and page.width else 0.0
+    except (TypeError, ValueError):
+        _vw = 0.0
+    use_canvas = window_class(_vw if _vw else None) in ("medium", "expanded")
+
     content_list = ft.ListView(
         controls=[
-            header_view,
             search_bar,
             filter_chips,
             focus_banner,
@@ -279,36 +295,41 @@ def HomeScreen() -> Control:
             *([alert_banner] if alert_banner else []),
             metrics_row,
             # Embedded Planetary Map Widget — tap markers to inspect hazards
-            SectionHeader(
-                "GLOBAL HAZARD RADAR",
-                action_text="EXPAND MAP",
-                on_action=lambda _: (
-                    controller.show_map() if controller.show_map else None
-                ),
-            ),
-            ft.Stack(
-                controls=[
+            *(
+                [map_header]
+                if not use_canvas
+                else [
                     ft.Container(
-                        content=HazardMap(
-                            lat=state.current_lat,
-                            lon=state.current_lon,
-                            zoom=2.5,
-                            earthquakes=state.earthquakes,
-                            disasters=filtered_dis,
-                            expand=False,
-                            height=240,
-                            is_dark=is_dark_mode(page),
-                            on_marker_click=lambda ev: set_selected_event(ev),
-                            map_ref=home_map_ref,
-                        ),
+                        content=map_header,
                         padding=ft.Padding(tokens.SPACE_LG, 0, tokens.SPACE_LG, 0),
-                    ),
-                ],
-                expand=False,
-                height=240,
+                        bgcolor=ft.Colors.with_opacity(
+                            0.85, AppColors.get_surface(page)
+                        ),
+                    )
+                ]
+            ),
+            *(
+                [
+                    ft.Stack(
+                        controls=[
+                            ft.Container(
+                                content=map_widget,
+                                padding=ft.Padding(
+                                    tokens.SPACE_LG, 0, tokens.SPACE_LG, 0
+                                ),
+                            ),
+                        ],
+                        expand=False,
+                        height=240,
+                    )
+                ]
+                if not use_canvas
+                else []
             ),
             # Real-Time Seismic Stream
-            SectionHeader("RECENT SEISMIC ACTIVITY (USGS 24H)"),
+            SectionHeader(
+                f"RECENT SEISMIC ACTIVITY (USGS 24H • {feed_age('usgs')})",
+            ),
             *(
                 [
                     ft.Container(
@@ -343,6 +364,14 @@ def HomeScreen() -> Control:
                                     on_click=lambda _, ev=eq: set_selected_event(ev),
                                 )
                                 for eq in filtered_eq[:12]
+                            ]
+                            if filtered_eq
+                            else [
+                                EmptyState(
+                                    icon=ft.Icons.WAVES_ROUNDED,
+                                    title="No quakes in range",
+                                    subtitle="Nothing above your magnitude filter in the last 24h.",
+                                )
                             ],
                             spacing=tokens.SPACE_SM,
                         ),
@@ -352,8 +381,9 @@ def HomeScreen() -> Control:
                     )
                 ]
             ),
-            # Natural Disasters Feed
-            SectionHeader("ACTIVE NATURAL EVENTS (NASA EONET)"),
+            SectionHeader(
+                f"ACTIVE NATURAL EVENTS (NASA EONET • {feed_age('eonet')})",
+            ),
             *(
                 [
                     ft.Container(
@@ -389,6 +419,14 @@ def HomeScreen() -> Control:
                                     on_click=lambda _, ev=dis: set_selected_event(ev),
                                 )
                                 for dis in filtered_dis[:8]
+                            ]
+                            if filtered_dis
+                            else [
+                                EmptyState(
+                                    icon=ft.Icons.ECO_ROUNDED,
+                                    title="No active events",
+                                    subtitle="No open EONET events match this filter right now.",
+                                )
                             ],
                             spacing=tokens.SPACE_SM,
                         ),
@@ -409,26 +447,166 @@ def HomeScreen() -> Control:
     # Page-level overlay stack: event cards and map markers both open the
     # detail sheet here, so it's visible no matter where in the feed you tap
     # (the old sheet only overlay the 240px mini-map region).
+    sheet = (
+        [
+            build_event_detail_sheet(
+                selected_event,
+                on_close=lambda: set_selected_event(None),
+                on_open_url=lambda u: (
+                    schedule(controller.launch_url, u, page=page)
+                    if controller.launch_url
+                    else None
+                ),
+                on_view_dossier=_open_event_dossier,
+                on_share=_share_event_text,
+            )
+        ]
+        if selected_event
+        else []
+    )
+    if not use_canvas:
+        return ft.Stack(
+            controls=[content_list, *sheet],
+            expand=True,
+        )
+    # Full-bleed canvas: map background, floating control rail on the left,
+    # scrollable feed column as a translucent right panel.
+    left_rail = ft.Container(
+        content=ft.Column(
+            [search_bar, filter_chips, focus_banner],
+            spacing=tokens.SPACE_SM,
+            scroll=ft.ScrollMode.AUTO,
+        ),
+        width=360,
+        padding=ft.Padding(tokens.SPACE_MD, tokens.SPACE_MD, 0, tokens.SPACE_MD),
+        top=tokens.SPACE_MD,
+        left=tokens.SPACE_MD,
+        bottom=tokens.SPACE_MD,
+    )
+    right_feeds = ft.Container(
+        content=ft.ListView(
+            controls=[
+                *([bookmarks_bar] if bookmarks_bar else []),
+                *([alert_banner] if alert_banner else []),
+                metrics_row,
+                ft.Container(
+                    content=map_header,
+                    padding=ft.Padding(0, tokens.SPACE_MD, 0, 0),
+                ),
+                SectionHeader(
+                    f"RECENT SEISMIC ACTIVITY (USGS 24H • {feed_age('usgs')})",
+                ),
+                *(
+                    [
+                        ft.Container(
+                            content=ft.Column(
+                                [
+                                    TelemetrySkeletonCard(height=95),
+                                    TelemetrySkeletonCard(height=95),
+                                ],
+                                spacing=tokens.SPACE_SM,
+                            ),
+                        )
+                    ]
+                    if state.is_loading and not state.earthquakes
+                    else [
+                        ft.Container(
+                            content=ft.Column(
+                                [
+                                    TelemetryCard(
+                                        title=eq.get("place", "Earthquake"),
+                                        subtitle=f"Magnitude M{eq.get('magnitude', 0):.1f} • Depth {eq.get('depth_km', 0):.1f}km • {eq.get('time_str', '')}",
+                                        value=f"MMI {eq.get('mmi', 0.0):.1f}"
+                                        if eq.get("mmi")
+                                        else "",
+                                        severity=eq.get("severity", "low"),
+                                        icon=ft.Icons.WAVES_ROUNDED,
+                                        event_lat=float(eq.get("latitude", 0.0)),
+                                        event_lon=float(eq.get("longitude", 0.0)),
+                                        event_url=eq.get("url", ""),
+                                        on_click=lambda _, ev=eq: set_selected_event(
+                                            ev
+                                        ),
+                                    )
+                                    for eq in filtered_eq[:12]
+                                ]
+                                if filtered_eq
+                                else [
+                                    EmptyState(
+                                        icon=ft.Icons.WAVES_ROUNDED,
+                                        title="No quakes in range",
+                                        subtitle="Nothing above your magnitude filter in the last 24h.",
+                                    )
+                                ],
+                                spacing=tokens.SPACE_SM,
+                            ),
+                        )
+                    ]
+                ),
+                SectionHeader(
+                    f"ACTIVE NATURAL EVENTS (NASA EONET • {feed_age('eonet')})",
+                ),
+                *(
+                    [
+                        ft.Container(
+                            content=ft.Column(
+                                [TelemetrySkeletonCard(height=95)],
+                                spacing=tokens.SPACE_SM,
+                            ),
+                        )
+                    ]
+                    if state.is_loading and not state.disasters
+                    else [
+                        ft.Container(
+                            content=ft.Column(
+                                [
+                                    TelemetryCard(
+                                        title=dis.get("title", "Natural Event"),
+                                        subtitle=f"Category: {dis.get('category_title', 'Hazard')} • {dis.get('date', '')[:10]}",
+                                        value="",
+                                        severity="high"
+                                        if dis.get("type") == "wildfire"
+                                        else "moderate",
+                                        icon=ft.Icons.LOCAL_FIRE_DEPARTMENT_ROUNDED
+                                        if dis.get("type") == "wildfire"
+                                        else ft.Icons.CYCLONE_ROUNDED,
+                                        event_lat=float(dis.get("latitude", 0.0)),
+                                        event_lon=float(dis.get("longitude", 0.0)),
+                                        event_url=dis.get("url", ""),
+                                        on_click=lambda _, ev=dis: set_selected_event(
+                                            ev
+                                        ),
+                                    )
+                                    for dis in filtered_dis[:8]
+                                ]
+                                if filtered_dis
+                                else [
+                                    EmptyState(
+                                        icon=ft.Icons.ECO_ROUNDED,
+                                        title="No active events",
+                                        subtitle="No open EONET events match this filter right now.",
+                                    )
+                                ],
+                                spacing=tokens.SPACE_SM,
+                            ),
+                        )
+                    ]
+                ),
+                AdMobBanner(),
+                ft.Container(height=tokens.SPACE_XXXL),
+            ],
+            spacing=0,
+            expand=True,
+        ),
+        width=420,
+        bgcolor=ft.Colors.with_opacity(0.92, AppColors.get_surface(page)),
+        border_radius=tokens.RADIUS_LG,
+        padding=ft.Padding(tokens.SPACE_MD, tokens.SPACE_MD, tokens.SPACE_MD, 0),
+        top=tokens.SPACE_MD,
+        right=tokens.SPACE_MD,
+        bottom=tokens.SPACE_MD,
+    )
     return ft.Stack(
-        controls=[
-            content_list,
-            *(
-                [
-                    build_event_detail_sheet(
-                        selected_event,
-                        on_close=lambda: set_selected_event(None),
-                        on_open_url=lambda u: (
-                            schedule(controller.launch_url, u, page=page)
-                            if controller.launch_url
-                            else None
-                        ),
-                        on_view_dossier=_open_event_dossier,
-                        on_share=_share_event_text,
-                    )
-                ]
-                if selected_event
-                else []
-            ),
-        ],
+        controls=[map_widget, left_rail, right_feeds, *sheet],
         expand=True,
     )

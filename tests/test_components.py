@@ -1,7 +1,7 @@
 """Comprehensive tests for Asase UI components."""
 
 import flet as ft
-from flet_tree import walk, walk_buttons, walk_icons, walk_texts
+from flet_tree import walk, walk_icons, walk_texts
 
 from components.banner_ad import build_banner_ad
 from components.hazard_map import (
@@ -367,31 +367,35 @@ def test_space_g_scale_and_forecast_helpers():
     assert build_kp_forecast_chips([]) is None
 
 
-def test_app_header():
-    from components.app_header import build_app_header
+def test_shell_status_bar_absorbs_screen_headers():
+    # Per-screen AppHeader is gone: the shell status bar carries title,
+    # refresh, settings, theme, and version actions per active screen.
+    from components.adaptive_nav import build_status_bar
 
-    # Every screen uses the same consistent branding: reactive icon + title text.
-    # page=None resolves to dark mode, so the icon is tinted white.
-    hdr = build_app_header(
-        page=None,
-        title="Asase",
-        subtitle="EARTH INTELLIGENCE",
+    bar = build_status_bar(
+        "Lagos",
+        2,
+        "Kp 3.0",
+        lambda: None,
+        title="Dossier",
+        subtitle="MULTI-HAZARD RISK ASSESSMENT",
         on_refresh=lambda: None,
         on_settings=lambda: None,
+        on_toggle_theme=lambda: None,
+        theme_icon=ft.Icons.DARK_MODE_ROUNDED,
+        on_open_version=lambda: None,
+        version_label="v1.0.2",
     )
-    assert isinstance(hdr, ft.Container)
-    images = [c for c in walk(hdr) if isinstance(c, ft.Image)]
-    assert any(img.src == "/icon.svg" for img in images)
-    icon_img = next(img for img in images if img.src == "/icon.svg")
-    assert icon_img.color == ft.Colors.WHITE  # dark-mode white tint
-    texts = [t.value for t in walk_texts(hdr)]
-    assert "Asase" in texts
-    assert "EARTH INTELLIGENCE" in texts
+    assert isinstance(bar, ft.Container)
+    texts = [t.value for t in walk_texts(bar)]
+    assert "Dossier" in texts
+    assert "MULTI-HAZARD RISK ASSESSMENT" in texts
+    assert "v1.0.2" in texts
 
 
-def test_about_card_and_onboarding_use_reactive_logo():
+def test_about_card_and_boot_use_reactive_logo():
     from components.settings.sections_about import build_about_card
-    from screens.onboarding_screen import build_onboarding_view
+    from screens.boot_screen import build_boot_view
 
     # page=None resolves to dark mode → white-wordmark logo variant.
     about = build_about_card(page=None)
@@ -400,60 +404,18 @@ def test_about_card_and_onboarding_use_reactive_logo():
     about_texts = [t.value for t in walk_texts(about)]
     assert "Asase" not in about_texts  # wordmark is inside the logo asset
 
-    def _noop(*_args):
-        pass
-
-    def _view(idx: int, **kw):
-        args = {
-            "page": None,
-            "page_idx": idx,
-            "on_next": _noop,
-            "on_skip": _noop,
-            "on_swipe": _noop,
-            "on_dot_click": _noop,
-        }
-        args.update(kw)
-        return build_onboarding_view(**args)
-
-    def _labels(v):
-        out = [t.value for t in walk_texts(v)]
-        out += [
-            b.content
-            for b in walk_buttons(v)
-            if isinstance(getattr(b, "content", None), str)
-        ]
-        return out
-
-    # Slide 0 — brand: reactive dark wordmark, no text duplication
-    v0 = _view(0)
-    texts0 = _labels(v0)
-    imgs = [c for c in walk(v0) if isinstance(c, ft.Image)]
-    assert any(img.src == "/logo_dark.svg" for img in imgs)
-    assert "Skip" in texts0 and "Next" in texts0
-
-    # Slide 1 — hazards showcase: hero icon + title + reactive surface tokens
-    v1 = _view(1)
-    texts1 = _labels(v1)
-    assert "Every Hazard,\nOne Command View" in texts1
-    icons = [c for c in walk(v1) if isinstance(c, ft.Icon)]
-    assert any(i.icon == ft.Icons.PUBLIC_ROUNDED for i in icons)
-
-    # Slide 2 — AI showcase + final CTA
-    v2 = _view(2)
-    texts2 = _labels(v2)
-    assert "Grounded AI\nBriefings" in texts2
-    assert "Enter Planetary Command" in texts2
-    # Skip is hidden on the last slide
-    skips = [
-        b
-        for b in walk_buttons(v2)
-        if isinstance(getattr(b, "content", None), str) and b.content == "Skip"
-    ]
-    assert all(not b.visible for b in skips)
-
-    # The wordmark never appears as plain text in any slide
-    for idx in range(3):
-        assert "Asase" not in _labels(_view(idx))
+    # Boot screen: single loading view, no slides/deck/skip/next.
+    view = build_boot_view("Loading USGS feeds…", progress=0.5)
+    texts = [t.value for t in walk_texts(view)]
+    assert "ASASE" in texts
+    assert "GLOBAL EARTH INTELLIGENCE" in texts
+    assert "Loading USGS feeds…" in texts
+    assert "Next" not in texts and "Skip" not in texts
+    bars = [c for c in walk(view) if isinstance(c, ft.ProgressBar)]
+    assert len(bars) == 1
+    assert bars[0].value == 0.5
+    imgs = [c for c in walk(view) if isinstance(c, ft.Image)]
+    assert any("logo" in (img.src or "") for img in imgs)
 
 
 def test_location_search_bar():

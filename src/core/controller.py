@@ -355,18 +355,24 @@ class AppController:
 
     async def _fetch_global_feeds(self) -> None:
         """Location-independent feeds: USGS quakes, NASA EONET, NOAA space weather."""
+        import time as _time
+
         results = await asyncio.gather(
             SeismicService.fetch_earthquakes(state.min_magnitude_filter),
             DisasterService.fetch_active_disasters(state.selected_hazard_type),
             SpaceWeatherService.fetch_space_weather(),
             return_exceptions=True,
         )
+        now = _time.time()
         if isinstance(results[0], list):
             state.earthquakes = results[0]
+            state.feed_updated = {**state.feed_updated, "usgs": now}
         if isinstance(results[1], list):
             state.disasters = results[1]
+            state.feed_updated = {**state.feed_updated, "eonet": now}
         if isinstance(results[2], dict) and results[2]:
             state.space_weather = results[2]
+            state.feed_updated = {**state.feed_updated, "noaa": now}
 
     async def _fetch_local_feeds(self) -> None:
         """Location-keyed atmospheric telemetry for the current focus point."""
@@ -389,10 +395,13 @@ class AppController:
         if isinstance(atmo, dict) and any(
             atmo.get(k) for k in ("weather", "air_quality", "flood", "marine")
         ):
+            import time as _time
+
             state.weather_data = atmo.get("weather", {})
             state.air_quality_data = atmo.get("air_quality", {})
             state.flood_data = atmo.get("flood", {})
             state.marine_data = atmo.get("marine", {})
+            state.feed_updated = {**state.feed_updated, "openmeteo": _time.time()}
             if self.storage:
                 await self.storage.set_cached_telemetry(
                     cache_key,

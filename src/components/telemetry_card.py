@@ -42,6 +42,33 @@ def build_severity_badge(severity: str, label: str = "") -> ft.Container:
     )
 
 
+def _MiniSpark(values: list[float], color: str) -> ft.Control:
+    """60-100px trend sparkline for feed rows (no axes, last-value dot).
+
+    Rendered as a lightweight custom row of vertical bars — cheaper than a
+    full LineChart per row when feeds render dozens of cards.
+    """
+    clean: list[float] = []
+    for v in (values or [])[-24:]:
+        try:
+            clean.append(float(v))
+        except (TypeError, ValueError):
+            continue
+    if not clean:
+        return ft.Container()
+    peak = max(clean) or 1.0
+    bars = [
+        ft.Container(
+            width=3,
+            height=max(3.0, 22.0 * v / peak),
+            border_radius=2,
+            bgcolor=color,
+        )
+        for v in clean
+    ]
+    return ft.Row(bars, spacing=2, tight=True)
+
+
 def TelemetryCard(
     title: str,
     subtitle: str,
@@ -53,8 +80,15 @@ def TelemetryCard(
     event_lon: float | None = None,
     event_url: str = "",
     on_click=None,
+    event_time: str | None = None,
+    spark_values: list[float] | None = None,
 ) -> ft.Control:
-    """Builds a responsive telemetry card with distance calculation and share/link buttons."""
+    """Builds a responsive telemetry card with distance calculation and share/link buttons.
+
+    Glanceable extras (all optional, additive): ``event_time`` mono
+    timestamp beside the severity badge; ``spark_values`` mini sparkline
+    under the subtitle for trend-at-a-glance.
+    """
 
     if severity == "critical":
         badge_color = AppColors.SEVERITY_CRITICAL
@@ -124,6 +158,20 @@ def TelemetryCard(
                                         weight=ft.FontWeight.W_700,
                                         color=final_accent,
                                         font_family="Outfit",
+                                    ),
+                                    *(
+                                        [
+                                            ft.Text(
+                                                event_time,
+                                                style=AppColors.data_text_style(
+                                                    size=tokens.FONT_XXS,
+                                                    color=ft.Colors.ON_SURFACE_VARIANT,
+                                                ),
+                                                max_lines=1,
+                                            )
+                                        ]
+                                        if event_time
+                                        else []
                                     ),
                                 ],
                                 spacing=tokens.SPACE_XS,
@@ -221,6 +269,18 @@ def TelemetryCard(
                             )
                         ]
                         if value
+                        else []
+                    ),
+                    *(
+                        [
+                            ft.Container(
+                                content=_MiniSpark(
+                                    values=spark_values, color=final_accent
+                                ),
+                                height=28,
+                            )
+                        ]
+                        if spark_values
                         else []
                     ),
                 ],

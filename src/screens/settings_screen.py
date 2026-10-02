@@ -7,7 +7,6 @@ import logging
 import flet as ft
 from flet import Control
 
-from components.app_header import build_app_header
 from components.banner_ad import build_banner_ad
 from components.section_header import SectionHeader
 from components.settings.sections_about import build_about_card, build_terminal_card
@@ -137,17 +136,8 @@ def SettingsScreen() -> Control:
     terminal_card = build_terminal_card(page)
     about_card = build_about_card(page)
 
-    header_view = build_app_header(
-        page,
-        title="Settings",
-        subtitle="CONFIGURATION & DIAGNOSTICS",
-        on_refresh=controller.refresh_all,
-        save_setting_fn=controller.save_setting,
-    )
-
     return ft.ListView(
         controls=[
-            header_view,
             ft.Container(height=tokens.SPACE_SM),
             SectionHeader("DISPLAY THEME"),
             ft.Container(

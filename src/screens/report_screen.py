@@ -8,7 +8,6 @@ import time
 import flet as ft
 from flet import Control
 
-from components.app_header import build_app_header
 from components.banner_ad import build_banner_ad
 from components.report.ai_briefing_section import build_ai_briefing_section
 from components.report.air_quality_section import build_air_quality_section
@@ -207,17 +206,6 @@ def ReportScreen() -> Control:
                 if page:
                     show_snack(page, "Failed to copy dossier.", bgcolor=AppColors.ERROR)
 
-    header_view = build_app_header(
-        page,
-        title="Dossier",
-        subtitle="MULTI-HAZARD RISK ASSESSMENT",
-        on_refresh=controller.refresh_all,
-        on_settings=lambda: (
-            controller.navigate_tab(4) if controller.navigate_tab else None
-        ),
-        save_setting_fn=controller.save_setting,
-    )
-
     threat_radar = build_threat_radar_section(
         seismic_risk_val,
         storm_risk_val,
@@ -351,6 +339,15 @@ def ReportScreen() -> Control:
         finally:
             set_radius_loading(False)
 
+    # Auto-load on dossier mount and every location change (keep the
+    # manual Reload button for refresh). The old "Tap Load" island is gone.
+    def _auto_radius_history():
+        from core.tasks import schedule as _schedule
+
+        _schedule(_load_radius_history, page=page)
+
+    ft.use_effect(_auto_radius_history, [state.current_lat, state.current_lon])
+
     _radius_history_block = ft.Container(
         content=ft.Column(
             [
@@ -368,18 +365,23 @@ def ReportScreen() -> Control:
                             color=AppColors.PRIMARY,
                         ),
                         ft.Container(expand=True),
-                        ft.TextButton(
-                            "Load",
-                            on_click=lambda _: schedule(
-                                _load_radius_history, page=page
-                            ),
-                        )
-                        if radius_events is None
-                        else ft.TextButton(
-                            "Reload",
-                            on_click=lambda _: schedule(
-                                _load_radius_history, page=page
-                            ),
+                        *(
+                            [
+                                ft.Text(
+                                    "Loading 500 km history…",
+                                    size=tokens.FONT_XS,
+                                    color=ft.Colors.ON_SURFACE_VARIANT,
+                                )
+                            ]
+                            if radius_events is None
+                            else [
+                                ft.TextButton(
+                                    "Reload",
+                                    on_click=lambda _: schedule(
+                                        _load_radius_history, page=page
+                                    ),
+                                )
+                            ]
                         ),
                     ],
                     spacing=tokens.SPACE_XS,
@@ -389,9 +391,9 @@ def ReportScreen() -> Control:
                     "Fetching…"
                     if radius_loading
                     else (
-                        f"{len(radius_events)} events"
+                        f"{len(radius_events)} events within 500 km"
                         if radius_events is not None
-                        else "Tap Load to fetch USGS FDSN 500 km history"
+                        else "Loading 500 km history…"
                     ),
                     size=tokens.FONT_XS,
                     color=ft.Colors.ON_SURFACE_VARIANT,
@@ -444,7 +446,6 @@ def ReportScreen() -> Control:
 
     return ft.ListView(
         controls=[
-            header_view,
             ft.Container(height=tokens.SPACE_SM),
             # Location Hero Card
             ft.Container(

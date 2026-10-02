@@ -59,6 +59,10 @@ class AppState:
     # Adaptive chrome (persisted per device)
     sidebar_collapsed: bool = False
 
+    # Feed freshness — epoch seconds of the last successful fetch per
+    # source. Drives "USGS • 4m ago" staleness chips; absent key = never.
+    feed_updated: dict = field(default_factory=dict)
+
     # Detail Selection
     selected_marker: dict | None = None
     telemetry_version: int = 0
