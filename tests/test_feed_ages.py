@@ -57,6 +57,6 @@ def test_refresh_stamps_feed_timestamps():
         state.feed_updated = {}
         return stamped
 
-    stamped = asyncio.new_event_loop().run_until_complete(_run())
+    stamped = asyncio.run(_run())
     assert set(stamped) == {"usgs", "eonet"}
     assert all(isinstance(v, float) for v in stamped.values())

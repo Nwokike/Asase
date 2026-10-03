@@ -15,6 +15,13 @@ from flet_geolocator import GeolocatorPermissionStatus
 from core.device_services import DeviceServices
 
 
+@pytest.fixture(autouse=True)
+def _reset_locate_in_flight():
+    """Isolate the class-level flag: a mid-test failure otherwise poisons
+    every later locate test."""
+    yield
+
+
 def _geo(
     *,
     web=False,
@@ -52,7 +59,6 @@ def _pos(lat=6.5, lon=3.3, accuracy=50.0, age_sec=10.0):
 
 @pytest.mark.asyncio
 async def test_web_skips_last_known_position():
-    DeviceServices._locate_in_flight = False
     geo = _geo(web=True, pos=None)
     page = _page(web=True)
     calls = []
@@ -65,41 +71,34 @@ async def test_web_skips_last_known_position():
         )
     geo.get_last_known_position.assert_not_called()
     assert calls == []  # no fix at all -> silent, no success
-    DeviceServices._locate_in_flight = False
 
 
 @pytest.mark.asyncio
 async def test_denied_forever_opens_app_settings():
-    DeviceServices._locate_in_flight = False
     geo = _geo(status=GeolocatorPermissionStatus.DENIED_FOREVER)
     page = _page()
     await DeviceServices.locate_user(geo, page, AsyncMock(), silent=False)
     geo.open_app_settings.assert_called_once()
     geo.get_current_position.assert_not_called()
-    DeviceServices._locate_in_flight = False
 
 
 @pytest.mark.asyncio
 async def test_gps_disabled_opens_location_settings():
-    DeviceServices._locate_in_flight = False
     geo = _geo(enabled=False)
     page = _page()
     await DeviceServices.locate_user(geo, page, AsyncMock(), silent=False)
     geo.open_location_settings.assert_called_once()
     geo.get_permission_status.assert_not_called()
-    DeviceServices._locate_in_flight = False
 
 
 @pytest.mark.asyncio
 async def test_silent_mode_shows_no_snack_and_no_settings():
-    DeviceServices._locate_in_flight = False
     geo = _geo(enabled=False)
     page = _page()
     with patch("core.device_services.show_snack") as snack:
         await DeviceServices.locate_user(geo, page, AsyncMock(), silent=True)
     geo.open_location_settings.assert_not_called()
     snack.assert_not_called()
-    DeviceServices._locate_in_flight = False
 
 
 def test_fix_freshness_gate():
@@ -114,7 +113,6 @@ def test_fix_freshness_gate():
 
 @pytest.mark.asyncio
 async def test_city_fix_uses_medium_accuracy():
-    DeviceServices._locate_in_flight = False
     geo = _geo(pos=_pos())
     page = _page()
     with patch(
@@ -126,4 +124,3 @@ async def test_city_fix_uses_medium_accuracy():
     config = kwargs.get("configuration")
     assert config is not None
     assert config.accuracy.value == "medium"
-    DeviceServices._locate_in_flight = False

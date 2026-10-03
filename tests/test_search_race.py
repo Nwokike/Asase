@@ -76,6 +76,6 @@ def test_generation_protocol_drops_stale_results():
         t2 = asyncio.create_task(do_search("lagos", ["fresh"]))
         await asyncio.gather(t1, t2)
 
-    asyncio.new_event_loop().run_until_complete(scenario())
+    asyncio.run(scenario())
     assert published == [("lagos", ["fresh"])]
     assert is_searching is False

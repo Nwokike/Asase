@@ -46,6 +46,19 @@ def safe_float(value, default=None):
         return default
 
 
+def aqi_trend_from_hourly(hourly_aqi: list, window: int = 12) -> list[float]:
+    """Most recent `window` parseable AQI readings.
+
+    Hourly arrays are oldest-first, so the tail is the freshest window
+    near "now". Non-numeric sentinels are skipped.
+    """
+    if not isinstance(hourly_aqi, list):
+        return []
+    return [
+        parsed for v in hourly_aqi[-window:] if (parsed := safe_float(v)) is not None
+    ]
+
+
 def storm_risk_from_cape_gust(cape, wind_gust) -> float:
     """Storm risk 0-100 aligned with CurrentWeather.storm_risk_category.
 
@@ -90,9 +103,7 @@ def ReportScreen() -> Control:
     # Hourly AQI trend — most recent 12 readings; hourly arrays are
     # oldest-first, so the tail is the freshest window near "now".
     hourly_aqi = state.air_quality_data.get("hourly", {}).get("us_aqi", [])
-    aqi_trend = [
-        parsed for v in hourly_aqi[-12:] if (parsed := safe_float(v)) is not None
-    ]
+    aqi_trend = aqi_trend_from_hourly(hourly_aqi)
 
     # Extract Hydrology & Marine
     flood_daily = state.flood_data.get("daily", {})
