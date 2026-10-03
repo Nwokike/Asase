@@ -19,6 +19,7 @@ from core.constants import (
     STORAGE_BOOKMARKS,
     STORAGE_LAST_LOCATION,
     STORAGE_MIN_MAGNITUDE,
+    STORAGE_MISSION_SHOWN,
     STORAGE_ONBOARDING_DONE,
     STORAGE_RECENT_SEARCHES,
     STORAGE_SIDEBAR_COLLAPSED,
@@ -190,6 +191,9 @@ class AppController:
             if onboarding_done == "true":
                 state.has_accepted_terms = True
                 state.is_first_launch = False
+
+            mission_shown = await self.storage.get(STORAGE_MISSION_SHOWN)
+            state.mission_shown = mission_shown == "true"
 
             saved_bookmarks = await self.storage.get(STORAGE_BOOKMARKS)
             if isinstance(saved_bookmarks, list):

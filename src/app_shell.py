@@ -245,6 +245,10 @@ def AppShell() -> Control:
     )
     if _should_show_boot(state):
         screen = BootScreen()
+    elif not state.mission_shown and not state.is_loading:
+        from screens.mission_screen import MissionScreen
+
+        screen = MissionScreen()
     elif active_view == "report":
         screen = ReportScreen()
     elif active_view == "space":

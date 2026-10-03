@@ -59,6 +59,10 @@ class AppState:
     # Adaptive chrome (persisted per device)
     sidebar_collapsed: bool = False
 
+    # First-run mission: shown once after boot dismisses, then persisted
+    mission_shown: bool = False
+    mission_step: int = 0  # 0-2 (which step is active)
+
     # Feed freshness — epoch seconds of the last successful fetch per
     # source. Drives "USGS • 4m ago" staleness chips; absent key = never.
     feed_updated: dict = field(default_factory=dict)

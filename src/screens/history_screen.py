@@ -104,6 +104,9 @@ def HistoryScreen() -> Control:
                     country,
                     page=page,
                 )
+                # Also open the dossier for this location
+                if controller.open_report:
+                    schedule(controller.open_report, page=page)
 
         return AppStyles.glass_card(
             ft.Row(
