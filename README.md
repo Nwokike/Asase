@@ -81,7 +81,7 @@
   </tr>
   <tr>
     <td align="center"><em>Recent seismic activity — USGS 24h feed with magnitude, depth, MMI, severity badges, and distance-from-you chips</em></td>
-    <td align="center"><em>Tap a wildfire to expand inline — coordinates, view full dossier, share, and source attribution</em></td>
+    <td align="center"><em>Tap a wildfire to expand inline — perimeter polygon, coordinates, view full dossier, share, and source attribution</em></td>
   </tr>
 </table>
 
