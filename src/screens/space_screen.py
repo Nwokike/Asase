@@ -162,7 +162,14 @@ def SpaceScreen() -> Control:
     solar = sw.get("solar_activity", "Normal")
     flare_class = sw.get("flare_class", "")
     raw_kp = sw.get("raw_kp", [])
-    xray_flux = sw.get("xray_flux", [])
+    # Sanitize at the boundary: chart code does float(v) + "{:.0f}".format(v)
+    # and crashes on "--"/None sentinels from the feed.
+    raw_flux = sw.get("xray_flux", [])
+    xray_flux = (
+        [v for v in raw_flux if isinstance(v, (int, float))]
+        if isinstance(raw_flux, list)
+        else []
+    )
     kp_forecast = sw.get("kp_forecast", [])
 
     # Extract historical Kp values (handling both dict and list schemas from NOAA SWPC)

@@ -64,7 +64,7 @@ async def test_seismic_null_mag_feature_does_not_poison_batch():
 
 
 @pytest.mark.asyncio
-async def test_seismic_null_geometry_feature_survives():
+async def test_seismic_null_geometry_feature_skipped():
     payload = {
         "features": [
             {
@@ -81,8 +81,9 @@ async def test_seismic_null_geometry_feature_survives():
     }
     with mock_pool_response("services.seismic_service", _resp(payload)):
         events = await SeismicService.fetch_earthquakes(min_magnitude=2.5)
-    assert len(events) == 1
-    assert events[0]["latitude"] == 0.0
+    # Null-geometry events are dropped — their dict maps to (0,0), which
+    # would otherwise paint a ghost marker at Null Island.
+    assert events == []
 
 
 @pytest.mark.asyncio

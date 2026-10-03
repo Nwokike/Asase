@@ -155,8 +155,12 @@ class GeocodingService:
         return None
 
     @staticmethod
-    async def get_elevation(lat: float, lon: float) -> float:
-        """Fetch terrain elevation (m) via Open-Meteo Elevation API."""
+    async def get_elevation(lat: float, lon: float) -> float | None:
+        """Terrain elevation (m) via Open-Meteo Elevation API.
+
+        Returns None on failure — 0.0 is genuine sea level, so failure and
+        sea level must be distinguishable for the controller to assign.
+        """
         url = OPEN_METEO_ELEVATION
         params = {"latitude": lat, "longitude": lon}
         try:
@@ -169,4 +173,4 @@ class GeocodingService:
                     return float(elevations[0])
         except Exception as ex:
             logger.warning("Elevation lookup failed for (%s, %s): %s", lat, lon, ex)
-        return 0.0
+        return None

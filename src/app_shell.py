@@ -73,7 +73,11 @@ def _should_show_boot(state) -> bool:
     return state.is_loading and not state.telemetry_version
 
 
-def _build_appbar(active_view: str, active_tab: int, controller) -> ft.AppBar | None:
+def _build_appbar(
+    active_view: str, active_tab: int, controller, include_title: bool = True
+) -> ft.AppBar | None:
+    """Back button for overlay views. ``include_title=False`` when the side
+    chrome status bar already carries the title (prevents a double header)."""
     if active_view == "report":
         return ft.AppBar(
             leading=ft.IconButton(
@@ -82,7 +86,9 @@ def _build_appbar(active_view: str, active_tab: int, controller) -> ft.AppBar | 
             ),
             title=ft.Text(
                 "Location Risk Dossier", size=tokens.FONT_LG, weight=ft.FontWeight.W_600
-            ),
+            )
+            if include_title
+            else None,
             center_title=False,
             bgcolor=ft.Colors.TRANSPARENT,
         )
@@ -97,7 +103,9 @@ def _build_appbar(active_view: str, active_tab: int, controller) -> ft.AppBar | 
                 "Planetary Magnetosphere",
                 size=tokens.FONT_LG,
                 weight=ft.FontWeight.W_600,
-            ),
+            )
+            if include_title
+            else None,
             center_title=False,
             bgcolor=ft.Colors.TRANSPARENT,
         )
@@ -162,7 +170,12 @@ def AppShell() -> Control:
             return
 
         try:
-            page.views[0].appbar = _build_appbar(active_view, active_tab, controller)
+            page.views[0].appbar = _build_appbar(
+                active_view,
+                active_tab,
+                controller,
+                include_title=window_class(viewport_width) == "compact",
+            )
         except Exception:
             logger.exception("Suppressed exception")
 

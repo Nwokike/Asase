@@ -68,7 +68,7 @@ async def test_elevation_fallback():
         "services.geocoding_service", exc=httpx.ConnectTimeout("Timeout")
     ):
         elev = await GeocodingService.get_elevation(6.5, 3.3)
-        assert elev == 0.0
+        assert elev is None  # failure distinct from genuine sea level (0.0)
 
 
 @pytest.mark.asyncio

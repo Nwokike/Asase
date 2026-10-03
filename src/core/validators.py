@@ -21,6 +21,7 @@ logger = logging.getLogger("asase.validators")
 _MAX_VALIDATOR_AGE_SEC = 3600.0
 
 _records: dict[str, dict[str, Any]] = {}
+_MAX_RECORDS = 50  # LRU-ish cap: dynamic URLs (radius queries) must not leak
 
 
 def _headers_for(url: str) -> dict[str, str]:
@@ -39,6 +40,10 @@ def _headers_for(url: str) -> dict[str, str]:
 
 
 def _remember(url: str, res) -> None:
+    if len(_records) >= _MAX_RECORDS:
+        # Insertion-ordered dict: drop the oldest entry.
+        for oldest in list(_records)[: len(_records) - _MAX_RECORDS + 1]:
+            _records.pop(oldest, None)
     _records[url] = {
         "etag": res.headers.get("etag"),
         "last_modified": res.headers.get("last-modified"),

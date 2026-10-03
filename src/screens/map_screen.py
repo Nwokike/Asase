@@ -44,14 +44,18 @@ def MapScreen() -> Control:
     scan_unavailable, set_scan_unavailable = ft.use_state(False)
     scan_question, set_scan_question = ft.use_state("")
     scan_model, set_scan_model = ft.use_state("")
+    # Ref-based guard: two rapid taps both read the render-time scan_busy
+    # as False and fire duplicate captures — the ref is immediate.
+    scan_busy_guard = ft.use_ref(False)
 
     async def _run_scan(q: str):
-        if scan_busy:
+        if scan_busy_guard.current:
             return
         shot = scan_ref.current
         if shot is None:
             logger.warning("Map capture skipped: screenshot control missing")
             return
+        scan_busy_guard.current = True
         set_scan_busy(True)
         set_scan_answer("")
         set_scan_unavailable(False)
@@ -62,6 +66,7 @@ def MapScreen() -> Control:
         except Exception as ex:
             logger.warning("Map capture failed: %s", ex)
             set_scan_unavailable(True)
+            scan_busy_guard.current = False
             set_scan_busy(False)
             return
 
@@ -81,6 +86,7 @@ def MapScreen() -> Control:
             logger.warning("AI map scan failed: %s", ex)
             set_scan_unavailable(True)
         finally:
+            scan_busy_guard.current = False
             set_scan_busy(False)
 
     def _on_scan(e=None, close_only: bool = False):
@@ -373,7 +379,8 @@ def MapScreen() -> Control:
                 on_click=lambda _: _on_scan(),
                 ink=True,
                 right=tokens.SPACE_LG,
-                bottom=tokens.SPACE_LG,
+                # Sit above the threat strip when it's showing (full-width)
+                bottom=tokens.SPACE_SM + 44 if threat_strip else tokens.SPACE_LG,
             ),
             # AI Scan answer panel (bottom overlay, above the pill)
             *(

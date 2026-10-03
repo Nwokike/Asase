@@ -54,6 +54,13 @@ class SeismicService:
                     features = _parse_features(raw)
                 for feat in features:
                     try:
+                        # Deleted/superseded USGS events carry null geometry;
+                        # their dict falls back to (0,0) = Null Island ghost.
+                        if feat.geometry is None:
+                            logger.debug(
+                                "USGS: skipping null-geometry event %s", feat.id
+                            )
+                            continue
                         if feat.properties.mag >= min_magnitude:
                             events.append(feat.to_map_dict())
                     except Exception as ex:
@@ -93,6 +100,11 @@ class SeismicService:
                     features = _parse_features(raw)
                 for feat in features:
                     try:
+                        if feat.geometry is None:
+                            logger.debug(
+                                "USGS FDSN: skipping null-geometry event %s", feat.id
+                            )
+                            continue
                         events.append(feat.to_map_dict())
                     except Exception as ex:
                         logger.debug("USGS FDSN: skipping unrenderable event: %s", ex)

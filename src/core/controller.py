@@ -317,7 +317,16 @@ class AppController:
         if self._refresh_lock is None:
             self._refresh_lock = asyncio.Lock()
         if self._refresh_lock.locked():
-            self._refresh_pending = (fetch_global, fetch_local)
+            # OR-merge: a queued partial must not drop the other half of an
+            # earlier request (e.g. in-flight global + queued local).
+            if self._refresh_pending is None:
+                self._refresh_pending = (fetch_global, fetch_local)
+            else:
+                prev = self._refresh_pending
+                self._refresh_pending = (
+                    prev[0] or fetch_global,
+                    prev[1] or fetch_local,
+                )
             logger.info("Refresh in progress — queued one coalescing pass")
             return
         async with self._refresh_lock:
@@ -460,7 +469,8 @@ class AppController:
             from services.geocoding_service import GeocodingService
 
             elev = await GeocodingService.get_elevation(lat, lon)
-            if elev:
+            # None = lookup failed (keep prior); 0.0 = genuine sea level.
+            if elev is not None:
                 state.current_elevation = elev
         except Exception:
             logger.exception("Suppressed exception")
