@@ -16,7 +16,7 @@ async def test_seismic_empty_response():
     )
     with mock_pool_response("services.seismic_service", mock_resp):
         events = await SeismicService.fetch_earthquakes(min_magnitude=2.5)
-        assert events == []
+        assert events == []  # 200 with no features = genuinely empty feed
 
 
 @pytest.mark.asyncio
@@ -63,7 +63,7 @@ async def test_seismic_network_failure():
         "services.seismic_service", exc=httpx.ConnectError("Network Down")
     ):
         events = await SeismicService.fetch_earthquakes(min_magnitude=2.5)
-        assert events == []
+        assert events is None  # failure distinct from an empty feed
 
 
 @pytest.mark.asyncio
@@ -75,4 +75,4 @@ async def test_seismic_corrupted_json():
     )
     with mock_pool_response("services.seismic_service", mock_resp):
         events = await SeismicService.fetch_earthquakes(min_magnitude=2.5)
-        assert events == []
+        assert events is None  # HTTP 500 = failure, not empty

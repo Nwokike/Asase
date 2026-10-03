@@ -242,7 +242,7 @@ def AppShell() -> Control:
 
         _page = flet_context.page
         if _page:
-            show_command_palette(_page)
+            show_command_palette(_page, controller=controller)
 
     def _on_keyboard(e: ft.KeyboardEvent):
         if e.key == "k" and (e.ctrl or e.meta):
@@ -392,12 +392,12 @@ def AppShell() -> Control:
     def _open_version_dialog():
         from components.version_dialog import show_version_dialog as _show
 
-        _show(flet_context.page)
+        _show(flet_context.page, controller=controller)
 
     def _open_command_palette():
         from components.command_palette import show_command_palette as _show
 
-        _show(flet_context.page)
+        _show(flet_context.page, controller=controller)
 
     _update_data = state.update_data or {}
     status = build_status_bar(

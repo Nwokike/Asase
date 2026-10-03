@@ -285,6 +285,13 @@ def HomeScreen() -> Control:
     except (TypeError, ValueError):
         _vw = 0.0
     use_canvas = window_class(_vw if _vw else None) in ("medium", "expanded")
+    # Panel widths: fixed 360/420 overflows medium (600-840px) — compute
+    # proportional widths there so the map stays visible between them.
+    if use_canvas and window_class(_vw if _vw else None) == "medium" and _vw:
+        _rail_w = min(320.0, _vw * 0.45)
+        _feeds_w = max(260.0, _vw - _rail_w - 2 * tokens.SPACE_MD - 8)
+    else:
+        _rail_w, _feeds_w = 360.0, 420.0
 
     content_list = ft.ListView(
         controls=[
@@ -477,7 +484,7 @@ def HomeScreen() -> Control:
             spacing=tokens.SPACE_SM,
             scroll=ft.ScrollMode.AUTO,
         ),
-        width=360,
+        width=_rail_w,
         padding=ft.Padding(tokens.SPACE_MD, tokens.SPACE_MD, 0, tokens.SPACE_MD),
         top=tokens.SPACE_MD,
         left=tokens.SPACE_MD,
@@ -598,7 +605,7 @@ def HomeScreen() -> Control:
             spacing=0,
             expand=True,
         ),
-        width=420,
+        width=_feeds_w,
         bgcolor=ft.Colors.with_opacity(0.92, AppColors.get_surface(page)),
         border_radius=tokens.RADIUS_LG,
         padding=ft.Padding(tokens.SPACE_MD, tokens.SPACE_MD, tokens.SPACE_MD, 0),

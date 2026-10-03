@@ -13,7 +13,7 @@ logger = logging.getLogger("asase.disasters")
 
 class DisasterService:
     @staticmethod
-    async def fetch_active_disasters(category: str = "all") -> list[dict]:
+    async def fetch_active_disasters(category: str = "all") -> list[dict] | None:
         """Fetch open natural events, optionally filtered by category."""
         url = NASA_EONET_EVENTS
         cat_param = EONET_CATEGORY_MAP.get(category, "")
@@ -22,6 +22,9 @@ class DisasterService:
         events: list[dict] = []
         try:
             status, payload = await conditional_get_json(url, log_name="NASA EONET")
+            if status not in (200, 304):
+                # Transport/HTTP failure: keep last-good data + stale stamp.
+                return None
             if status in (200, 304) and isinstance(payload, dict):
                 try:
                     eonet = EonetResponse.model_validate(payload)
@@ -50,4 +53,5 @@ class DisasterService:
                 )
         except Exception as ex:
             logger.warning("NASA EONET fetch failed: %s", ex)
+            return None
         return events

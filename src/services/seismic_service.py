@@ -28,7 +28,7 @@ def _parse_features(raw_features: list) -> list[EarthquakeFeature]:
 
 class SeismicService:
     @staticmethod
-    async def fetch_earthquakes(min_magnitude: float = 2.5) -> list[dict]:
+    async def fetch_earthquakes(min_magnitude: float = 2.5) -> list[dict] | None:
         """Fetch live global earthquakes using connection-pooled HTTPX client & Pydantic v2."""
         url = (
             USGS_EARTHQUAKES_DAY
@@ -38,6 +38,10 @@ class SeismicService:
         events: list[dict] = []
         try:
             status, payload = await conditional_get_json(url, log_name="USGS")
+            if status not in (200, 304):
+                # Transport/HTTP failure: distinguishable from an empty feed
+                # so the controller keeps last-good data + stale timestamps.
+                return None
             if status in (200, 304) and isinstance(payload, dict):
                 try:
                     # Fast path: whole-collection Rust-accelerated parse.
@@ -62,12 +66,13 @@ class SeismicService:
                 )
         except Exception as ex:
             logger.warning("USGS Earthquake fetch failed: %s", ex)
+            return None
         return events
 
     @staticmethod
     async def fetch_radius_history(
         lat: float, lon: float, radius_km: float = 500.0, min_magnitude: float = 3.0
-    ) -> list[dict]:
+    ) -> list[dict] | None:
         """Fetch local earthquake history within radius using USGS FDSN Web Services."""
         url = (
             f"https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson"
@@ -77,6 +82,8 @@ class SeismicService:
         events: list[dict] = []
         try:
             status, payload = await conditional_get_json(url, log_name="USGS FDSN")
+            if status not in (200, 304):
+                return None
             if status in (200, 304) and isinstance(payload, dict):
                 try:
                     collection = EarthquakeFeatureCollection.model_validate(payload)
@@ -97,4 +104,5 @@ class SeismicService:
                 )
         except Exception as ex:
             logger.warning("USGS FDSN radial query failed: %s", ex)
+            return None
         return events

@@ -191,20 +191,20 @@ def ReportScreen() -> Control:
             await controller.share_text(
                 summary_text, f"Planetary Risk Dossier - {state.current_location_name}"
             )
+        elif controller.copy_text:
+            # Mounted Clipboard service only (transient ft.Clipboard()
+            # locals never attach in Flet 1.0.3 and always throw).
+            copied = await controller.copy_text(summary_text)
+            if page:
+                show_snack(
+                    page,
+                    "Dossier copied to clipboard!"
+                    if copied
+                    else "Failed to copy dossier.",
+                    bgcolor=AppColors.SUCCESS if copied else AppColors.ERROR,
+                )
         else:
-            # Flet 1.0.3 exposes clipboard only via the ft.Clipboard service
-            # (Page has no set_clipboard/clipboard attributes) — a mounted
-            # instance is required; transient locals are never registered.
-            try:
-                await ft.Clipboard().set(summary_text)
-                if page:
-                    show_snack(
-                        page, "Dossier copied to clipboard!", bgcolor=AppColors.SUCCESS
-                    )
-            except Exception as ex:
-                logger.warning("Export dossier failed: %s", ex)
-                if page:
-                    show_snack(page, "Failed to copy dossier.", bgcolor=AppColors.ERROR)
+            logger.warning("Export dossier skipped: no share or clipboard wired")
 
     threat_radar = build_threat_radar_section(
         seismic_risk_val,
@@ -682,7 +682,7 @@ def ReportScreen() -> Control:
     raw_lines.append("")
     sw = state.space_weather or {}
     raw_lines.append(
-        f"NOAA Space Weather • Kp {sw.get('kp_index', 0):.1f} • "
+        f"NOAA Space Weather • Kp {safe_float(sw.get('kp_index'), 0.0) or 0.0:.1f} • "
         f"{sw.get('geomagnetic_status', 'Unknown')}"
     )
     raw_lines.append(

@@ -4,8 +4,6 @@ Regression tests for the whole-collection model_validate_json data-loss
 class (seismic, EONET, geocoding) plus the null-Kp crash.
 """
 
-from unittest.mock import patch
-
 import httpx
 import pytest
 from conftest import mock_pool_response, mock_pool_side_effect
@@ -152,11 +150,12 @@ async def test_space_weather_null_kp_does_not_crash_fetch():
 
 @pytest.mark.asyncio
 async def test_non_200_logs_and_returns_empty():
-    with patch.object(
-        httpx.AsyncClient, "get", return_value=_resp({"x": 1}, status=503)
-    ):
-        assert await SeismicService.fetch_earthquakes() == []
-        assert await DisasterService.fetch_active_disasters() == []
+    # Real 503 path via the pooled seam (an earlier revision patched the
+    # class-level AsyncClient.get with a sync return and only exercised
+    # the swallowed await-TypeError branch).
+    with mock_pool_response("core.network", _resp({"x": 1}, status=503)):
+        assert await SeismicService.fetch_earthquakes() is None
+        assert await DisasterService.fetch_active_disasters() is None
         assert await GeocodingService.search_cities("lagos") == []
         telemetry = await AtmosphericService.fetch_location_telemetry(6.5, 3.3)
         assert all(v == {} for v in telemetry.values())

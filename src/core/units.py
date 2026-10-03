@@ -19,6 +19,21 @@ def _num(value: object) -> float | None:
         return None
 
 
+def safe_float(value: object, default=None) -> float | None:
+    """Coerce upstream feed values to float; None/'--'/'' -> default.
+
+    Feed sentinels are truthy-or-None but not numeric, so truthiness
+    checks never guard ``float(value or 0)``. Every numeric extraction
+    goes through here.
+    """
+    if value is None or value == "":
+        return default
+    try:
+        return float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default
+
+
 def format_temp(celsius: object) -> str:
     """Format a Celsius reading per the user's temperature preference."""
     value = _num(celsius)

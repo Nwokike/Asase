@@ -47,4 +47,4 @@ async def test_fetch_network_failure():
     with mock_pool_response(
         "services.disaster_service", exc=httpx.ConnectError("down")
     ):
-        assert await DisasterService.fetch_active_disasters() == []
+        assert await DisasterService.fetch_active_disasters() is None

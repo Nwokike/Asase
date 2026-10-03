@@ -35,6 +35,7 @@ class ControllerMethods:
     launch_url: Callable[[str], Coroutine[Any, Any, None]] | None = None
     navigate_tab: Callable[[int], None] | None = None
     tap_haptic: Callable[[], Coroutine[Any, Any, None]] | None = None
+    copy_text: Callable[[str], Coroutine[Any, Any, None]] | None = None
 
 
 ControllerMethodsCtx = ft.create_context(ControllerMethods())

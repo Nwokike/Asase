@@ -153,7 +153,11 @@ def SpaceScreen() -> Control:
     state = ft.use_context(AppStateCtx)
 
     sw = state.space_weather or {}
-    kp = sw.get("kp_index", 0.0)
+    # Coerce at the boundary: feed can send "--"/None, and every consumer
+    # below formats with :.1f or does numeric comparisons.
+    from core.units import safe_float
+
+    kp = safe_float(sw.get("kp_index"), 0.0) or 0.0
     status = sw.get("geomagnetic_status", "Quiet (Normal)")
     solar = sw.get("solar_activity", "Normal")
     flare_class = sw.get("flare_class", "")

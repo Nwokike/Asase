@@ -155,6 +155,7 @@ class AppController:
             launch_url=self.launch_external_url,
             fetch_radius_history=SeismicService.fetch_radius_history,
             tap_haptic=self.tap_haptic,
+            copy_text=self.copy_text,
         )
         self._controller_methods = methods
         self.page.render(lambda: ControllerMethodsCtx(methods, lambda: AppShell()))
@@ -490,6 +491,17 @@ class AppController:
                 await self.ad_service.show_interstitial(min_interval_seconds=60.0)
         if self._controller_methods and self._controller_methods.show_report:
             self._controller_methods.show_report()
+
+    async def copy_text(self, text: str) -> bool:
+        """Copy via the mounted Clipboard service (returns success)."""
+        if not self.clipboard:
+            return False
+        try:
+            await self.clipboard.set(text)
+            return True
+        except Exception:
+            logger.exception("Clipboard copy failed")
+            return False
 
     async def tap_haptic(self) -> None:
         """Light tap feedback via the mounted Haptics service (no-op if absent)."""

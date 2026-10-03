@@ -153,18 +153,14 @@ def filter_palette(index: list[dict[str, Any]], query: str) -> list[dict[str, An
     ]
 
 
-def show_command_palette(page: ft.Page) -> None:
+def show_command_palette(page: ft.Page, controller=None) -> None:
     """Open the command palette dialog.
 
-    Creates a dialog with a text field and result list. Callbacks are
-    wired here using the page's controller context.
+    ``controller`` is the ControllerMethodsCtx instance from the shell —
+    passing it explicitly (rather than reading page.context) is the only
+    reliable way to reach the navigation closures.
     """
     from core.state import state as app_state
-    from state.controller_ctx import ControllerMethodsCtx
-
-    controller = (
-        page.context.get(ControllerMethodsCtx) if hasattr(page.context, "get") else None
-    )
 
     def _nav_radar():
         if controller and controller.go_home:
@@ -307,7 +303,6 @@ def show_command_palette(page: ft.Page) -> None:
                     on_click=lambda _, item=item: _run_item(item),
                 )
             )
-        selected_index[0] = 0
         try:
             page.update()
         except Exception:
