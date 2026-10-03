@@ -156,17 +156,77 @@ def filter_palette(index: list[dict[str, Any]], query: str) -> list[dict[str, An
 def show_command_palette(page: ft.Page) -> None:
     """Open the command palette dialog.
 
-    Creates a dialog with a text field and result list. The caller is
-    responsible for wiring callbacks into the index before calling this.
+    Creates a dialog with a text field and result list. Callbacks are
+    wired here using the page's controller context.
     """
     from core.state import state as app_state
+    from state.controller_ctx import ControllerMethodsCtx
 
+    controller = (
+        page.context.get(ControllerMethodsCtx) if hasattr(page.context, "get") else None
+    )
+
+    def _nav_radar():
+        if controller and controller.go_home:
+            controller.go_home()
+
+    def _nav_map():
+        if controller and controller.show_map:
+            controller.show_map()
+
+    def _nav_space():
+        if controller and controller.show_space:
+            controller.show_space()
+
+    def _nav_history():
+        if controller and controller.show_history:
+            controller.show_history()
+
+    def _nav_settings():
+        if controller and controller.show_settings:
+            controller.show_settings()
+
+    def _refresh():
+        if controller and controller.refresh_all:
+            controller.refresh_all()
+
+    def _toggle_theme():
+        if controller and controller.set_theme_mode:
+            controller.set_theme_mode(None)
+
+    def _open_version():
+        from components.version_dialog import show_version_dialog
+
+        show_version_dialog(page)
+
+    # Build index with wired callbacks
     index = build_palette_index(
         app_state.bookmarks,
         app_state.recent_searches,
         app_state.earthquakes,
         app_state.disasters,
     )
+    # Wire action callbacks
+    for item in index:
+        if item["type"] != "action":
+            continue
+        label = item["label"]
+        if "Radar" in label:
+            item["callback"] = _nav_radar
+        elif "Full Map" in label:
+            item["callback"] = _nav_map
+        elif "Space" in label:
+            item["callback"] = _nav_space
+        elif "History" in label:
+            item["callback"] = _nav_history
+        elif "Settings" in label:
+            item["callback"] = _nav_settings
+        elif "Refresh" in label:
+            item["callback"] = _refresh
+        elif "Theme" in label:
+            item["callback"] = _toggle_theme
+        elif "Version" in label or "What's New" in label:
+            item["callback"] = _open_version
 
     query_field = ft.TextField(
         hint_text="Type a command or search…",
@@ -187,6 +247,9 @@ def show_command_palette(page: ft.Page) -> None:
     def _update_results(query: str):
         filtered = filter_palette(index, query)
         results_column.controls.clear()
+        # Clamp selection to valid range after filtering
+        if selected_index[0] >= len(filtered):
+            selected_index[0] = 0
         for i, item in enumerate(filtered[:20]):
             is_selected = i == selected_index[0]
             results_column.controls.append(

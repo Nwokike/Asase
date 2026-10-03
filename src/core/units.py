@@ -29,6 +29,15 @@ def format_temp(celsius: object) -> str:
     return f"{value:.0f}°C"
 
 
+def format_temp_verbose(celsius: object) -> str:
+    """Long-form temperature for dossier/export text (shows both units)."""
+    value = _num(celsius)
+    if value is None:
+        return "n/a"
+    fahrenheit = value * 9.0 / 5.0 + 32.0
+    return f"{value:.1f}°C ({fahrenheit:.1f}°F)"
+
+
 def format_speed(kmh: object) -> str:
     """Format a km/h reading per the user's speed preference."""
     value = _num(kmh)
@@ -40,13 +49,12 @@ def format_speed(kmh: object) -> str:
 
 
 def format_speed_verbose(kmh: object) -> str:
-    """Long-form speed for dossier/export text."""
+    """Long-form speed for dossier/export text (shows both units)."""
     value = _num(kmh)
     if value is None:
         return "n/a"
-    if state.speed_unit == "mph":
-        return f"{value * 0.621371:.0f} mph"
-    return f"{value:.0f} km/h"
+    mph = value * 0.621371
+    return f"{value:.1f} km/h ({mph:.1f} mph)"
 
 
 def format_feed_age(updated_at: float | None, now: float | None = None) -> str:

@@ -236,6 +236,21 @@ def AppShell() -> Control:
         ],
     )
 
+    # Ctrl+K / Cmd+K opens the command palette
+    def _open_palette():
+        from components.command_palette import show_command_palette
+
+        show_command_palette(page)
+
+    def _on_keyboard(e: ft.KeyboardEvent):
+        if e.key == "k" and (e.ctrl or e.meta):
+            _open_palette()
+
+    try:
+        page.on_keyboard_event = _on_keyboard
+    except Exception:
+        pass
+
     # ── Branch Screen (Depends on state reactivity hooks) ──
     _ = (
         theme_ver,
