@@ -96,7 +96,13 @@ def build_quick_metrics_row(
                                     color=AppColors.ATMOSPHERE,
                                 ),
                                 ft.Text(
-                                    f"{str(space_status)[:12]}...",
+                                    # Truncate only genuinely long statuses —
+                                    # short ones must not grow a fake ellipsis.
+                                    (
+                                        f"{str(space_status)[:12]}..."
+                                        if len(str(space_status)) > 12
+                                        else str(space_status)
+                                    ),
                                     size=tokens.FONT_XXS,
                                     color=ft.Colors.ON_SURFACE_VARIANT,
                                 ),

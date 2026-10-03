@@ -465,3 +465,23 @@ def test_location_search_bar():
     )
     assert isinstance(empty_bar.content, ft.Column)
     assert len(empty_bar.content.controls) == 1
+
+
+def test_quick_metrics_row_truncates_only_long_status():
+    from components.home.summary_cards_row import build_quick_metrics_row
+
+    row = build_quick_metrics_row(42, 2.5, 87, "12.4", 3.2, "Quiet")
+    texts = [t.value for t in walk_texts(row)]
+    assert "42 Quakes" in texts
+    assert "Min M2.5+" in texts
+    assert "87" in texts
+    assert "PM2.5: 12.4 µg/m³" in texts
+    assert "Kp 3.2" in texts
+    assert "Quiet" in texts
+    assert "Quiet..." not in texts  # short status must not grow a fake ellipsis
+
+    long_status = "SEVERE GEOMAGNETIC STORM"
+    row2 = build_quick_metrics_row(1, 4.5, "--", "--", "--", long_status)
+    texts2 = [t.value for t in walk_texts(row2)]
+    assert f"{long_status[:12]}..." in texts2
+    assert long_status not in texts2

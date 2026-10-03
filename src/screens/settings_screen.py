@@ -29,6 +29,27 @@ from state.controller_ctx import ControllerMethodsCtx
 logger = logging.getLogger("asase.settings")
 
 
+def build_clear_confirm_dialog(on_cancel, on_confirm) -> ft.AlertDialog:
+    """Clear-history confirm dialog.
+
+    Pure builder so the button wiring is testable outside a Flet runtime;
+    the component drives its visibility through ``use_dialog`` (lifecycle-
+    bound — unmount auto-dismisses, no manual pop_dialog bookkeeping).
+    """
+    return ft.AlertDialog(
+        title=ft.Text("Clear Search History?"),
+        content=ft.Text("This will remove all recent location queries."),
+        actions=[
+            ft.TextButton("Cancel", on_click=lambda _: on_cancel()),
+            ft.FilledButton(
+                "Clear All",
+                on_click=lambda _: on_confirm(),
+                style=ft.ButtonStyle(bgcolor=AppColors.ERROR),
+            ),
+        ],
+    )
+
+
 @ft.component
 def SettingsScreen() -> Control:
     state = ft.use_context(AppStateCtx)
@@ -102,19 +123,9 @@ def SettingsScreen() -> Control:
     # Lifecycle-bound dialog: visibility is component state, so unmount
     # auto-dismisses and no manual pop_dialog bookkeeping can leak.
     ft.use_dialog(
-        ft.AlertDialog(
-            title=ft.Text("Clear Search History?"),
-            content=ft.Text("This will remove all recent location queries."),
-            actions=[
-                ft.TextButton(
-                    "Cancel", on_click=lambda _: set_show_clear_confirm(False)
-                ),
-                ft.FilledButton(
-                    "Clear All",
-                    on_click=lambda _: _do_clear(),
-                    style=ft.ButtonStyle(bgcolor=AppColors.ERROR),
-                ),
-            ],
+        build_clear_confirm_dialog(
+            lambda: set_show_clear_confirm(False),
+            _do_clear,
         )
         if show_clear_confirm
         else None

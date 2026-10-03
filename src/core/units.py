@@ -7,6 +7,8 @@ app goes through here so the Settings screen choices actually render.
 
 from __future__ import annotations
 
+import math
+
 from core.state import state
 
 
@@ -20,18 +22,23 @@ def _num(value: object) -> float | None:
 
 
 def safe_float(value: object, default=None) -> float | None:
-    """Coerce upstream feed values to float; None/'--'/'' -> default.
+    """Coerce upstream feed values to float; None/'--'/''/NaN/inf -> default.
 
     Feed sentinels are truthy-or-None but not numeric, so truthiness
-    checks never guard ``float(value or 0)``. Every numeric extraction
-    goes through here.
+    checks never guard ``float(value or 0)``. Non-finite results are
+    rejected too: NaN survives ``float()`` but poisons ``:.1f`` formats
+    ("nan") and every numeric comparison. Every numeric extraction goes
+    through here.
     """
     if value is None or value == "":
         return default
     try:
-        return float(value)  # type: ignore[arg-type]
+        result = float(value)  # type: ignore[arg-type]
     except (TypeError, ValueError):
         return default
+    if not math.isfinite(result):
+        return default
+    return result
 
 
 def format_temp(celsius: object) -> str:

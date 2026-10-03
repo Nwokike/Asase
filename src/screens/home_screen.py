@@ -25,6 +25,7 @@ from core.geo_utils import calculate_haversine_distance_km, format_distance
 from core.tasks import schedule
 from core.theme import AppColors, is_dark_mode
 from core.units import feed_age
+from hooks.search_generation import SearchGeneration
 from hooks.use_debounce import use_debounce
 from hooks.use_map_center import use_map_center
 from services.geocoding_service import GeocodingService
@@ -32,6 +33,24 @@ from state.app_state import AppStateCtx
 from state.controller_ctx import ControllerMethodsCtx
 
 logger = logging.getLogger("asase.home")
+
+
+def canvas_panel_widths(viewport_width: float | None) -> tuple[bool, float, float]:
+    """(use_canvas, rail_width, feeds_width) for a viewport width.
+
+    Compact windows keep the single-column scroll (no canvas). Fixed
+    360/420 panels overflow medium (600-840px) — proportional widths
+    there keep the panels + margins inside the viewport; expanded uses
+    the fixed sizes.
+    """
+    vw = viewport_width or 0.0
+    use_canvas = window_class(vw if vw else None) in ("medium", "expanded")
+    if use_canvas and window_class(vw if vw else None) == "medium" and vw:
+        rail_w = min(320.0, vw * 0.45)
+        feeds_w = max(260.0, vw - rail_w - 2 * tokens.SPACE_MD - 8)
+    else:
+        rail_w, feeds_w = 360.0, 420.0
+    return use_canvas, rail_w, feeds_w
 
 
 @ft.component
@@ -52,14 +71,14 @@ def HomeScreen() -> Control:
     home_map_ref = ft.use_ref(None)
     # Generation counter: overlapping debounced searches resolve out of
     # order — only the latest generation may publish its results.
-    search_generation = ft.use_ref(0)
+    search_generation = ft.use_ref(SearchGeneration)
 
     # Keep the embedded radar centered on the active focus point
     use_map_center(home_map_ref, state.current_lat, state.current_lon, 9.0)
 
     async def _do_search(q: str):
-        search_generation.current += 1
-        generation = search_generation.current
+        gen = search_generation.current
+        token = gen.begin()
         if len(q.strip()) < 2:
             set_search_results([])
             set_is_searching(False)
@@ -68,7 +87,7 @@ def HomeScreen() -> Control:
         results = await GeocodingService.search_cities(q)
         # A newer search started while we were in flight — drop our stale
         # results; the newer generation owns the spinner and the list.
-        if generation == search_generation.current:
+        if gen.is_current(token):
             set_search_results(results)
             set_is_searching(False)
 
@@ -284,14 +303,7 @@ def HomeScreen() -> Control:
         _vw = float(page.width) if page and page.width else 0.0
     except (TypeError, ValueError):
         _vw = 0.0
-    use_canvas = window_class(_vw if _vw else None) in ("medium", "expanded")
-    # Panel widths: fixed 360/420 overflows medium (600-840px) — compute
-    # proportional widths there so the map stays visible between them.
-    if use_canvas and window_class(_vw if _vw else None) == "medium" and _vw:
-        _rail_w = min(320.0, _vw * 0.45)
-        _feeds_w = max(260.0, _vw - _rail_w - 2 * tokens.SPACE_MD - 8)
-    else:
-        _rail_w, _feeds_w = 360.0, 420.0
+    use_canvas, _rail_w, _feeds_w = canvas_panel_widths(_vw)
 
     content_list = ft.ListView(
         controls=[

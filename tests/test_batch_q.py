@@ -60,11 +60,44 @@ def test_snack_same_message_new_color_shows():
     reset_snack_dedup()
 
 
-def test_use_dialog_hook_exists_and_settings_uses_it():
-    # use_dialog is render-hook-only: verify the hook exists in 1.0.3 and
-    # the settings clear-history flow is driven by it (no manual
-    # show/pop for that dialog).
+def test_use_dialog_hook_exists():
+    # use_dialog is render-hook-only in Flet 1.0.3 — pin the real API
+    # surface (no manual show/pop path exists).
     assert callable(ft.use_dialog)
-    src = Path("src/screens/settings_screen.py").read_text()
-    assert "ft.use_dialog(" in src
-    assert "set_show_clear_confirm" in src
+    assert not hasattr(ft.Page, "show_snack_bar")
+
+
+def test_clear_confirm_dialog_built_and_wired():
+    from flet_tree import walk, walk_texts
+
+    from screens.settings_screen import build_clear_confirm_dialog
+
+    cancelled, cleared = [], []
+    dlg = build_clear_confirm_dialog(
+        lambda: cancelled.append(1), lambda: cleared.append(1)
+    )
+
+    texts = [t.value for t in walk_texts(dlg)]
+    assert "Clear Search History?" in texts
+    assert "This will remove all recent location queries." in texts
+
+    buttons = [b for b in walk(dlg) if isinstance(b, (ft.TextButton, ft.FilledButton))]
+    # Flet 1.0.3 stores the label as a raw string in `content`.
+    assert [b.content for b in buttons] == ["Cancel", "Clear All"]
+
+    buttons[0].on_click(MagicMock())
+    assert cancelled == [1] and cleared == []
+    buttons[1].on_click(MagicMock())
+    assert cancelled == [1] and cleared == [1]
+
+
+def test_clear_all_style_is_destructive():
+    from flet_tree import walk
+
+    from core.theme import AppColors
+    from screens.settings_screen import build_clear_confirm_dialog
+
+    dlg = build_clear_confirm_dialog(lambda: None, lambda: None)
+    filled = [b for b in walk(dlg) if isinstance(b, ft.FilledButton)]
+    assert len(filled) == 1
+    assert filled[0].style.bgcolor == AppColors.ERROR

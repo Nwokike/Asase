@@ -22,6 +22,15 @@ def test_safe_float_guards_sentinels():
     assert safe_float(None, 0.0) == 0.0
 
 
+def test_safe_float_rejects_nonfinite():
+    """NaN survives float() but poisons `:.1f` formats and comparisons."""
+    assert safe_float("nan") is None
+    assert safe_float(float("nan")) is None
+    assert safe_float("inf") is None
+    assert safe_float(float("-inf")) is None
+    assert safe_float(float("inf"), 0.0) == 0.0
+
+
 def test_storm_risk_follows_cape_bands():
     # Below 300 CAPE: low base; extreme CAPE dominates.
     assert storm_risk_from_cape_gust(0, 0) < 25.0

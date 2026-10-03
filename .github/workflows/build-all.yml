@@ -33,6 +33,7 @@ jobs:
   # ─── 0. Run Tests & Linter ─────────────────────────────
   test-and-lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -41,12 +42,13 @@ jobs:
           uv sync --dev --frozen
           uv run --frozen ruff check .
           uv run --frozen ruff format --check .
-          uv run --frozen pytest -v
+          uv run --frozen pytest -v -x --timeout=120
 
   # ─── 1. Create Release Tag & Placeholder ───────────────
   prepare-release:
     needs: [test-and-lint]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     outputs:
       TAG_NAME: ${{ steps.tag_info.outputs.TAG_NAME }}
       RELEASE_NAME: ${{ steps.tag_info.outputs.RELEASE_NAME }}
@@ -55,6 +57,7 @@ jobs:
       BUILD_NUMBER: ${{ steps.versions.outputs.BUILD_NUMBER }}
     steps:
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
       - name: Resolve Build Version & Number
         id: versions
         run: |
@@ -98,7 +101,9 @@ jobs:
           name: ${{ steps.tag_info.outputs.RELEASE_NAME }}
           prerelease: ${{ steps.tag_info.outputs.IS_PRERELEASE }}
           body_path: release_notes.md
-          make_latest: true
+          # H5: only real tag releases may become "Latest" —
+          # workflow_dispatch build-* prereleases must not steal it.
+          make_latest: ${{ github.ref_type == 'tag' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -106,6 +111,7 @@ jobs:
   build-apk-split:
     needs: [prepare-release]
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     env:
       BUILD_VERSION: ${{ needs.prepare-release.outputs.BUILD_VERSION }}
       BUILD_NUMBER: ${{ needs.prepare-release.outputs.BUILD_NUMBER }}
@@ -156,6 +162,7 @@ jobs:
   build-aab:
     needs: [prepare-release]
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     env:
       BUILD_VERSION: ${{ needs.prepare-release.outputs.BUILD_VERSION }}
       BUILD_NUMBER: ${{ needs.prepare-release.outputs.BUILD_NUMBER }}
@@ -203,6 +210,7 @@ jobs:
   build-windows:
     needs: [prepare-release]
     runs-on: windows-latest
+    timeout-minutes: 60
     env:
       BUILD_VERSION: ${{ needs.prepare-release.outputs.BUILD_VERSION }}
       BUILD_NUMBER: ${{ needs.prepare-release.outputs.BUILD_NUMBER }}
@@ -270,6 +278,7 @@ jobs:
   build-linux:
     needs: [prepare-release]
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     env:
       BUILD_VERSION: ${{ needs.prepare-release.outputs.BUILD_VERSION }}
       BUILD_NUMBER: ${{ needs.prepare-release.outputs.BUILD_NUMBER }}
@@ -374,6 +383,7 @@ jobs:
   build-web:
     needs: [prepare-release]
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     env:
       BUILD_VERSION: ${{ needs.prepare-release.outputs.BUILD_VERSION }}
       BUILD_NUMBER: ${{ needs.prepare-release.outputs.BUILD_NUMBER }}
@@ -415,6 +425,7 @@ jobs:
     needs: [build-web]
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

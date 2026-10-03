@@ -4,10 +4,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
-from conftest import mock_pool_response
+from conftest import mock_pool_response, mock_pool_side_effect
 from flet_geolocator import GeolocatorPermissionStatus
 
 from core.device_services import DeviceServices
+from services import geocoding_service
 from services.geocoding_service import GeocodingService
 
 
@@ -230,3 +231,119 @@ async def test_locate_user_web_uses_longer_timeout():
         await DeviceServices.locate_user(geo, page, lambda *a: None, silent=True)
 
     assert captured["timeout"] == 15.0
+
+
+@pytest.mark.asyncio
+async def test_search_cities_passes_params_not_url_query():
+    """M8: the query travels via httpx ``params=`` (properly encoded),
+    never string-interpolated into the URL."""
+    captured: dict = {}
+
+    async def route(url, **kwargs):
+        captured["url"] = str(url)
+        captured["params"] = kwargs.get("params")
+        return httpx.Response(
+            200, json={"results": []}, request=httpx.Request("GET", str(url))
+        )
+
+    geocoding_service._GEOCODE_LRU.clear()
+    try:
+        with mock_pool_side_effect("services.geocoding_service", route):
+            await GeocodingService.search_cities("New York")
+    finally:
+        geocoding_service._GEOCODE_LRU.clear()
+
+    assert "?" not in captured["url"]
+    assert captured["params"]["name"] == "new york"
+    assert captured["params"]["count"] == 10
+    assert captured["params"]["format"] == "json"
+
+
+def _city_payload(query: str) -> httpx.Response:
+    return httpx.Response(
+        200,
+        json={
+            "results": [
+                {
+                    "name": query.title(),
+                    "country": "Nigeria",
+                    "country_code": "NG",
+                    "admin1": "Kaduna",
+                    "latitude": 10.52,
+                    "longitude": 7.44,
+                    "elevation": 600.0,
+                    "population": 1000000,
+                }
+            ]
+        },
+        request=httpx.Request("GET", "https://geocoding-api.open-meteo.com"),
+    )
+
+
+@pytest.mark.asyncio
+async def test_search_cities_cache_hit_skips_network():
+    geocoding_service._GEOCODE_LRU.clear()
+    calls = {"n": 0}
+
+    async def route(url, **kwargs):
+        calls["n"] += 1
+        return _city_payload("Kaduna")
+
+    try:
+        with mock_pool_side_effect("services.geocoding_service", route):
+            first = await GeocodingService.search_cities("Kaduna")
+            second = await GeocodingService.search_cities("Kaduna")
+        assert calls["n"] == 1  # second call served from the LRU
+        assert second == first
+    finally:
+        geocoding_service._GEOCODE_LRU.clear()
+
+
+@pytest.mark.asyncio
+async def test_search_cities_cache_returns_defensive_copies():
+    """Callers mutate result dicts in place — the cache must survive."""
+    geocoding_service._GEOCODE_LRU.clear()
+
+    async def route(url, **kwargs):
+        return _city_payload("Kaduna")
+
+    try:
+        with mock_pool_side_effect("services.geocoding_service", route):
+            first = await GeocodingService.search_cities("Kaduna")
+            first[0]["name"] = "MUTATED"
+            second = await GeocodingService.search_cities("Kaduna")
+        assert second[0]["name"] == "Kaduna"
+    finally:
+        geocoding_service._GEOCODE_LRU.clear()
+
+
+@pytest.mark.asyncio
+async def test_reverse_geocode_cache_returns_defensive_copies():
+    mock_data = {
+        "results": [
+            {
+                "name": "Nsukka",
+                "country": "Nigeria",
+                "country_code": "NG",
+                "admin1": "Enugu State",
+                "latitude": 6.857,
+                "longitude": 7.396,
+                "elevation": 550.0,
+            }
+        ]
+    }
+    mock_resp = httpx.Response(
+        200,
+        json=mock_data,
+        request=httpx.Request("GET", "https://geocoding-api.open-meteo.com/v1/reverse"),
+    )
+    geocoding_service._REVERSE_GEOCODE_LRU.clear()
+    try:
+        with mock_pool_response("services.geocoding_service", mock_resp):
+            first = await GeocodingService.reverse_geocode(6.857, 7.396)
+            first["name"] = "MUTATED"
+            second = await GeocodingService.reverse_geocode(6.857, 7.396)
+        assert second is not None
+        assert second["name"] == "Nsukka"
+    finally:
+        geocoding_service._REVERSE_GEOCODE_LRU.clear()

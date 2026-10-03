@@ -142,9 +142,12 @@ def build_palette_index(
     return index
 
 
-def filter_palette(index: list[dict[str, Any]], query: str) -> list[dict[str, Any]]:
+def filter_palette(
+    index: list[dict[str, Any]], query: str | None
+) -> list[dict[str, Any]]:
     """Filter the index by fuzzy match on label + sub."""
-    if not query.strip():
+    # TextField.on_change can hand us None before the first keystroke.
+    if not query or not query.strip():
         return index
     return [
         item

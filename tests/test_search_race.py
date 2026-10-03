@@ -1,18 +1,19 @@
-"""Search race + spinner regressions (Batch I).
+"""Search race + spinner regressions.
 
-The generation counter lives inside the HomeScreen closure, so these tests
-verify the contract at the builder level (spinner param) plus a faithful
-simulation of the generation protocol.
+Exercises the REAL generation protocol (hooks.search_generation) that
+HomeScreen's _do_search uses — not a re-implementation of it.
 """
+
+import asyncio
+import logging
 
 import flet as ft
 
 from components.home.location_search_bar import build_location_search_bar
+from hooks.search_generation import SearchGeneration
 
 
 def _bar(**kwargs):
-    import logging
-
     defaults = {
         "page": None,
         "search_query": "",
@@ -49,33 +50,60 @@ def test_no_spinner_when_idle():
     assert isinstance(bar.bar_leading, ft.Icon)
 
 
-def test_generation_protocol_drops_stale_results():
-    """Faithful simulation of the home_screen generation counter."""
+def test_generation_starts_at_zero_and_claims_monotonically():
+    gen = SearchGeneration()
+    assert gen.current == 0
+    assert gen.begin() == 1
+    assert gen.begin() == 2
+    assert gen.current == 2
+
+
+def test_only_latest_generation_is_current():
+    gen = SearchGeneration()
+    first = gen.begin()
+    assert gen.is_current(first)
+    second = gen.begin()
+    assert not gen.is_current(first)
+    assert gen.is_current(second)
+
+
+async def test_generation_protocol_drops_stale_results():
+    """The real protocol HomeScreen runs: slow first search, fast second."""
+    gen = SearchGeneration()
     published = []
-    is_searching = False
-    generation = 0
 
     async def do_search(q, results):
-        nonlocal is_searching, generation
-        generation += 1
-        mine = generation
-        is_searching = True
-        # Real yield point: lets the newer search increment first,
+        token = gen.begin()
+        # Real yield point: lets the newer search claim first,
         # reproducing the out-of-order completion race.
         await asyncio.sleep(0)
         await asyncio.sleep(0)
-        if mine == generation:
+        if gen.is_current(token):
             published.append((q, results))
-            is_searching = False
 
-    import asyncio
-
-    async def scenario():
-        # Slow first search, fast second search: only second publishes.
-        t1 = asyncio.create_task(do_search("lag", ["stale"]))
-        t2 = asyncio.create_task(do_search("lagos", ["fresh"]))
-        await asyncio.gather(t1, t2)
-
-    asyncio.run(scenario())
+    t1 = asyncio.create_task(do_search("lag", ["stale"]))
+    t2 = asyncio.create_task(do_search("lagos", ["fresh"]))
+    await asyncio.gather(t1, t2)
     assert published == [("lagos", ["fresh"])]
-    assert is_searching is False
+
+
+async def test_short_query_still_invalidates_inflight_generation():
+    """A cleared query (<2 chars) claims a generation so the in-flight
+    search can't repopulate the list after the user deleted their text."""
+    gen = SearchGeneration()
+    published = []
+
+    async def slow_search():
+        token = gen.begin()
+        await asyncio.sleep(0.01)
+        if gen.is_current(token):
+            published.append(["stale"])
+
+    async def clear_query():
+        gen.begin()  # HomeScreen claims before the length gate returns
+
+    t1 = asyncio.create_task(slow_search())
+    await asyncio.sleep(0)
+    await clear_query()
+    await t1
+    assert published == []

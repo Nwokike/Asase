@@ -60,12 +60,15 @@ key_alias = "upload"
 dev = [
     "pytest>=9.1.1",
     "pytest-asyncio>=0.24.0",
+    "pytest-timeout>=2.3.1",
     "ruff>=0.16.4",
 ]
 
 [tool.pytest.ini_options]
 pythonpath = [".", "src", "tests"]
 asyncio_mode = "auto"
+# M9: no test may hang CI — every test gets a hard 120s ceiling.
+timeout = 120
 
 [tool.ruff]
 lint.extend-ignore = ["BLE001", "S110", "ASYNC230"]

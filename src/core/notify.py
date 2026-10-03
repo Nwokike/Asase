@@ -49,8 +49,11 @@ def show_snack(
                 and bgcolor == last_bgcolor
                 and now - last_at < _DEDUP_WINDOW_SEC
             ):
+                # Window anchors to the last SHOWN toast (no slide): a
+                # persistent error stream re-announces once the window
+                # passes instead of going silent after the first toast
+                # auto-dismisses.
                 logger.debug("show_snack coalesced duplicate: %s", message)
-                _last_snack = (message, bgcolor, now)
                 return
         _last_snack = (message, bgcolor, now)
         snack = ft.SnackBar(

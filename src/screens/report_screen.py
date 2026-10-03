@@ -24,26 +24,15 @@ from core import tokens
 from core.notify import show_snack
 from core.tasks import schedule
 from core.theme import AppColors, AppStyles, is_dark_mode
+from core.units import safe_float as units_safe_float
 from services.ai_service import DEFAULT_QUESTION, stream_briefing
 from state.app_state import AppStateCtx
 from state.controller_ctx import ControllerMethodsCtx
 
 logger = logging.getLogger("asase.report")
 
-
-def safe_float(value, default=None):
-    """Coerce upstream feed values to float.
-
-    Feed sentinels (``"--"``, ``None``, ``""``) are truthy-or-None but not
-    numeric — ``float(value or 0)`` does NOT guard the ``"--"`` case, so
-    every numeric extraction in this screen goes through here.
-    """
-    if value is None or value == "":
-        return default
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return default
+# Single numeric choke point (core.units): sentinels + NaN/inf → default.
+safe_float = units_safe_float
 
 
 def aqi_trend_from_hourly(hourly_aqi: list, window: int = 12) -> list[float]:
@@ -78,6 +67,24 @@ def storm_risk_from_cape_gust(cape, wind_gust) -> float:
         base = min(20.0, cape_val / 15.0)
     gust_component = min(40.0, gust_val * 0.5)
     return min(100.0, base + gust_component)
+
+
+async def fetch_radius_history_events(
+    fetch, lat: float, lon: float, radius_km: float = 500.0
+) -> list[dict]:
+    """Fetch dossier radius history through the controller callback.
+
+    Fail-open: a missing callback, an empty result, or a transport error
+    all degrade to ``[]`` so the dossier always renders its history block.
+    """
+    if not fetch:
+        return []
+    try:
+        evs = await fetch(lat, lon, radius_km)
+        return evs or []
+    except Exception as ex:
+        logger.debug("Radius history load failed: %s", ex)
+        return []
 
 
 @ft.component
@@ -336,17 +343,16 @@ def ReportScreen() -> Control:
     )
 
     async def _load_radius_history():
-        if not controller.fetch_radius_history:
+        fetch = controller.fetch_radius_history
+        if not fetch:
             return
         set_radius_loading(True)
         try:
-            evs = await controller.fetch_radius_history(
-                state.current_lat, state.current_lon, 500.0
+            set_radius_events(
+                await fetch_radius_history_events(
+                    fetch, state.current_lat, state.current_lon
+                )
             )
-            set_radius_events(evs or [])
-        except Exception as ex:
-            logger.debug("Radius history load failed: %s", ex)
-            set_radius_events([])
         finally:
             set_radius_loading(False)
 
