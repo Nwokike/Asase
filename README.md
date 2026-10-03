@@ -65,7 +65,7 @@
 <p align="center">
   <img src="screenshots/radar_home_mobile_light.png" width="90%" alt="Radar Dashboard — light mode" />
 </p>
-<p align="center"><em>Radar Dashboard — elevation, temperature, AQI & Kp-index chips for your pinned location, nearest-hazard warning, one-tap full dossier, and the live global hazard radar below</em></p>
+<p align="center"><em>Radar Dashboard — full-bleed hazard map with floating control rail, live search, filter chips, and scrollable telemetry feed panel</em></p>
 
 <p align="center">
   <img src="screenshots/search_mobile_light.png" width="360" alt="Global place search" />
@@ -93,7 +93,7 @@
     <td width="50%"><img src="screenshots/full_map_event_mobile_dark.png" width="100%" alt="Selected earthquake on the map" /></td>
   </tr>
   <tr>
-    <td align="center"><em>Satellite basemap with wildfire, seismic, and flood markers, proximity shockwave rings, and the AI Scan action</em></td>
+    <td align="center"><em>Full-bleed satellite basemap with wildfire perimeter polygons, seismic markers, and right-edge layer toggle stack</em></td>
     <td align="center"><em>Tap any marker to inspect the event — magnitude, depth, and one-tap full dossier right on the map</em></td>
   </tr>
 </table>
@@ -106,8 +106,8 @@
     <td width="50%"><img src="screenshots/risk_dossier_mobile_light.png" width="100%" alt="Location risk dossier with AI briefing" /></td>
   </tr>
   <tr>
-    <td align="center"><em>Space weather — NOAA Kp-index with 12-reading progression and GOES solar X-ray flux live charts</em></td>
-    <td align="center"><em>Location risk dossier — safety score, 5-axis multi-hazard threat radar, and the Kiri Intelligence AI briefing</em></td>
+    <td align="center"><em>Space weather — NOAA Kp-index hero with G-scale meter, 12-reading progression chart, and GOES solar X-ray flux trace</em></td>
+    <td align="center"><em>Location risk dossier — safety score hero, 5-axis multi-hazard threat radar, and the Kiri Intelligence AI briefing</em></td>
   </tr>
 </table>
 
