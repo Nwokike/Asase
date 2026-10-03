@@ -365,12 +365,17 @@ def AppShell() -> Control:
 
         _show(flet_context.page)
 
+    def _open_command_palette():
+        from components.command_palette import show_command_palette as _show
+
+        _show(flet_context.page)
+
     _update_data = state.update_data or {}
     status = build_status_bar(
         state.current_location_name,
         len(state.earthquakes) + len(state.disasters),
         kp_text,
-        lambda: None,  # command palette lands in Phase D4
+        _open_command_palette,
         is_dark=is_dark_mode(flet_context.page),
         title=_sb_title,
         subtitle=_sb_subtitle,

@@ -1,0 +1,301 @@
+"""Command-K palette: fuzzy search over actions, places, and events.
+
+The status bar already renders a "Search or command… Ctrl K" button
+(adaptive_nav.py:362-379) wired to a no-op. This module implements the
+palette itself: a dialog with a text field, a filtered result list, and
+keyboard navigation (arrows + enter).
+
+Fuzzy matching is substring-based (case-insensitive) — no external
+dependency, works offline, and is fast enough for the small index
+(<100 items).
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+import flet as ft
+
+from core import tokens
+from core.theme import AppColors
+
+logger = logging.getLogger("asase.palette")
+
+
+def _fuzzy_match(query: str, text: str) -> bool:
+    """Case-insensitive substring match."""
+    return query.lower() in text.lower()
+
+
+def build_palette_index(
+    bookmarks: list[dict],
+    recent_searches: list[dict],
+    earthquakes: list[dict],
+    disasters: list[dict],
+) -> list[dict[str, Any]]:
+    """Build the searchable index from current state.
+
+    Each entry: {"type": "action"|"place"|"event", "label": str,
+                 "sub": str, "callback": Callable | None}
+    """
+    index: list[dict[str, Any]] = []
+
+    # Actions
+    index.append(
+        {
+            "type": "action",
+            "label": "Go to Radar",
+            "sub": "Dashboard overview",
+            "callback": None,  # wired by caller
+        }
+    )
+    index.append(
+        {
+            "type": "action",
+            "label": "Go to Full Map",
+            "sub": "Planetary hazard radar",
+            "callback": None,
+        }
+    )
+    index.append(
+        {
+            "type": "action",
+            "label": "Go to Space Weather",
+            "sub": "NOAA SWPC telemetry",
+            "callback": None,
+        }
+    )
+    index.append(
+        {
+            "type": "action",
+            "label": "Go to History",
+            "sub": "Saved locations & recent searches",
+            "callback": None,
+        }
+    )
+    index.append(
+        {
+            "type": "action",
+            "label": "Go to Settings",
+            "sub": "Configuration & diagnostics",
+            "callback": None,
+        }
+    )
+    index.append(
+        {
+            "type": "action",
+            "label": "Refresh All Feeds",
+            "sub": "Sync live telemetry",
+            "callback": None,
+        }
+    )
+    index.append(
+        {
+            "type": "action",
+            "label": "Toggle Theme",
+            "sub": "Dark / Light / System",
+            "callback": None,
+        }
+    )
+
+    # Places (bookmarks + recent searches)
+    for b in bookmarks[:10]:
+        index.append(
+            {
+                "type": "place",
+                "label": b.get("name", "Unknown"),
+                "sub": f"Bookmark • {b.get('country', '')}",
+                "callback": None,
+            }
+        )
+    for r in recent_searches[:10]:
+        index.append(
+            {
+                "type": "place",
+                "label": r.get("name", "Unknown"),
+                "sub": f"Recent search • {r.get('country', '')}",
+                "callback": None,
+            }
+        )
+
+    # Events (top hazards by severity)
+    for eq in earthquakes[:5]:
+        index.append(
+            {
+                "type": "event",
+                "label": eq.get("place", "Earthquake"),
+                "sub": f"M{eq.get('magnitude', 0):.1f} • {eq.get('time_str', '')}",
+                "callback": None,
+            }
+        )
+    for d in disasters[:5]:
+        index.append(
+            {
+                "type": "event",
+                "label": d.get("title", "Natural Event"),
+                "sub": f"{d.get('type', 'unknown').title()} • {d.get('date', '')[:10]}",
+                "callback": None,
+            }
+        )
+
+    return index
+
+
+def filter_palette(index: list[dict[str, Any]], query: str) -> list[dict[str, Any]]:
+    """Filter the index by fuzzy match on label + sub."""
+    if not query.strip():
+        return index
+    return [
+        item
+        for item in index
+        if _fuzzy_match(query, item["label"]) or _fuzzy_match(query, item["sub"])
+    ]
+
+
+def show_command_palette(page: ft.Page) -> None:
+    """Open the command palette dialog.
+
+    Creates a dialog with a text field and result list. The caller is
+    responsible for wiring callbacks into the index before calling this.
+    """
+    from core.state import state as app_state
+
+    index = build_palette_index(
+        app_state.bookmarks,
+        app_state.recent_searches,
+        app_state.earthquakes,
+        app_state.disasters,
+    )
+
+    query_field = ft.TextField(
+        hint_text="Type a command or search…",
+        autofocus=True,
+        border_radius=tokens.RADIUS_MD,
+        text_size=tokens.FONT_SM,
+        on_change=lambda e: _update_results(e.control.value),
+    )
+
+    results_column = ft.Column(
+        [],
+        spacing=0,
+        scroll=ft.ScrollMode.AUTO,
+    )
+
+    selected_index = [0]  # mutable closure
+
+    def _update_results(query: str):
+        filtered = filter_palette(index, query)
+        results_column.controls.clear()
+        for i, item in enumerate(filtered[:20]):
+            is_selected = i == selected_index[0]
+            results_column.controls.append(
+                ft.Container(
+                    content=ft.Row(
+                        [
+                            ft.Icon(
+                                ft.Icons.NAVIGATE_NEXT_ROUNDED
+                                if item["type"] == "action"
+                                else ft.Icons.LOCATION_ON_ROUNDED
+                                if item["type"] == "place"
+                                else ft.Icons.WARNING_AMBER_ROUNDED,
+                                size=tokens.ICON_XS,
+                                color=AppColors.PRIMARY
+                                if item["type"] == "action"
+                                else AppColors.OCEAN
+                                if item["type"] == "place"
+                                else AppColors.WARNING,
+                            ),
+                            ft.Column(
+                                [
+                                    ft.Text(
+                                        item["label"],
+                                        size=tokens.FONT_SM,
+                                        weight=ft.FontWeight.W_600,
+                                        max_lines=1,
+                                        overflow=ft.TextOverflow.ELLIPSIS,
+                                    ),
+                                    ft.Text(
+                                        item["sub"],
+                                        size=tokens.FONT_XXS,
+                                        color=ft.Colors.ON_SURFACE_VARIANT,
+                                        max_lines=1,
+                                        overflow=ft.TextOverflow.ELLIPSIS,
+                                    ),
+                                ],
+                                spacing=0,
+                                expand=True,
+                            ),
+                        ],
+                        spacing=tokens.SPACE_SM,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                    padding=ft.Padding(
+                        tokens.SPACE_MD,
+                        tokens.SPACE_SM,
+                        tokens.SPACE_MD,
+                        tokens.SPACE_SM,
+                    ),
+                    border_radius=tokens.RADIUS_SM,
+                    bgcolor=ft.Colors.with_opacity(0.08, AppColors.PRIMARY)
+                    if is_selected
+                    else None,
+                    ink=True,
+                    on_click=lambda _, item=item: _run_item(item),
+                )
+            )
+        selected_index[0] = 0
+        try:
+            page.update()
+        except Exception:
+            pass
+
+    def _run_item(item: dict[str, Any]):
+        if item["callback"]:
+            item["callback"]()
+        page.pop_dialog()
+
+    def _on_key(e: ft.KeyboardEvent):
+        if e.key == "Escape":
+            page.pop_dialog()
+        elif e.key == "ArrowDown":
+            selected_index[0] = min(
+                selected_index[0] + 1, len(results_column.controls) - 1
+            )
+            _update_results(query_field.value or "")
+        elif e.key == "ArrowUp":
+            selected_index[0] = max(selected_index[0] - 1, 0)
+            _update_results(query_field.value or "")
+        elif e.key == "Enter":
+            filtered = filter_palette(index, query_field.value or "")
+            if filtered:
+                _run_item(filtered[selected_index[0]])
+
+    dlg = ft.AlertDialog(
+        modal=True,
+        title=ft.Text(
+            "Command Palette", size=tokens.FONT_MD, weight=ft.FontWeight.BOLD
+        ),
+        content=ft.Column(
+            [
+                query_field,
+                ft.Container(height=tokens.SPACE_SM),
+                ft.Container(
+                    content=results_column,
+                    height=300,
+                ),
+            ],
+            spacing=0,
+            tight=True,
+        ),
+        actions=[],
+        on_dismiss=lambda _: None,
+    )
+
+    # Wire keyboard handler
+    page.on_keyboard_event = _on_key
+
+    # Initial population
+    _update_results("")
+
+    page.show_dialog(dlg)
