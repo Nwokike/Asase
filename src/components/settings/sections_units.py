@@ -87,7 +87,11 @@ def build_units_section(
                         width=140,
                         height=44,
                         text_size=tokens.FONT_SM,
-                        border_radius=tokens.RADIUS_SM,
+                        border=ft.OutlineInputBorder(
+                            border_radius=ft.RoundedRectangleBorder(
+                                radius=tokens.RADIUS_SM
+                            ),
+                        ),
                         on_select=lambda e: on_temp_change(e.control.value),
                     ),
                 ),
@@ -110,7 +114,11 @@ def build_units_section(
                         width=140,
                         height=44,
                         text_size=tokens.FONT_SM,
-                        border_radius=tokens.RADIUS_SM,
+                        border=ft.OutlineInputBorder(
+                            border_radius=ft.RoundedRectangleBorder(
+                                radius=tokens.RADIUS_SM
+                            ),
+                        ),
                         on_select=lambda e: on_speed_change(e.control.value),
                     ),
                 ),

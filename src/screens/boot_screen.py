@@ -41,19 +41,8 @@ def build_boot_view(
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                     spacing=tokens.SPACE_MD,
                     controls=[
+                        # Logo carries the wordmark + subtitle — no text repeat.
                         build_logo(height=84),
-                        ft.Text(
-                            "ASASE",
-                            size=tokens.FONT_XXL,
-                            weight=ft.FontWeight.W_800,
-                            color=AppColors.PRIMARY,
-                        ),
-                        ft.Text(
-                            "GLOBAL EARTH INTELLIGENCE",
-                            size=tokens.FONT_XS,
-                            weight=ft.FontWeight.W_700,
-                            color=ft.Colors.ON_SURFACE_VARIANT,
-                        ),
                         ft.Container(height=tokens.SPACE_MD),
                         ft.Container(
                             content=ft.ProgressBar(

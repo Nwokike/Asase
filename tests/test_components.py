@@ -405,10 +405,11 @@ def test_about_card_and_boot_use_reactive_logo():
     assert "Asase" not in about_texts  # wordmark is inside the logo asset
 
     # Boot screen: single loading view, no slides/deck/skip/next.
+    # The logo carries the wordmark — no repeated name text beside it.
     view = build_boot_view("Loading USGS feeds…", progress=0.5)
     texts = [t.value for t in walk_texts(view)]
-    assert "ASASE" in texts
-    assert "GLOBAL EARTH INTELLIGENCE" in texts
+    assert "ASASE" not in texts  # wordmark is inside the logo asset
+    assert "GLOBAL EARTH INTELLIGENCE" not in texts  # part of logo, not repeated
     assert "Loading USGS feeds…" in texts
     assert "Next" not in texts and "Skip" not in texts
     bars = [c for c in walk(view) if isinstance(c, ft.ProgressBar)]
