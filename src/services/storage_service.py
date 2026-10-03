@@ -132,7 +132,7 @@ class StorageService:
                     self._data = json.loads(raw.decode("utf-8"))
                     return
             except Exception:
-                pass
+                logger.exception("Suppressed exception")
         self._data = {}
 
     def _save_now(self) -> None:

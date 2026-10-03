@@ -70,8 +70,8 @@ def SettingsScreen() -> Control:
                 schedule(controller.save_setting, STORAGE_MIN_MAGNITUDE, m, page=page)
             if controller.refresh_all:
                 schedule(controller.refresh_all, page=page)
-        except Exception:
-            pass
+        except Exception as ex:
+            logger.debug("Suppressed exception: %s", ex)
 
     def _on_temp_unit_change(val: str):
         state.temp_unit = val.lower()

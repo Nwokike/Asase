@@ -19,7 +19,6 @@ from core.constants import (
     STORAGE_BOOKMARKS,
     STORAGE_LAST_LOCATION,
     STORAGE_MIN_MAGNITUDE,
-    STORAGE_MISSION_SHOWN,
     STORAGE_ONBOARDING_DONE,
     STORAGE_RECENT_SEARCHES,
     STORAGE_SIDEBAR_COLLAPSED,
@@ -192,9 +191,6 @@ class AppController:
                 state.has_accepted_terms = True
                 state.is_first_launch = False
 
-            mission_shown = await self.storage.get(STORAGE_MISSION_SHOWN)
-            state.mission_shown = mission_shown == "true"
-
             saved_bookmarks = await self.storage.get(STORAGE_BOOKMARKS)
             if isinstance(saved_bookmarks, list):
                 state.bookmarks = saved_bookmarks
@@ -261,7 +257,7 @@ class AppController:
             try:
                 self.page.update()
             except Exception:
-                pass
+                logger.exception("Suppressed exception")
             if result.get("mandatory"):
                 self.open_version_dialog()
 
@@ -466,7 +462,7 @@ class AppController:
             if elev:
                 state.current_elevation = elev
         except Exception:
-            pass
+            logger.exception("Suppressed exception")
 
         # Persist the focus point (with elevation if it resolved) so the next
         # launch reopens on this place
@@ -583,7 +579,7 @@ class AppController:
             types = res if isinstance(res, list) else [res]
             state.is_online = ft.ConnectivityType.NONE not in types
         except Exception:
-            pass
+            logger.exception("Suppressed exception")
 
     def _on_connectivity_change(self, e) -> None:
         was_online = state.is_online
@@ -611,7 +607,7 @@ class AppController:
                 types = res if isinstance(res, list) else [res]
                 state.is_online = ft.ConnectivityType.NONE not in types
             except Exception:
-                pass
+                logger.exception("Suppressed exception")
 
     def on_error(self, e) -> None:
         logger.error("Page uncaught error: %s", e.data)

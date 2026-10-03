@@ -23,7 +23,7 @@ def build_banner_ad(page: ft.Page | None = None) -> ft.Control:
 
             return AdService(page).get_banner_ad()
         except Exception:
-            pass
+            logger.exception("Suppressed exception")
 
     return ft.Container(width=0, height=0)
 

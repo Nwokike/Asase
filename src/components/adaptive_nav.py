@@ -199,6 +199,7 @@ def build_status_bar(
     on_settings=None,
     on_toggle_theme=None,
     theme_icon: ft.IconData | None = None,
+    theme_tooltip: str | None = None,
     on_open_version=None,
     version_label: str | None = None,
     update_available: bool = False,
@@ -257,7 +258,7 @@ def build_status_bar(
             ft.IconButton(
                 icon=theme_icon,
                 icon_size=20,
-                tooltip="Toggle Color Mode (Dark / Light / System)",
+                tooltip=theme_tooltip or "Toggle Color Mode",
                 on_click=lambda _: on_toggle_theme(),
             )
         )

@@ -311,16 +311,24 @@ def show_command_palette(page: ft.Page) -> None:
         try:
             page.update()
         except Exception:
-            pass
+            logger.exception("Suppressed exception")
+
+    # Save the shell's Ctrl+K handler so it's restored when the palette
+    # closes — otherwise the keyboard hook stays hijacked and Ctrl+K dies.
+    _previous_keyboard = page.on_keyboard_event
+
+    def _close():
+        page.on_keyboard_event = _previous_keyboard
+        page.pop_dialog()
 
     def _run_item(item: dict[str, Any]):
         if item["callback"]:
             item["callback"]()
-        page.pop_dialog()
+        _close()
 
     def _on_key(e: ft.KeyboardEvent):
         if e.key == "Escape":
-            page.pop_dialog()
+            _close()
         elif e.key == "ArrowDown":
             selected_index[0] = min(
                 selected_index[0] + 1, len(results_column.controls) - 1
@@ -352,7 +360,7 @@ def show_command_palette(page: ft.Page) -> None:
             tight=True,
         ),
         actions=[],
-        on_dismiss=lambda _: None,
+        on_dismiss=lambda _: setattr(page, "on_keyboard_event", _previous_keyboard),
     )
 
     # Wire keyboard handler

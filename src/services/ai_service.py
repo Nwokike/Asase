@@ -187,8 +187,8 @@ async def _stream_chat(payload: dict, on_token: Callable[[str], None]) -> AIResu
                     collected.append(delta)
                     try:
                         on_token(delta)
-                    except Exception:
-                        pass
+                    except Exception as ex:
+                        logger.debug("Suppressed exception: %s", ex)
     except Exception as ex:
         logger.warning("AI streaming failed (fail-soft): %s", ex)
         return AIResult()

@@ -5,13 +5,18 @@ exceptions; bare ``asyncio.create_task`` in a sync Flet callback does neither
 (failures vanish silently, and the task may land on the wrong loop). Pure
 builder functions with no page in scope fall back to ``create_task`` with a
 logging done-callback so failures are never silent.
+
+Sync callables (state-setter lambdas like ``controller.go_home``) are
+executed directly — they return plain values (often tuples), not coroutines,
+so wrapping them in a task raised ``TypeError: a coroutine was expected``.
+Failures always log at WARNING so nothing is swallowed.
 """
 
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
-from collections.abc import Coroutine
 from typing import Any
 
 logger = logging.getLogger("asase.tasks")
@@ -27,33 +32,31 @@ def _log_failure(task: asyncio.Task) -> None:
 
 
 def schedule(coro_fn, *args: Any, page=None, **kwargs: Any):
-    """Schedule ``coro_fn(*args, **kwargs)`` on the page loop when possible.
+    """Run ``coro_fn(*args, **kwargs)`` on the page loop when possible.
 
-    Returns whatever the underlying scheduler returns (a Future for
-    ``page.run_task``, a Task otherwise) so callers can await if needed.
+    Coroutine functions are scheduled (Future via ``page.run_task`` when a
+    page is available, Task otherwise). Sync callables are invoked directly
+    with their exceptions logged — never silently dropped.
     """
+    if not inspect.iscoroutinefunction(coro_fn):
+        # Sync path: controller state-setter lambdas etc. Call directly.
+        try:
+            return coro_fn(*args, **kwargs)
+        except Exception:
+            logger.warning(
+                "Sync callback failed: %s(%r)",
+                getattr(coro_fn, "__name__", coro_fn),
+                args,
+            )
+            raise
     if page is not None and hasattr(page, "run_task"):
         try:
             return page.run_task(coro_fn, *args, **kwargs)
+        except TypeError:
+            # run_task requires a coroutine function — fall through to Task
+            pass
         except Exception as ex:
-            logger.debug("page.run_task failed, falling back: %s", ex)
+            logger.warning("page.run_task failed (%s); falling back", ex)
     task = asyncio.create_task(coro_fn(*args, **kwargs))
-    task.add_done_callback(_log_failure)
-    return task
-
-
-def schedule_coro(coro: Coroutine, *, page=None):
-    """Schedule an already-created coroutine object (for call sites that
-    build the coroutine inline). Prefer :func:`schedule` with a function."""
-    if page is not None and hasattr(page, "run_task"):
-        # run_task needs a coroutine *function* — wrap the object.
-        async def _await_it():
-            return await coro
-
-        try:
-            return page.run_task(_await_it)
-        except Exception as ex:
-            logger.debug("page.run_task failed, falling back: %s", ex)
-    task = asyncio.create_task(coro)
     task.add_done_callback(_log_failure)
     return task

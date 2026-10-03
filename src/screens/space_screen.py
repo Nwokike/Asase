@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 import flet as ft
 from flet import Control
 
@@ -14,6 +16,8 @@ from core.theme import (
     AppStyles,
 )
 from state.app_state import AppStateCtx
+
+logger = logging.getLogger("asase.space")
 
 
 def g_level_from_kp(kp: float) -> int:
@@ -170,13 +174,13 @@ def SpaceScreen() -> Control:
             if val is not None:
                 try:
                     kp_history.append(float(val))
-                except Exception:
-                    pass
+                except Exception as ex:
+                    logger.debug("Suppressed exception: %s", ex)
         elif isinstance(item, list) and len(item) > 1:
             try:
                 kp_history.append(float(item[1]))
-            except Exception:
-                pass
+            except Exception as ex:
+                logger.debug("Suppressed exception: %s", ex)
 
     kp_color = (
         AppColors.SEVERITY_LOW

@@ -164,14 +164,14 @@ def AppShell() -> Control:
         try:
             page.views[0].appbar = _build_appbar(active_view, active_tab, controller)
         except Exception:
-            pass
+            logger.exception("Suppressed exception")
 
         if _should_show_boot(state):
             page.views[0].navigation_bar = None
             try:
                 page.update()
             except Exception:
-                pass
+                logger.exception("Suppressed exception")
             return
 
         # Compact windows and overlay views keep the bottom bar contract:
@@ -188,7 +188,7 @@ def AppShell() -> Control:
         try:
             page.update()
         except Exception:
-            pass
+            logger.exception("Suppressed exception")
 
     def _track_viewport():
         page = flet_context.page
@@ -199,12 +199,12 @@ def AppShell() -> Control:
             try:
                 set_viewport_width(e.width)
             except Exception:
-                pass
+                logger.exception("Suppressed exception")
 
         try:
             page.on_resize = _on_resize
         except Exception:
-            pass
+            logger.exception("Suppressed exception")
 
         # page.width is often None at first paint (Flet reports the viewport
         # after the session handshake) and on_resize may not fire afterwards
@@ -240,16 +240,20 @@ def AppShell() -> Control:
     def _open_palette():
         from components.command_palette import show_command_palette
 
-        show_command_palette(page)
+        _page = flet_context.page
+        if _page:
+            show_command_palette(_page)
 
     def _on_keyboard(e: ft.KeyboardEvent):
         if e.key == "k" and (e.ctrl or e.meta):
             _open_palette()
 
-    try:
-        page.on_keyboard_event = _on_keyboard
-    except Exception:
-        pass
+    _kb_page = flet_context.page
+    if _kb_page:
+        try:
+            _kb_page.on_keyboard_event = _on_keyboard
+        except Exception:
+            logger.exception("Suppressed exception")
 
     # ── Branch Screen (Depends on state reactivity hooks) ──
     _ = (
@@ -260,10 +264,6 @@ def AppShell() -> Control:
     )
     if _should_show_boot(state):
         screen = BootScreen()
-    elif not state.mission_shown and not state.is_loading:
-        from screens.mission_screen import MissionScreen
-
-        screen = MissionScreen()
     elif active_view == "report":
         screen = ReportScreen()
     elif active_view == "space":
@@ -369,7 +369,7 @@ def AppShell() -> Control:
         try:
             _page.update()
         except Exception:
-            pass
+            logger.exception("Suppressed exception")
 
     def _theme_icon():
         _page = flet_context.page
@@ -377,7 +377,17 @@ def AppShell() -> Control:
             return ft.Icons.DARK_MODE_ROUNDED
         if _page and _page.theme_mode == ft.ThemeMode.LIGHT:
             return ft.Icons.LIGHT_MODE_ROUNDED
-        return ft.Icons.SETTINGS_SYSTEM_DAYDREAM_ROUNDED
+        return ft.Icons.BRIGHTNESS_AUTO_ROUNDED
+
+    def _theme_tooltip():
+        # CollabShell pattern: the tooltip reflects the CURRENT mode, so the
+        # button reads as a state indicator, not an ambiguous cycler.
+        _page = flet_context.page
+        if not _page or _page.theme_mode == ft.ThemeMode.DARK:
+            return "Dark Theme"
+        if _page and _page.theme_mode == ft.ThemeMode.LIGHT:
+            return "Light Theme"
+        return "System Theme"
 
     def _open_version_dialog():
         from components.version_dialog import show_version_dialog as _show
@@ -402,6 +412,7 @@ def AppShell() -> Control:
         on_settings=lambda: _select_tab(_TAB_INDEX["Settings"]),
         on_toggle_theme=_toggle_theme_mode,
         theme_icon=_theme_icon(),
+        theme_tooltip=_theme_tooltip(),
         on_open_version=_open_version_dialog,
         version_label=(
             f"Update: {(_update_data.get('version', 'Update'))} Available!"

@@ -45,8 +45,8 @@ def _parse_flare_class(flares: list) -> tuple[str, str]:
                         best = "M"
                     elif v >= 1e-6:
                         best = "C"
-                except Exception:
-                    pass
+                except Exception as ex:
+                    logger.debug("Suppressed exception: %s", ex)
     if best:
         return f"Active — {best}-class flare detected", best
     return "Active Solar Monitoring", ""

@@ -57,7 +57,7 @@ def HistoryScreen() -> Control:
                     if page:
                         page.update()
                 except Exception:
-                    pass
+                    logger.exception("Suppressed exception")
 
         schedule(_do, page=page)
 
