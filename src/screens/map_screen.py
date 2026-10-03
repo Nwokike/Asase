@@ -25,7 +25,9 @@ def MapScreen() -> Control:
     state = ft.use_context(AppStateCtx)
     controller = ft.use_context(ControllerMethodsCtx)
 
-    active_filter, set_active_filter = ft.use_state("all")
+    # Multi-select layer model: each hazard type toggles independently.
+    # "all" is a convenience toggle, not a filter mode.
+    active_layers, set_active_layers = ft.use_state({"earthquake", "wildfire", "storm"})
     selected_event, set_selected_event = ft.use_state(None)
     satellite, set_satellite = ft.use_state(False)
     map_ref = ft.use_ref(None)
@@ -97,21 +99,9 @@ def MapScreen() -> Control:
     # Follow the active focus point (search / GPS / suggestion selections)
     use_map_center(map_ref, state.current_lat, state.current_lon, 10.0)
 
-    # Filter events based on active chip
-    filtered_earthquakes = (
-        state.earthquakes if active_filter in ("all", "earthquake") else []
-    )
-    filtered_disasters = (
-        [
-            d
-            for d in state.disasters
-            if (active_filter == "all")
-            or (active_filter == "fire" and d.get("type") == "wildfire")
-            or (active_filter == "storm" and d.get("type") == "storm")
-        ]
-        if active_filter in ("all", "fire", "storm")
-        else []
-    )
+    # Filter events based on active layers (multi-select)
+    filtered_earthquakes = state.earthquakes if "earthquake" in active_layers else []
+    filtered_disasters = [d for d in state.disasters if d.get("type") in active_layers]
 
     def _on_marker_click(event: dict):
         set_selected_event(event)
@@ -152,121 +142,179 @@ def MapScreen() -> Control:
 
     is_dark = is_dark_mode(page)
 
-    # Filter Chips
-    sat_chip = ft.Container(
-        content=ft.Row(
-            [
-                ft.Icon(
-                    ft.Icons.SATELLITE_ROUNDED,
-                    size=14,
-                    color=AppColors.PRIMARY
-                    if satellite
-                    else ft.Colors.ON_SURFACE_VARIANT,
-                ),
-                ft.Text(
-                    "Satellite",
-                    size=tokens.FONT_XS,
-                    weight=ft.FontWeight.W_600,
-                    color=AppColors.PRIMARY if satellite else ft.Colors.ON_SURFACE,
-                ),
-            ],
-            spacing=4,
-            tight=True,
-        ),
-        padding=ft.Padding(10, 6, 10, 6),
-        border_radius=tokens.RADIUS_FULL,
-        bgcolor=ft.Colors.with_opacity(0.18, AppColors.PRIMARY)
-        if satellite
-        else (
-            ft.Colors.with_opacity(0.85, AppColors.DARK_SURFACE)
-            if is_dark
-            else ft.Colors.WHITE
-        ),
-        border=ft.Border.all(
-            1, AppColors.PRIMARY if satellite else AppColors.get_border(page)
-        ),
-        on_click=lambda _: set_satellite(not satellite),
-        ink=True,
-    )
+    # Right-edge vertical layer stack (Windy-style): each hazard type
+    # toggles independently; satellite is a basemap switch.
+    def _toggle_layer(layer: str):
+        if layer == "all":
+            # Toggle all on/off
+            if active_layers == {"earthquake", "wildfire", "storm"}:
+                set_active_layers(set())
+            else:
+                set_active_layers({"earthquake", "wildfire", "storm"})
+        else:
+            new_layers = set(active_layers)
+            if layer in new_layers:
+                new_layers.discard(layer)
+            else:
+                new_layers.add(layer)
+            set_active_layers(new_layers)
 
-    chips = [
-        ("all", "All Hazards", ft.Icons.PUBLIC_ROUNDED, AppColors.PRIMARY),
+    layer_buttons = [
+        ("satellite", ft.Icons.SATELLITE_ROUNDED, "Satellite basemap", satellite),
         (
             "earthquake",
-            f"Seismic ({len(state.earthquakes)})",
             ft.Icons.WAVES_ROUNDED,
-            AppColors.SEVERITY_HIGH,
+            "Seismic",
+            "earthquake" in active_layers,
         ),
         (
-            "fire",
-            "Wildfires",
+            "wildfire",
             ft.Icons.LOCAL_FIRE_DEPARTMENT_ROUNDED,
-            AppColors.SEVERITY_CRITICAL,
+            "Wildfires",
+            "wildfire" in active_layers,
         ),
-        ("storm", "Storms", ft.Icons.CYCLONE_ROUNDED, AppColors.OCEAN),
+        ("storm", ft.Icons.CYCLONE_ROUNDED, "Storms", "storm" in active_layers),
     ]
 
-    chip_controls = [
-        sat_chip,
-        *[
-            ft.Container(
-                content=ft.Row(
-                    [
-                        ft.Icon(
-                            icon,
-                            size=14,
-                            color=(
-                                color
-                                if active_filter == f_key
-                                else ft.Colors.ON_SURFACE_VARIANT
-                            ),
-                        ),
-                        ft.Text(
-                            label,
-                            size=tokens.FONT_XS,
-                            weight=(
-                                ft.FontWeight.W_700
-                                if active_filter == f_key
-                                else ft.FontWeight.W_500
-                            ),
-                            color=(
-                                color
-                                if active_filter == f_key
-                                else ft.Colors.ON_SURFACE
-                            ),
-                        ),
-                    ],
-                    spacing=4,
-                    tight=True,
-                ),
-                padding=ft.Padding(10, 6, 10, 6),
-                border_radius=tokens.RADIUS_FULL,
-                bgcolor=(
-                    ft.Colors.with_opacity(0.18, color)
-                    if active_filter == f_key
-                    else (
-                        ft.Colors.with_opacity(0.85, AppColors.DARK_SURFACE)
-                        if is_dark
-                        else ft.Colors.with_opacity(0.92, AppColors.LIGHT_SURFACE)
-                    )
-                ),
-                border=ft.Border.all(
-                    1,
-                    (
-                        color
-                        if active_filter == f_key
-                        else (
-                            ft.Colors.with_opacity(0.2, ft.Colors.WHITE)
-                            if is_dark
-                            else ft.Colors.with_opacity(0.15, ft.Colors.BLACK)
-                        )
+    layer_stack = ft.Container(
+        content=ft.Column(
+            [
+                ft.IconButton(
+                    icon=icon,
+                    icon_size=20,
+                    icon_color=AppColors.PRIMARY
+                    if active
+                    else ft.Colors.ON_SURFACE_VARIANT,
+                    tooltip=tooltip,
+                    on_click=lambda _, key=key: (
+                        set_satellite(not satellite)
+                        if key == "satellite"
+                        else _toggle_layer(key)
                     ),
+                    style=ft.ButtonStyle(
+                        bgcolor=ft.Colors.with_opacity(0.15, AppColors.PRIMARY)
+                        if active
+                        else ft.Colors.with_opacity(0.85, AppColors.DARK_SURFACE)
+                        if is_dark
+                        else ft.Colors.WHITE,
+                        shape=ft.RoundedRectangleBorder(radius=tokens.RADIUS_MD),
+                        padding=8,
+                    ),
+                )
+                for key, icon, tooltip, active in layer_buttons
+            ],
+            spacing=tokens.SPACE_SM,
+            alignment=ft.MainAxisAlignment.CENTER,
+        ),
+        width=48,
+        top=tokens.SPACE_SM,
+        right=tokens.SPACE_SM,
+    )
+
+    # Threat mini-strip: critical/high counts, tappable to dossier
+    from core.units import feed_age
+
+    critical_count = sum(
+        1 for e in state.earthquakes if e.get("severity") == "critical"
+    ) + sum(1 for d in state.disasters if d.get("type") == "wildfire")
+    high_count = sum(1 for e in state.earthquakes if e.get("severity") == "high") + sum(
+        1 for d in state.disasters if d.get("type") == "storm"
+    )
+    usgs_age = feed_age("usgs")
+
+    threat_strip = None
+    if critical_count or high_count:
+        parts = []
+        if critical_count:
+            parts.append(f"{critical_count} critical")
+        if high_count:
+            parts.append(f"{high_count} elevated")
+        threat_strip = ft.Container(
+            content=ft.Row(
+                [
+                    ft.Icon(
+                        ft.Icons.WARNING_AMBER_ROUNDED,
+                        size=tokens.ICON_XS,
+                        color=AppColors.SEVERITY_CRITICAL
+                        if critical_count
+                        else AppColors.SEVERITY_HIGH,
+                    ),
+                    ft.Text(
+                        " ".join(parts) + " nearby",
+                        size=tokens.FONT_XS,
+                        weight=ft.FontWeight.W_600,
+                        color=ft.Colors.ON_SURFACE,
+                    ),
+                    ft.Container(expand=True),
+                    ft.Text(
+                        f"USGS {usgs_age}",
+                        style=AppColors.data_text_style(size=tokens.FONT_XXS),
+                    ),
+                ],
+                spacing=tokens.SPACE_XS,
+                tight=True,
+            ),
+            padding=ft.Padding(
+                tokens.SPACE_MD, tokens.SPACE_XS, tokens.SPACE_MD, tokens.SPACE_XS
+            ),
+            border_radius=tokens.RADIUS_FULL,
+            bgcolor=ft.Colors.with_opacity(
+                0.12,
+                AppColors.SEVERITY_CRITICAL
+                if critical_count
+                else AppColors.SEVERITY_HIGH,
+            ),
+            border=ft.Border.all(
+                1,
+                ft.Colors.with_opacity(
+                    0.25,
+                    AppColors.SEVERITY_CRITICAL
+                    if critical_count
+                    else AppColors.SEVERITY_HIGH,
                 ),
-                on_click=lambda _, key=f_key: set_active_filter(key),
-            )
-            for f_key, label, icon, color in chips
-        ],
-    ]
+            ),
+            bottom=tokens.SPACE_SM,
+            left=tokens.SPACE_LG,
+            right=tokens.SPACE_LG,
+            on_click=lambda _: (
+                schedule(controller.open_report, page=page)
+                if controller.open_report
+                else None
+            ),
+            ink=True,
+        )
+
+    # Empty-filter state
+    empty_filter = None
+    if not filtered_earthquakes and not filtered_disasters and not state.is_loading:
+        empty_filter = ft.Container(
+            content=ft.Column(
+                [
+                    ft.Icon(
+                        ft.Icons.FILTER_ALT_OFF_ROUNDED,
+                        size=36,
+                        color=ft.Colors.ON_SURFACE_VARIANT,
+                    ),
+                    ft.Text(
+                        "No events match this filter",
+                        size=tokens.FONT_SM,
+                        weight=ft.FontWeight.W_600,
+                        color=ft.Colors.ON_SURFACE,
+                    ),
+                    ft.Text(
+                        "Try enabling more layers or clearing the filter.",
+                        size=tokens.FONT_XS,
+                        color=ft.Colors.ON_SURFACE_VARIANT,
+                        text_align=ft.TextAlign.CENTER,
+                    ),
+                ],
+                spacing=tokens.SPACE_XS,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                alignment=ft.MainAxisAlignment.CENTER,
+            ),
+            alignment=ft.Alignment.CENTER,
+            expand=True,
+        )
 
     return ft.Stack(
         controls=[
@@ -289,17 +337,12 @@ def MapScreen() -> Control:
                 expand=True,
                 ref=scan_ref,
             ),
-            # Floating Top Filter Bar
-            ft.Container(
-                content=ft.Row(
-                    chip_controls,
-                    scroll=ft.ScrollMode.AUTO,
-                    spacing=tokens.SPACE_SM,
-                ),
-                top=tokens.SPACE_SM,
-                left=tokens.SPACE_LG,
-                right=tokens.SPACE_LG,
-            ),
+            # Right-edge vertical layer stack (Windy-style)
+            layer_stack,
+            # Threat mini-strip (bottom, above AI pill)
+            *([threat_strip] if threat_strip else []),
+            # Empty-filter state
+            *([empty_filter] if empty_filter else []),
             # Floating AI Scan pill (bottom-right)
             ft.Container(
                 content=ft.Row(

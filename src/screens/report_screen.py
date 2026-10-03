@@ -444,7 +444,43 @@ def ReportScreen() -> Control:
         temp, apparent_temp, wind_gust, wind_speed, cape, pressure, humidity
     )
 
-    return ft.ListView(
+    # ── Tabbed Dossier: Summary → Evidence → Raw ──
+    active_tab, set_active_tab = ft.use_state("summary")
+
+    def _tab_btn(key: str, label: str):
+        is_active = active_tab == key
+        return ft.Container(
+            content=ft.Text(
+                label,
+                size=tokens.FONT_XS,
+                weight=ft.FontWeight.W_700 if is_active else ft.FontWeight.W_500,
+                color=AppColors.PRIMARY if is_active else ft.Colors.ON_SURFACE_VARIANT,
+            ),
+            padding=ft.Padding(
+                tokens.SPACE_MD, tokens.SPACE_SM, tokens.SPACE_MD, tokens.SPACE_SM
+            ),
+            border_radius=tokens.RADIUS_FULL,
+            bgcolor=ft.Colors.with_opacity(0.12, AppColors.PRIMARY)
+            if is_active
+            else None,
+            ink=True,
+            on_click=lambda _, k=key: set_active_tab(k),
+        )
+
+    tab_bar = ft.Container(
+        content=ft.Row(
+            [
+                _tab_btn("summary", "Summary"),
+                _tab_btn("evidence", "Evidence"),
+                _tab_btn("raw", "Raw Telemetry"),
+            ],
+            spacing=tokens.SPACE_XS,
+        ),
+        padding=ft.Padding(0, tokens.SPACE_SM, 0, 0),
+    )
+
+    # Summary tab: hero + radar + AI briefing
+    summary_tab = ft.ListView(
         controls=[
             ft.Container(height=tokens.SPACE_SM),
             # Location Hero Card
@@ -580,7 +616,33 @@ def ReportScreen() -> Control:
             threat_radar,
             ai_section,
             _radius_history_block,
+            ft.Container(height=tokens.SPACE_MD),
+            build_banner_ad(page),
+            ft.Container(height=tokens.SPACE_XXXL),
+        ],
+        spacing=0,
+        expand=True,
+    )
+
+    # Evidence tab: charts with thresholds + staleness chips
+    from core.units import feed_age
+
+    usgs_age = feed_age("usgs")
+    meteo_age = feed_age("openmeteo")
+
+    evidence_tab = ft.ListView(
+        controls=[
+            ft.Container(height=tokens.SPACE_SM),
             SectionHeader("HYDROLOGY & GLOFAS RIVER DISCHARGE (7-DAY FORECAST)"),
+            ft.Container(
+                content=ft.Text(
+                    f"Open-Meteo • {meteo_age}",
+                    style=AppColors.data_text_style(size=tokens.FONT_XXS),
+                ),
+                padding=ft.Padding(
+                    tokens.SPACE_LG, 0, tokens.SPACE_LG, tokens.SPACE_XS
+                ),
+            ),
             hydrology_sec,
             SectionHeader("MARINE DYNAMICS & COASTAL SWELL"),
             marine_sec,
@@ -591,6 +653,94 @@ def ReportScreen() -> Control:
             ft.Container(height=tokens.SPACE_MD),
             build_banner_ad(page),
             ft.Container(height=tokens.SPACE_XXXL),
+        ],
+        spacing=0,
+        expand=True,
+    )
+
+    # Raw tab: mono telemetry dump
+    raw_lines = [
+        f"Location: {state.current_location_name}",
+        f"Coordinates: {state.current_lat:.4f}° N, {state.current_lon:.4f}° E",
+        f"Elevation: {state.current_elevation:.0f} m",
+        f"Safety Score: {safety_score}/100",
+        "",
+        f"USGS Seismic ({len(state.earthquakes)} events, {usgs_age}):",
+    ]
+    for eq in state.earthquakes[:10]:
+        raw_lines.append(
+            f"  M{eq.get('magnitude', 0):.1f} • {eq.get('depth_km', 0):.1f}km • "
+            f"{eq.get('place', 'Unknown')} • {eq.get('time_str', '')}"
+        )
+    raw_lines.append("")
+    raw_lines.append(f"NASA EONET Disasters ({len(state.disasters)} active):")
+    for d in state.disasters[:10]:
+        raw_lines.append(
+            f"  {d.get('type', 'unknown')} • {d.get('title', 'Unknown')} • "
+            f"{d.get('latitude', 0):.2f}°, {d.get('longitude', 0):.2f}°"
+        )
+    raw_lines.append("")
+    sw = state.space_weather or {}
+    raw_lines.append(
+        f"NOAA Space Weather • Kp {sw.get('kp_index', 0):.1f} • "
+        f"{sw.get('geomagnetic_status', 'Unknown')}"
+    )
+    raw_lines.append(
+        f"  Solar: {sw.get('solar_activity', 'Unknown')} • "
+        f"Flare: {sw.get('flare_class', 'None')}"
+    )
+    raw_text = "\n".join(raw_lines)
+
+    raw_tab = ft.ListView(
+        controls=[
+            ft.Container(height=tokens.SPACE_SM),
+            SectionHeader("RAW TELEMETRY DUMP"),
+            ft.Container(
+                content=ft.Text(
+                    raw_text,
+                    style=AppColors.data_text_style(size=tokens.FONT_XS),
+                    selectable=True,
+                ),
+                padding=ft.Padding(
+                    tokens.SPACE_MD, tokens.SPACE_SM, tokens.SPACE_MD, tokens.SPACE_SM
+                ),
+                bgcolor=ft.Colors.with_opacity(0.03, ft.Colors.ON_SURFACE),
+                border_radius=tokens.RADIUS_SM,
+            ),
+            ft.Container(height=tokens.SPACE_SM),
+            ft.FilledButton(
+                content=ft.Text("Copy Raw Telemetry", size=tokens.FONT_SM),
+                icon=ft.Icons.CONTENT_COPY_ROUNDED,
+                on_click=lambda _: (
+                    schedule(
+                        controller.share_text,
+                        raw_text,
+                        "Asase Raw Telemetry",
+                        page=page,
+                    )
+                    if controller.share_text
+                    else None
+                ),
+            ),
+            ft.Container(height=tokens.SPACE_XXXL),
+        ],
+        spacing=0,
+        expand=True,
+    )
+
+    tab_content = {
+        "summary": summary_tab,
+        "evidence": evidence_tab,
+        "raw": raw_tab,
+    }
+
+    return ft.Column(
+        [
+            tab_bar,
+            ft.Container(
+                content=tab_content[active_tab],
+                expand=True,
+            ),
         ],
         spacing=0,
         expand=True,

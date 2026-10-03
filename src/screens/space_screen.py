@@ -41,7 +41,10 @@ def kp_severity_color(kp: float) -> str:
 
 
 def build_g_scale_meter(level: int) -> ft.Control:
-    """Segmented G0–G5 storm-scale bar with the current level lit."""
+    """Segmented G0–G5 storm-scale bar with the current level lit and glowing.
+
+    Active segment gets a shadow glow; inactive segments are muted.
+    """
     segments: list[ft.Control] = []
     for g in range(6):
         active = g == level
@@ -64,11 +67,18 @@ def build_g_scale_meter(level: int) -> ft.Control:
                 alignment=ft.Alignment.CENTER,
                 padding=ft.Padding(4, 3, 4, 3),
                 border_radius=tokens.RADIUS_XS,
-                bgcolor=ft.Colors.with_opacity(0.9 if active else 0.12, color),
+                bgcolor=ft.Colors.with_opacity(0.9 if active else 0.08, color),
                 border=ft.Border.all(
                     1,
-                    ft.Colors.with_opacity(0.6 if active else 0.15, color),
+                    ft.Colors.with_opacity(0.6 if active else 0.12, color),
                 ),
+                shadow=ft.BoxShadow(
+                    spread_radius=2,
+                    blur_radius=8,
+                    color=ft.Colors.with_opacity(0.5, color),
+                )
+                if active
+                else None,
                 expand=1,
             )
         )
@@ -76,17 +86,21 @@ def build_g_scale_meter(level: int) -> ft.Control:
 
 
 def build_kp_forecast_chips(forecast: list[dict]) -> ft.Control | None:
-    """Row of next-24h predicted Kp chips ('HH:MM • Kp 3.0'), tinted by severity."""
+    """Row of next-24h predicted Kp chips ('HH:MM • Kp 3.0'), tinted by severity.
+
+    The first chip (nearest future) gets a "now" marker dot.
+    """
     if not forecast:
         return None
     chips = []
-    for f in forecast:
+    for i, f in enumerate(forecast):
         try:
             kp = float(f.get("kp", 0.0))
         except (TypeError, ValueError):
             continue
         hour = str(f.get("time_tag", ""))[11:16] or "--:--"
         color = kp_severity_color(kp)
+        is_now = i == 0
         chips.append(
             ft.Container(
                 content=ft.Column(
@@ -101,6 +115,18 @@ def build_kp_forecast_chips(forecast: list[dict]) -> ft.Control | None:
                             size=tokens.FONT_XS,
                             weight=ft.FontWeight.W_700,
                             color=color,
+                        ),
+                        *(
+                            [
+                                ft.Container(
+                                    width=6,
+                                    height=6,
+                                    border_radius=3,
+                                    bgcolor=AppColors.PRIMARY,
+                                )
+                            ]
+                            if is_now
+                            else []
                         ),
                     ],
                     spacing=0,
@@ -271,13 +297,29 @@ def SpaceScreen() -> Control:
                                 color=ft.Colors.ON_SURFACE_VARIANT,
                                 font_family="Outfit",
                             ),
-                            TelemetryLineChart(
-                                values=kp_history,
-                                accent_color=AppColors.ATMOSPHERE,
-                                height=140,
-                                step_direction=0.0,
-                                curved=False,
-                                left_axis_title="Kp",
+                            *(
+                                [
+                                    TelemetryLineChart(
+                                        values=kp_history,
+                                        accent_color=AppColors.ATMOSPHERE,
+                                        height=140,
+                                        step_direction=0.0,
+                                        curved=False,
+                                        left_axis_title="Kp",
+                                    )
+                                ]
+                                if kp_history
+                                else [
+                                    ft.Container(
+                                        content=ft.Text(
+                                            "Awaiting telemetry stream…",
+                                            size=tokens.FONT_XS,
+                                            color=ft.Colors.ON_SURFACE_VARIANT,
+                                        ),
+                                        height=140,
+                                        alignment=ft.Alignment.CENTER,
+                                    )
+                                ]
                             ),
                         ],
                         spacing=tokens.SPACE_XS,
@@ -301,11 +343,27 @@ def SpaceScreen() -> Control:
                                 color=ft.Colors.ON_SURFACE_VARIANT,
                                 font_family="Outfit",
                             ),
-                            TelemetryLineChart(
-                                values=xray_flux,
-                                accent_color=AppColors.OCEAN,
-                                height=140,
-                                tooltip_format="{:.0f}",
+                            *(
+                                [
+                                    TelemetryLineChart(
+                                        values=xray_flux,
+                                        accent_color=AppColors.OCEAN,
+                                        height=140,
+                                        tooltip_format="{:.0f}",
+                                    )
+                                ]
+                                if xray_flux
+                                else [
+                                    ft.Container(
+                                        content=ft.Text(
+                                            "Awaiting telemetry stream…",
+                                            size=tokens.FONT_XS,
+                                            color=ft.Colors.ON_SURFACE_VARIANT,
+                                        ),
+                                        height=140,
+                                        alignment=ft.Alignment.CENTER,
+                                    )
+                                ]
                             ),
                         ],
                         spacing=tokens.SPACE_XS,
@@ -317,32 +375,36 @@ def SpaceScreen() -> Control:
                 ),
             ),
             # Next 24h geomagnetic outlook (predicted Kp from NOAA SWPC)
-            *(
-                [
-                    SectionHeader("NEXT 24H GEOMAGNETIC OUTLOOK"),
-                    ft.Container(
-                        content=AppStyles.glass_card(
-                            ft.Column(
-                                [
+            SectionHeader("NEXT 24H GEOMAGNETIC OUTLOOK"),
+            ft.Container(
+                content=AppStyles.glass_card(
+                    ft.Column(
+                        [
+                            ft.Text(
+                                "Predicted planetary K-index (3-hour cadence, NOAA SWPC)",
+                                size=tokens.FONT_XS,
+                                color=ft.Colors.ON_SURFACE_VARIANT,
+                                font_family="Outfit",
+                            ),
+                            *(
+                                [build_kp_forecast_chips(kp_forecast)]
+                                if kp_forecast
+                                else [
                                     ft.Text(
-                                        "Predicted planetary K-index (3-hour cadence, NOAA SWPC)",
+                                        "No forecast available",
                                         size=tokens.FONT_XS,
                                         color=ft.Colors.ON_SURFACE_VARIANT,
-                                        font_family="Outfit",
-                                    ),
-                                    build_kp_forecast_chips(kp_forecast),
-                                ],
-                                spacing=tokens.SPACE_XS,
+                                    )
+                                ]
                             ),
-                            padding=tokens.SPACE_MD,
-                        ),
-                        padding=ft.Padding(
-                            tokens.SPACE_LG, 0, tokens.SPACE_LG, tokens.SPACE_SM
-                        ),
+                        ],
+                        spacing=tokens.SPACE_XS,
                     ),
-                ]
-                if kp_forecast
-                else []
+                    padding=tokens.SPACE_MD,
+                ),
+                padding=ft.Padding(
+                    tokens.SPACE_LG, 0, tokens.SPACE_LG, tokens.SPACE_SM
+                ),
             ),
             SectionHeader("SPACE WEATHER INDICES"),
             ft.Container(
@@ -353,9 +415,10 @@ def SpaceScreen() -> Control:
                                 content=ft.Row(
                                     [
                                         ft.Text(
-                                            "Geomagnetic Storm Activity",
-                                            size=tokens.FONT_SM,
+                                            "Geomagnetic Storm",
+                                            size=tokens.FONT_XS,
                                             weight=ft.FontWeight.W_500,
+                                            color=ft.Colors.ON_SURFACE_VARIANT,
                                         ),
                                         ft.Text(
                                             status,
@@ -366,7 +429,12 @@ def SpaceScreen() -> Control:
                                     ],
                                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                                 ),
-                                padding=tokens.SPACE_MD,
+                                padding=ft.Padding(
+                                    tokens.SPACE_MD,
+                                    tokens.SPACE_SM,
+                                    tokens.SPACE_MD,
+                                    tokens.SPACE_SM,
+                                ),
                             ),
                             ft.Divider(
                                 height=1,
@@ -376,11 +444,12 @@ def SpaceScreen() -> Control:
                                 content=ft.Row(
                                     [
                                         ft.Text(
-                                            "Solar Flare Activity (GOES Primary)",
-                                            size=tokens.FONT_SM,
+                                            "Solar Flare (GOES)",
+                                            size=tokens.FONT_XS,
                                             weight=ft.FontWeight.W_500,
+                                            color=ft.Colors.ON_SURFACE_VARIANT,
                                         ),
-                                        ft.Column(
+                                        ft.Row(
                                             [
                                                 ft.Text(
                                                     solar,
@@ -416,13 +485,47 @@ def SpaceScreen() -> Control:
                                                     else []
                                                 ),
                                             ],
-                                            spacing=2,
-                                            horizontal_alignment=ft.CrossAxisAlignment.END,
+                                            spacing=tokens.SPACE_XS,
+                                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
                                         ),
                                     ],
                                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                                 ),
-                                padding=tokens.SPACE_MD,
+                                padding=ft.Padding(
+                                    tokens.SPACE_MD,
+                                    tokens.SPACE_SM,
+                                    tokens.SPACE_MD,
+                                    tokens.SPACE_SM,
+                                ),
+                            ),
+                            ft.Divider(
+                                height=1,
+                                color=ft.Colors.with_opacity(0.1, ft.Colors.OUTLINE),
+                            ),
+                            ft.Container(
+                                content=ft.Row(
+                                    [
+                                        ft.Text(
+                                            "Kp Index",
+                                            size=tokens.FONT_XS,
+                                            weight=ft.FontWeight.W_500,
+                                            color=ft.Colors.ON_SURFACE_VARIANT,
+                                        ),
+                                        ft.Text(
+                                            f"{kp:.1f}",
+                                            style=AppColors.data_text_style(
+                                                size=tokens.FONT_MD, color=kp_color
+                                            ),
+                                        ),
+                                    ],
+                                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                                ),
+                                padding=ft.Padding(
+                                    tokens.SPACE_MD,
+                                    tokens.SPACE_SM,
+                                    tokens.SPACE_MD,
+                                    tokens.SPACE_SM,
+                                ),
                             ),
                         ],
                         spacing=0,
