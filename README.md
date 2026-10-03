@@ -56,58 +56,52 @@
 
 ## 📸 Screenshots
 
-> **Note (v1.0.2):** captures below predate the 1.0.2 UI additions (pollutant
-> comparison chart, wildfire perimeter polygons, °F/mph unit formatting) and
-> will be re-captured before store submission.
-
-### Radar Dashboard
+### Radar Dashboard (desktop, dark)
 
 <p align="center">
-  <img src="screenshots/radar_home_mobile_light.png" width="90%" alt="Radar Dashboard — light mode" />
+  <img src="screenshots/radar_home_desktop_dark.png" width="100%" alt="Radar Dashboard — desktop dark mode" />
 </p>
-<p align="center"><em>Radar Dashboard — full-bleed hazard map with floating control rail, live search, filter chips, and scrollable telemetry feed panel</em></p>
+<p align="center"><em>Web-first canvas — collapsible sidebar, live status bar with alerts & Kp, floating search rail, and scrollable telemetry feed over a full-bleed hazard map</em></p>
+
+### Global Hazard Map (desktop, dark)
 
 <p align="center">
-  <img src="screenshots/search_mobile_light.png" width="360" alt="Global place search" />
+  <img src="screenshots/full_map_event_desktop_dark.png" width="100%" alt="Global hazard map with event detail sheet" />
 </p>
-<p align="center"><em>Typeahead geocoding — search any city, region, or coordinate with live elevation and lat/lon results</em></p>
+<p align="center"><em>Full-bleed map with right-edge layer toggles, threat mini-strip ("92 critical nearby"), selected-event sheet with one-tap full dossier</em></p>
 
-### Live Hazard Feeds
+### Location Risk Dossier (desktop, dark)
 
-<table>
-  <tr>
-    <td width="50%"><img src="screenshots/seismic_feed_mobile_light.png" width="100%" alt="Recent seismic activity" /></td>
-    <td width="50%"><img src="screenshots/wildfire_event_mobile_dark.png" width="100%" alt="Expanded wildfire event detail" /></td>
-  </tr>
-  <tr>
-    <td align="center"><em>Recent seismic activity — USGS 24h feed with magnitude, depth, MMI, severity badges, and distance-from-you chips</em></td>
-    <td align="center"><em>Tap a wildfire to expand inline — perimeter polygon, coordinates, view full dossier, share, and source attribution</em></td>
-  </tr>
-</table>
+<p align="center">
+  <img src="screenshots/risk_dossier_desktop_dark.png" width="100%" alt="Location risk dossier with AI briefing" />
+</p>
+<p align="center"><em>Summary / Evidence / Raw Telemetry tabs — safety score hero, 5-axis threat radar, and the grounded Kiri Intelligence AI briefing</em></p>
 
-### Global Hazard Map
+### Space Weather (desktop, dark)
 
-<table>
-  <tr>
-    <td width="50%"><img src="screenshots/full_map_mobile_light.png" width="100%" alt="Global hazard map — satellite view" /></td>
-    <td width="50%"><img src="screenshots/full_map_event_mobile_dark.png" width="100%" alt="Selected earthquake on the map" /></td>
-  </tr>
-  <tr>
-    <td align="center"><em>Full-bleed satellite basemap with wildfire perimeter polygons, seismic markers, and right-edge layer toggle stack</em></td>
-    <td align="center"><em>Tap any marker to inspect the event — magnitude, depth, and one-tap full dossier right on the map</em></td>
-  </tr>
-</table>
+<p align="center">
+  <img src="screenshots/space_weather_desktop_dark.png" width="100%" alt="Space weather Kp-index and solar flux charts" />
+</p>
+<p align="center"><em>NOAA Kp-index hero with glowing G-scale meter, 12-reading progression chart, GOES X-ray flux trace, and severity-tinted 24h forecast chips</em></p>
 
-### Space Weather & Location Intelligence
+### Mobile (light & dark)
 
 <table>
   <tr>
-    <td width="50%"><img src="screenshots/space_weather_mobile_light.png" width="100%" alt="Space weather Kp-index and solar flux charts" /></td>
-    <td width="50%"><img src="screenshots/risk_dossier_mobile_light.png" width="100%" alt="Location risk dossier with AI briefing" /></td>
+    <td width="50%"><img src="screenshots/radar_home_mobile_light.png" width="100%" alt="Radar Dashboard — mobile light" /></td>
+    <td width="50%"><img src="screenshots/search_mobile_light.png" width="100%" alt="Global place search — mobile" /></td>
   </tr>
   <tr>
-    <td align="center"><em>Space weather — NOAA Kp-index hero with G-scale meter, 12-reading progression chart, and GOES solar X-ray flux trace</em></td>
-    <td align="center"><em>Location risk dossier — safety score hero, 5-axis multi-hazard threat radar, and the Kiri Intelligence AI briefing</em></td>
+    <td align="center"><em>Mobile dashboard — bottom navigation, filter chips, quick metrics</em></td>
+    <td align="center"><em>Typeahead geocoding with live elevation and lat/lon</em></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="screenshots/seismic_feed_mobile_light.png" width="100%" alt="Recent seismic activity — mobile" /></td>
+    <td width="50%"><img src="screenshots/wildfire_event_mobile_dark.png" width="100%" alt="Expanded wildfire event detail — mobile dark" /></td>
+  </tr>
+  <tr>
+    <td align="center"><em>USGS 24h feed — magnitude, depth, severity badges, distance chips</em></td>
+    <td align="center"><em>Tap a wildfire to expand inline — perimeter polygon, dossier, share</em></td>
   </tr>
 </table>
 
