@@ -303,7 +303,7 @@ class AppStyles:
             border=ft.Border.all(1, adaptive_glass_border(page)),
             ink=on_click is not None,
             on_click=on_click,
-            animate=ft.Animation(tokens.ANIM_FAST, "easeOut"),
+            animate=ft.Animation(tokens.ANIM_FAST, ft.AnimationCurve.EASE_OUT),
         )
 
     @staticmethod

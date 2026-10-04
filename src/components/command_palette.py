@@ -18,6 +18,7 @@ from typing import Any
 import flet as ft
 
 from core import tokens
+from core.tasks import schedule
 from core.theme import AppColors
 
 logger = logging.getLogger("asase.palette")
@@ -106,7 +107,9 @@ def build_palette_index(
                 "type": "place",
                 "label": b.get("name", "Unknown"),
                 "sub": f"Bookmark • {b.get('country', '')}",
-                "callback": None,
+                "lat": b.get("lat", b.get("latitude")),
+                "lon": b.get("lon", b.get("longitude")),
+                "callback": None,  # wired by caller
             }
         )
     for r in recent_searches[:10]:
@@ -115,7 +118,9 @@ def build_palette_index(
                 "type": "place",
                 "label": r.get("name", "Unknown"),
                 "sub": f"Recent search • {r.get('country', '')}",
-                "callback": None,
+                "lat": r.get("lat", r.get("latitude")),
+                "lon": r.get("lon", r.get("longitude")),
+                "callback": None,  # wired by caller
             }
         )
 
@@ -126,7 +131,9 @@ def build_palette_index(
                 "type": "event",
                 "label": eq.get("place", "Earthquake"),
                 "sub": f"M{eq.get('magnitude', 0):.1f} • {eq.get('time_str', '')}",
-                "callback": None,
+                "lat": eq.get("latitude"),
+                "lon": eq.get("longitude"),
+                "callback": None,  # wired by caller
             }
         )
     for d in disasters[:5]:
@@ -135,7 +142,9 @@ def build_palette_index(
                 "type": "event",
                 "label": d.get("title", "Natural Event"),
                 "sub": f"{d.get('type', 'unknown').title()} • {d.get('date', '')[:10]}",
-                "callback": None,
+                "lat": d.get("latitude"),
+                "lon": d.get("longitude"),
+                "callback": None,  # wired by caller
             }
         )
 
@@ -187,7 +196,8 @@ def show_command_palette(page: ft.Page, controller=None) -> None:
 
     def _refresh():
         if controller and controller.refresh_all:
-            controller.refresh_all()
+            # refresh_all is a coroutine — schedule it, never call bare.
+            schedule(controller.refresh_all, page=page)
 
     def _toggle_theme():
         if controller and controller.set_theme_mode:
@@ -198,6 +208,38 @@ def show_command_palette(page: ft.Page, controller=None) -> None:
 
         show_version_dialog(page)
 
+    def _make_place_callback(place: dict):
+        """Focus the radar on a saved place (bookmark / recent search)."""
+
+        def _go():
+            if controller and controller.select_coordinates:
+                schedule(
+                    controller.select_coordinates,
+                    place.get("lat", 0.0),
+                    place.get("lon", 0.0),
+                    place.get("label", ""),
+                    "",
+                    page=page,
+                )
+
+        return _go
+
+    def _make_event_callback(event: dict):
+        """Focus the radar on a hazard event and open its dossier."""
+
+        def _go():
+            if not controller:
+                return
+            lat = event.get("lat", 0.0)
+            lon = event.get("lon", 0.0)
+            name = event.get("label", "")
+            if controller.select_coordinates:
+                schedule(controller.select_coordinates, lat, lon, name, "", page=page)
+            if controller.open_report:
+                schedule(controller.open_report, page=page)
+
+        return _go
+
     # Build index with wired callbacks
     index = build_palette_index(
         app_state.bookmarks,
@@ -207,25 +249,28 @@ def show_command_palette(page: ft.Page, controller=None) -> None:
     )
     # Wire action callbacks
     for item in index:
-        if item["type"] != "action":
-            continue
-        label = item["label"]
-        if "Radar" in label:
-            item["callback"] = _nav_radar
-        elif "Full Map" in label:
-            item["callback"] = _nav_map
-        elif "Space" in label:
-            item["callback"] = _nav_space
-        elif "History" in label:
-            item["callback"] = _nav_history
-        elif "Settings" in label:
-            item["callback"] = _nav_settings
-        elif "Refresh" in label:
-            item["callback"] = _refresh
-        elif "Theme" in label:
-            item["callback"] = _toggle_theme
-        elif "Version" in label or "What's New" in label:
-            item["callback"] = _open_version
+        if item["type"] == "action":
+            label = item["label"]
+            if "Radar" in label:
+                item["callback"] = _nav_radar
+            elif "Full Map" in label:
+                item["callback"] = _nav_map
+            elif "Space" in label:
+                item["callback"] = _nav_space
+            elif "History" in label:
+                item["callback"] = _nav_history
+            elif "Settings" in label:
+                item["callback"] = _nav_settings
+            elif "Refresh" in label:
+                item["callback"] = _refresh
+            elif "Theme" in label:
+                item["callback"] = _toggle_theme
+            elif "Version" in label or "What's New" in label:
+                item["callback"] = _open_version
+        elif item["type"] == "place":
+            item["callback"] = _make_place_callback(item)
+        elif item["type"] == "event":
+            item["callback"] = _make_event_callback(item)
 
     query_field = ft.TextField(
         hint_text="Type a command or search…",

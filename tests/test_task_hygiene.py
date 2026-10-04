@@ -50,8 +50,7 @@ def test_schedule_prefers_page_run_task():
     assert result is page.run_task.return_value
 
 
-def test_schedule_fallback_logs_failures(caplog):
-    import asyncio
+async def test_schedule_fallback_logs_failures(caplog):
     import logging
 
     from core.tasks import schedule
@@ -59,13 +58,10 @@ def test_schedule_fallback_logs_failures(caplog):
     async def _boom():
         raise RuntimeError("boom")
 
-    async def _run():
+    with caplog.at_level(logging.WARNING, logger="asase.tasks"):
         task = schedule(_boom)
         try:
             await task
         except RuntimeError:
             pass
-
-    with caplog.at_level(logging.WARNING, logger="asase.tasks"):
-        asyncio.new_event_loop().run_until_complete(_run())
     assert any("Background task failed" in r.message for r in caplog.records)

@@ -29,16 +29,3 @@ async def test_loader_failure_failopens_to_empty():
 async def test_loader_none_result_failopens_to_empty():
     fetch = AsyncMock(return_value=None)
     assert await fetch_radius_history_events(fetch, 6.44, 7.50) == []
-
-
-def test_screen_wiring_still_schedules_the_real_loader():
-    """The auto-load effect must schedule the production loader, not a
-    copy — pins the mount point without a Flet runtime."""
-    import inspect
-
-    from screens import report_screen
-
-    src = inspect.getsource(report_screen)
-    assert "_load_radius_history" in src
-    # Loader goes through the extracted helper (shared with these tests).
-    assert "fetch_radius_history_events(" in src

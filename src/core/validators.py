@@ -44,6 +44,9 @@ def _remember(url: str, res) -> None:
         # Insertion-ordered dict: drop the oldest entry.
         for oldest in list(_records)[: len(_records) - _MAX_RECORDS + 1]:
             _records.pop(oldest, None)
+    # Re-insert to refresh recency: a plain reassignment keeps the original
+    # insertion slot, so hot feeds would evict before one-shot URLs.
+    _records.pop(url, None)
     _records[url] = {
         "etag": res.headers.get("etag"),
         "last_modified": res.headers.get("last-modified"),

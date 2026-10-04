@@ -92,7 +92,7 @@ async def test_disaster_uses_cached_304_body():
         "services.disaster_service", _resp(200, payload, {"etag": '"e2"'})
     ):
         assert len(await DisasterService.fetch_active_disasters()) == 1
-    with mock_pool_response("services.seismic_service", _resp(304, None)):
+    with mock_pool_response("services.disaster_service", _resp(304, None)):
         assert len(await DisasterService.fetch_active_disasters()) == 1
 
 

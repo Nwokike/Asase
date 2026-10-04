@@ -42,35 +42,36 @@ class SeismicService:
                 # Transport/HTTP failure: distinguishable from an empty feed
                 # so the controller keeps last-good data + stale timestamps.
                 return None
-            if status in (200, 304) and isinstance(payload, dict):
+            if not isinstance(payload, dict):
+                # Corrupt 200 (truncated body / HTML error page): keep
+                # last-good data instead of blanking the feed.
+                return None
+            try:
+                # Fast path: whole-collection Rust-accelerated parse.
+                collection = EarthquakeFeatureCollection.model_validate(payload)
+                features = collection.features
+            except Exception:
+                # Slow path: one malformed record must not poison the
+                # batch — validate per-feature and keep the survivors.
+                raw = payload.get("features", [])
+                features = _parse_features(raw)
+            for feat in features:
                 try:
-                    # Fast path: whole-collection Rust-accelerated parse.
-                    collection = EarthquakeFeatureCollection.model_validate(payload)
-                    features = collection.features
-                except Exception:
-                    # Slow path: one malformed record must not poison the
-                    # batch — validate per-feature and keep the survivors.
-                    raw = payload.get("features", [])
-                    features = _parse_features(raw)
-                for feat in features:
-                    try:
-                        # Deleted/superseded USGS events carry null geometry;
-                        # their dict falls back to (0,0) = Null Island ghost.
-                        if feat.geometry is None:
-                            logger.debug(
-                                "USGS: skipping null-geometry event %s", feat.id
-                            )
-                            continue
-                        if feat.properties.mag >= min_magnitude:
-                            events.append(feat.to_map_dict())
-                    except Exception as ex:
-                        logger.debug("USGS: skipping unrenderable event: %s", ex)
-                logger.info(
-                    "USGS: Validated %d seismic events (min M%.1f)%s",
-                    len(events),
-                    min_magnitude,
-                    " (cached 304)" if status == 304 else "",
-                )
+                    # Deleted/superseded USGS events carry null geometry;
+                    # their dict falls back to (0,0) = Null Island ghost.
+                    if feat.geometry is None:
+                        logger.debug("USGS: skipping null-geometry event %s", feat.id)
+                        continue
+                    if feat.properties.mag >= min_magnitude:
+                        events.append(feat.to_map_dict())
+                except Exception as ex:
+                    logger.debug("USGS: skipping unrenderable event: %s", ex)
+            logger.info(
+                "USGS: Validated %d seismic events (min M%.1f)%s",
+                len(events),
+                min_magnitude,
+                " (cached 304)" if status == 304 else "",
+            )
         except Exception as ex:
             logger.warning("USGS Earthquake fetch failed: %s", ex)
             return None
@@ -91,29 +92,31 @@ class SeismicService:
             status, payload = await conditional_get_json(url, log_name="USGS FDSN")
             if status not in (200, 304):
                 return None
-            if status in (200, 304) and isinstance(payload, dict):
+            if not isinstance(payload, dict):
+                # Corrupt 200: keep last-good history, don't blank it.
+                return None
+            try:
+                collection = EarthquakeFeatureCollection.model_validate(payload)
+                features = collection.features
+            except Exception:
+                raw = payload.get("features", [])
+                features = _parse_features(raw)
+            for feat in features:
                 try:
-                    collection = EarthquakeFeatureCollection.model_validate(payload)
-                    features = collection.features
-                except Exception:
-                    raw = payload.get("features", [])
-                    features = _parse_features(raw)
-                for feat in features:
-                    try:
-                        if feat.geometry is None:
-                            logger.debug(
-                                "USGS FDSN: skipping null-geometry event %s", feat.id
-                            )
-                            continue
-                        events.append(feat.to_map_dict())
-                    except Exception as ex:
-                        logger.debug("USGS FDSN: skipping unrenderable event: %s", ex)
-                logger.info(
-                    "USGS FDSN: Found %d historical events within %d km%s",
-                    len(events),
-                    int(radius_km),
-                    " (cached 304)" if status == 304 else "",
-                )
+                    if feat.geometry is None:
+                        logger.debug(
+                            "USGS FDSN: skipping null-geometry event %s", feat.id
+                        )
+                        continue
+                    events.append(feat.to_map_dict())
+                except Exception as ex:
+                    logger.debug("USGS FDSN: skipping unrenderable event: %s", ex)
+            logger.info(
+                "USGS FDSN: Found %d historical events within %d km%s",
+                len(events),
+                int(radius_km),
+                " (cached 304)" if status == 304 else "",
+            )
         except Exception as ex:
             logger.warning("USGS FDSN radial query failed: %s", ex)
             return None

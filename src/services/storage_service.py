@@ -345,7 +345,13 @@ class StorageService:
         expires_at = time.time() + actual_ttl
         if len(self._l1_cache) >= self._max_l1_items:
             self._l1_cache.popitem(last=False)
-        self._l1_cache[key] = {"data": data, "expires_at": expires_at}
+        # Deep-copy on insert: callers pass envelopes that alias live state
+        # dicts — without this, later in-place state mutation would corrupt
+        # the cached copy (reads already deepcopy).
+        self._l1_cache[key] = {
+            "data": copy.deepcopy(data),
+            "expires_at": expires_at,
+        }
 
         if not self._is_web:
             try:

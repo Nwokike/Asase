@@ -167,6 +167,11 @@ class SpaceWeatherService:
         if isinstance(forecast_rows, list):
             kp_forecast = _parse_kp_forecast(forecast_rows)
 
+        if kp_data is None and flares is None and forecast_rows is None:
+            # Total NOAA outage: return None so the controller keeps the
+            # last-good telemetry instead of overwriting with Quiet/0.0.
+            return None
+
         telemetry = SpaceWeatherTelemetry(
             kp_index=kp_val,
             geomagnetic_status=status,

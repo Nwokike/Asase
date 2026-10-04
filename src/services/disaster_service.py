@@ -25,32 +25,35 @@ class DisasterService:
             if status not in (200, 304):
                 # Transport/HTTP failure: keep last-good data + stale stamp.
                 return None
-            if status in (200, 304) and isinstance(payload, dict):
-                try:
-                    eonet = EonetResponse.model_validate(payload)
-                    raw_events = eonet.events
-                except Exception:
-                    # One malformed event must not poison the batch —
-                    # validate per-event and keep the survivors.
-                    raw_events = []
-                    for raw in payload.get("events", []):
-                        try:
-                            raw_events.append(EonetEvent.model_validate(raw))
-                        except Exception as ex:
-                            logger.debug("EONET: skipping malformed event: %s", ex)
-                for ev in raw_events:
+            if not isinstance(payload, dict):
+                # Corrupt 200 (truncated body / HTML error page): keep
+                # last-good data instead of blanking the feed.
+                return None
+            try:
+                eonet = EonetResponse.model_validate(payload)
+                raw_events = eonet.events
+            except Exception:
+                # One malformed event must not poison the batch —
+                # validate per-event and keep the survivors.
+                raw_events = []
+                for raw in payload.get("events", []):
                     try:
-                        coords = ev.primary_coordinates
-                        if coords != (0.0, 0.0):
-                            events.append(ev.to_map_dict())
+                        raw_events.append(EonetEvent.model_validate(raw))
                     except Exception as ex:
-                        logger.debug("EONET: skipping unrenderable event: %s", ex)
-                logger.info(
-                    "NASA EONET (%s): %d events%s",
-                    category,
-                    len(events),
-                    " (cached 304)" if status == 304 else "",
-                )
+                        logger.debug("EONET: skipping malformed event: %s", ex)
+            for ev in raw_events:
+                try:
+                    coords = ev.primary_coordinates
+                    if coords != (0.0, 0.0):
+                        events.append(ev.to_map_dict())
+                except Exception as ex:
+                    logger.debug("EONET: skipping unrenderable event: %s", ex)
+            logger.info(
+                "NASA EONET (%s): %d events%s",
+                category,
+                len(events),
+                " (cached 304)" if status == 304 else "",
+            )
         except Exception as ex:
             logger.warning("NASA EONET fetch failed: %s", ex)
             return None

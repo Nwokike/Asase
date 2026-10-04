@@ -163,3 +163,37 @@ async def test_web_settings_persist_through_shared_preferences():
     revived = StorageService(page)
     revived._prefs = prefs
     assert await revived.get("asase.theme") == "dark"
+
+
+@pytest.mark.asyncio
+async def test_storage_l1_eviction_capped(tmp_path, monkeypatch):
+    """L1 is a bounded LRU: past the cap the oldest key is evicted."""
+    monkeypatch.setenv("FLET_APP_STORAGE_DATA", str(tmp_path))
+    service = StorageService(_native_page())
+    service._max_l1_items = 2  # shrink the cap for a fast test
+
+    await service.set_cached_telemetry("k1", {"v": 1}, ttl_seconds=60.0)
+    await service.set_cached_telemetry("k2", {"v": 2}, ttl_seconds=60.0)
+    await service.set_cached_telemetry("k3", {"v": 3}, ttl_seconds=60.0)
+
+    assert len(service._l1_cache) == 2
+    assert "k1" not in service._l1_cache  # oldest evicted
+    assert "k2" in service._l1_cache
+    assert "k3" in service._l1_cache
+
+
+@pytest.mark.asyncio
+async def test_storage_l1_insert_deepcopies(tmp_path, monkeypatch):
+    """The L1 envelope must not alias live state dicts — a later in-place
+    mutation of the caller's structure must not corrupt the cache."""
+    monkeypatch.setenv("FLET_APP_STORAGE_DATA", str(tmp_path))
+    service = StorageService(_native_page())
+
+    payload = {"weather": {"temp": 24.5}}
+    await service.set_cached_telemetry("alias_key", payload, ttl_seconds=60.0)
+
+    # Caller mutates its own structure after caching (state refresh pattern)
+    payload["weather"]["temp"] = -40.0
+
+    cached = await service.get_cached_telemetry("alias_key")
+    assert cached == {"weather": {"temp": 24.5}}

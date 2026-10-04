@@ -129,13 +129,19 @@ async def test_atmospheric_service_parse():
 
 @pytest.mark.asyncio
 async def test_geocoding_service_parse():
-    with mock_pool_get(
-        "services.geocoding_service",
-        {"results": [{"name": "Accra", "latitude": 5.556, "longitude": -0.1969}]},
-    ):
-        results = await GeocodingService.search_cities("Accra")
-    assert len(results) == 1
-    assert results[0]["name"] == "Accra"
+    from services import geocoding_service
+
+    geocoding_service._GEOCODE_LRU.clear()
+    try:
+        with mock_pool_get(
+            "services.geocoding_service",
+            {"results": [{"name": "Accra", "latitude": 5.556, "longitude": -0.1969}]},
+        ):
+            results = await GeocodingService.search_cities("Accra")
+        assert len(results) == 1
+        assert results[0]["name"] == "Accra"
+    finally:
+        geocoding_service._GEOCODE_LRU.clear()
 
 
 @pytest.mark.asyncio
@@ -170,7 +176,7 @@ async def test_update_service_parse():
 
 
 @pytest.mark.asyncio
-async def test_ad_service_pool_wiring(mock_page):
+async def test_ad_service_platform_gating(mock_page):
     # AdService is UI-gated (no HTTP of its own); assert platform gating only.
     mock_page.platform.is_mobile.return_value = False
     svc = AdService(mock_page)

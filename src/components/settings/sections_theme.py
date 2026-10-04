@@ -56,7 +56,7 @@ def build_theme_section(
                 else ft.Colors.with_opacity(0.04, ft.Colors.ON_SURFACE)
             ),
             expand=True,
-            animate=ft.Animation(tokens.ANIM_FAST, "easeOut"),
+            animate=ft.Animation(tokens.ANIM_FAST, ft.AnimationCurve.EASE_OUT),
             on_click=lambda _: schedule(change_theme_fn, mode, page=page),
         )
 

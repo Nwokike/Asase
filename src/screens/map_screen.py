@@ -27,7 +27,9 @@ def MapScreen() -> Control:
 
     # Multi-select layer model: each hazard type toggles independently.
     # "all" is a convenience toggle, not a filter mode.
-    active_layers, set_active_layers = ft.use_state({"earthquake", "wildfire", "storm"})
+    active_layers, set_active_layers = ft.use_state(
+        {"earthquake", "wildfire", "storm", "volcano", "flood"}
+    )
     selected_event, set_selected_event = ft.use_state(None)
     satellite, set_satellite = ft.use_state(False)
     map_ref = ft.use_ref(None)
@@ -150,13 +152,15 @@ def MapScreen() -> Control:
 
     # Right-edge vertical layer stack (Windy-style): each hazard type
     # toggles independently; satellite is a basemap switch.
+    ALL_LAYERS = {"earthquake", "wildfire", "storm", "volcano", "flood"}
+
     def _toggle_layer(layer: str):
         if layer == "all":
             # Toggle all on/off
-            if active_layers == {"earthquake", "wildfire", "storm"}:
+            if active_layers == ALL_LAYERS:
                 set_active_layers(set())
             else:
-                set_active_layers({"earthquake", "wildfire", "storm"})
+                set_active_layers(set(ALL_LAYERS))
         else:
             new_layers = set(active_layers)
             if layer in new_layers:
@@ -180,6 +184,19 @@ def MapScreen() -> Control:
             "wildfire" in active_layers,
         ),
         ("storm", ft.Icons.CYCLONE_ROUNDED, "Storms", "storm" in active_layers),
+        (
+            "volcano",
+            ft.Icons.VOLCANO_ROUNDED,
+            "Volcanoes",
+            "volcano" in active_layers,
+        ),
+        ("flood", ft.Icons.FLOOD_ROUNDED, "Floods", "flood" in active_layers),
+        (
+            "all",
+            ft.Icons.LAYERS_ROUNDED,
+            "All layers",
+            active_layers == ALL_LAYERS,
+        ),
     ]
 
     layer_stack = ft.Container(

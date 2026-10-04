@@ -58,9 +58,9 @@ def test_app_state_ctx_wraps_singleton():
     from core.state import state
     from state.app_state import AppStateCtx
 
-    assert AppStateCtx is not None
-    # The context default is the shared state object.
-    assert state is not None
+    # The context default IS the shared state object — components reading
+    # the context with no provider mounted get the live singleton.
+    assert AppStateCtx.default_value is state
 
 
 @pytest.mark.asyncio

@@ -19,7 +19,9 @@ from core.device_services import DeviceServices
 def _reset_locate_in_flight():
     """Isolate the class-level flag: a mid-test failure otherwise poisons
     every later locate test."""
+    DeviceServices._locate_in_flight = False
     yield
+    DeviceServices._locate_in_flight = False
 
 
 def _geo(

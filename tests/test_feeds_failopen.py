@@ -138,8 +138,10 @@ async def test_geocoding_null_strings_do_not_reject_response():
 
 @pytest.mark.asyncio
 async def test_space_weather_null_kp_does_not_crash_fetch():
-    async def _fake_get(self, url, **kwargs):
-        if "planetary_k_index" in url or "kp" in url.lower():
+    # NOTE: no `self` — the seam installs this as AsyncMock(side_effect=func)
+    # and production calls client.get(url) with one positional arg.
+    async def _fake_get(url, **kwargs):
+        if "k-index" in url:  # NOAA planetary Kp index + forecast feeds
             return _resp([{"time_tag": "2026-01-01T00:00:00", "Kp": None}])
         return _resp(None, status=500)
 
@@ -147,6 +149,18 @@ async def test_space_weather_null_kp_does_not_crash_fetch():
         data = await SpaceWeatherService.fetch_space_weather()
     assert data["kp_index"] == 0.0
     assert data["geomagnetic_status"] == "Quiet (Normal)"
+
+
+@pytest.mark.asyncio
+async def test_space_weather_total_outage_keeps_last_good():
+    """All three NOAA feeds failing must return None (controller keeps
+    last-good telemetry) instead of a Quiet/0.0 default dict."""
+
+    async def _fake_get(url, **kwargs):
+        return _resp(None, status=500)
+
+    with mock_pool_side_effect("services.space_weather_service", _fake_get):
+        assert await SpaceWeatherService.fetch_space_weather() is None
 
 
 @pytest.mark.asyncio

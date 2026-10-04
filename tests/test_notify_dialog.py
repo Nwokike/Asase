@@ -94,18 +94,14 @@ def test_page_has_no_legacy_snackbar_api():
     assert issubclass(ft.SnackBar, ft.DialogControl)
 
 
-def test_check_from_dialog_up_to_date_path():
-    import asyncio
-
+async def test_check_from_dialog_up_to_date_path():
     from services import update_service
 
     page = _page()
     with patch.object(
         update_service.UpdateService, "check_for_update", return_value=None
     ):
-        asyncio.get_event_loop_policy().new_event_loop().run_until_complete(
-            version_dialog.check_from_dialog(page)
-        )
+        await version_dialog.check_from_dialog(page)
     assert page.show_dialog.call_count == 1
     snack = page.show_dialog.call_args.args[0]
     assert isinstance(snack, ft.SnackBar)
