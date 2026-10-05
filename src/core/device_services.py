@@ -254,8 +254,14 @@ class DeviceServices:
     @staticmethod
     async def launch_url(url_launcher: ft.UrlLauncher | None, url: str) -> None:
         """Launch web link in external browser or custom tab."""
-        if url_launcher and url:
-            try:
-                await url_launcher.launch_url(url)
-            except Exception as ex:
-                logger.warning("UrlLauncher failed for %s: %s", url, ex)
+        if not url:
+            return
+        if not url_launcher:
+            # Never silent: an unmounted service used to eat every web click
+            # with no log at all.
+            logger.warning("URL launch dropped (no UrlLauncher mounted): %s", url)
+            return
+        try:
+            await url_launcher.launch_url(url)
+        except Exception as ex:
+            logger.warning("UrlLauncher failed for %s: %s", url, ex)

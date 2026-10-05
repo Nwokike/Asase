@@ -68,6 +68,16 @@ DEFAULT_SCAN_QUESTION = (
     "is anything clustered nearby I should know about?"
 )
 
+
+def followup_transcript(question: str) -> str:
+    """Transcript marker appended before a follow-up answer streams in.
+
+    Renders in the Markdown answer panel as a divider + the asked question,
+    so the single answer area reads as a running Q/A thread (both surfaces).
+    """
+    return f"\n\n---\n\n**You:** {question.strip()}\n\n"
+
+
 _USER_AGENT = "Asase-Earth-Intelligence/1.0"
 
 
@@ -199,20 +209,37 @@ async def stream_briefing(
     question: str,
     on_token: Callable[[str], None],
     context: str | None = None,
+    history: str | None = None,
 ) -> AIResult:
-    """Stream a grounded answer about the location's telemetry, per text route."""
+    """Stream a grounded answer about the location's telemetry, per text route.
+
+    ``history`` carries the prior briefing/transcript for follow-up questions —
+    the model is told to answer the question directly instead of regenerating
+    the full report. Empty questions never reach the gateway.
+    """
+    if not question or not question.strip():
+        return AIResult()
+    system = SYSTEM_PROMPT
+    user = f"MEASURED TELEMETRY:\n{context or build_dossier_context()}\n\n"
+    if history and history.strip():
+        system += (
+            " When a PREVIOUS BRIEFING and a follow-up QUESTION are provided, "
+            "answer the question directly and concisely — do not re-emit the "
+            "full briefing format unless the question explicitly asks for it."
+        )
+        user += (
+            f"PREVIOUS BRIEFING:\n{history}\n\n"
+            "Answer the follow-up QUESTION directly and concisely, referring "
+            "to the previous briefing where relevant. Do NOT regenerate the "
+            "full briefing unless asked.\n\n"
+        )
+    user += f"QUESTION: {question}"
     payload = {
         "task_type": "text",
         "stream": True,
         "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": (
-                    f"MEASURED TELEMETRY:\n{context or build_dossier_context()}\n\n"
-                    f"QUESTION: {question}"
-                ),
-            },
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
         ],
     }
     return await _stream_chat(payload, on_token)
@@ -223,13 +250,18 @@ async def stream_map_scan(
     question: str,
     on_token: Callable[[str], None],
     context: str | None = None,
+    history: str | None = None,
 ) -> AIResult:
     """Stream an analysis of a hazard-map screenshot, via the multimodal route.
 
     Follow-up questions on the same capture re-send the identical image with
-    the new question. Oversized captures fail soft (gateway caps JSON bodies
-    at 10MB) — capture at pixel_ratio=1 to stay comfortably under it.
+    the new question plus ``history`` (the prior scan text) so the model
+    answers the follow-up instead of re-scanning. Oversized captures fail
+    soft (gateway caps JSON bodies at 10MB) — capture at pixel_ratio=1 to
+    stay comfortably under it. Empty questions never reach the gateway.
     """
+    if not question or not question.strip():
+        return AIResult()
     try:
         b64 = base64.b64encode(png_bytes).decode("ascii")
     except Exception as ex:
@@ -241,23 +273,34 @@ async def stream_map_scan(
         )
         return AIResult()
 
+    system = MAP_SCAN_SYSTEM_PROMPT
+    text = (
+        "The screenshot shows the app's hazard map. "
+        f"MEASURED TELEMETRY:\n{context or build_dossier_context()}\n\n"
+    )
+    if history and history.strip():
+        system += (
+            " When a PREVIOUS SCAN and a follow-up QUESTION are provided, "
+            "answer the question directly and concisely — do not re-run the "
+            "full scan format unless the question explicitly asks for it."
+        )
+        text += (
+            f"PREVIOUS SCAN:\n{history}\n\n"
+            "Answer the follow-up QUESTION directly and concisely, referring "
+            "to the previous scan where relevant. Do NOT regenerate the full "
+            "scan unless asked.\n\n"
+        )
+    text += f"QUESTION: {question}"
+
     payload = {
         "task_type": "multimodal",
         "stream": True,
         "messages": [
-            {"role": "system", "content": MAP_SCAN_SYSTEM_PROMPT},
+            {"role": "system", "content": system},
             {
                 "role": "user",
                 "content": [
-                    {
-                        "type": "text",
-                        "text": (
-                            "The screenshot shows the app's hazard map. "
-                            f"MEASURED TELEMETRY:\n"
-                            f"{context or build_dossier_context()}\n\n"
-                            f"QUESTION: {question}"
-                        ),
-                    },
+                    {"type": "text", "text": text},
                     {
                         "type": "image_url",
                         "image_url": {"url": f"data:image/png;base64,{b64}"},

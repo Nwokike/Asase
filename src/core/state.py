@@ -20,7 +20,6 @@ class AppState:
     # Network & Lifecycle
     is_online: bool = True
     is_loading: bool = False
-    loading_message: str = "Updating planetary telemetry..."
     is_first_launch: bool = True
     has_accepted_terms: bool = False
     theme_mode: ft.ThemeMode = ft.ThemeMode.SYSTEM

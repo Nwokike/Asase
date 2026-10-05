@@ -5,6 +5,7 @@ from __future__ import annotations
 import flet as ft
 
 from core import tokens
+from core.actions import open_url_action
 from core.geo_utils import calculate_haversine_distance_km, format_distance
 from core.tasks import schedule
 from core.theme import AppColors, AppStyles
@@ -129,6 +130,10 @@ def TelemetryCard(
                 )
                 schedule(controller.share_text, msg, title, page=_card_page)
 
+        # Client-side open (web popup-proof); None outside a runtime, where
+        # the button falls back to the on_click Python path.
+        source_action = open_url_action(event_url)
+
         def _on_link_click(e):
             if controller.launch_url and event_url:
                 schedule(controller.launch_url, event_url, page=_card_page)
@@ -196,7 +201,15 @@ def TelemetryCard(
                                                 icon=ft.Icons.OPEN_IN_NEW_ROUNDED,
                                                 icon_size=16,
                                                 tooltip="Official Source",
-                                                on_click=_on_link_click,
+                                                action=source_action,
+                                                # action runs client-side first;
+                                                # Python path only when there is
+                                                # no action (avoids double-open).
+                                                on_click=(
+                                                    None
+                                                    if source_action
+                                                    else _on_link_click
+                                                ),
                                             )
                                         ]
                                         if event_url and controller.launch_url

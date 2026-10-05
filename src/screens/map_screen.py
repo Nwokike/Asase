@@ -13,7 +13,11 @@ from core import tokens
 from core.tasks import schedule
 from core.theme import AppColors, is_dark_mode
 from hooks.use_map_center import use_map_center
-from services.ai_service import DEFAULT_SCAN_QUESTION, stream_map_scan
+from services.ai_service import (
+    DEFAULT_SCAN_QUESTION,
+    followup_transcript,
+    stream_map_scan,
+)
 from state.app_state import AppStateCtx
 from state.controller_ctx import ControllerMethodsCtx
 
@@ -50,7 +54,7 @@ def MapScreen() -> Control:
     # as False and fire duplicate captures — the ref is immediate.
     scan_busy_guard = ft.use_ref(False)
 
-    async def _run_scan(q: str):
+    async def _run_scan(q: str, follow_up: bool = False):
         if scan_busy_guard.current:
             return
         shot = scan_ref.current
@@ -59,7 +63,12 @@ def MapScreen() -> Control:
             return
         scan_busy_guard.current = True
         set_scan_busy(True)
-        set_scan_answer("")
+        # History/prefix captured BEFORE the state writes: a follow-up keeps
+        # the thread and sends the prior scan text so the model answers
+        # instead of re-scanning from scratch.
+        prior = scan_answer if follow_up else ""
+        prefix = f"{scan_answer}{followup_transcript(q)}" if follow_up else ""
+        set_scan_answer(prefix)
         set_scan_unavailable(False)
         set_scan_model("")
         try:
@@ -76,11 +85,11 @@ def MapScreen() -> Control:
 
         def _collect(chunk: str):
             chunks.append(chunk)
-            set_scan_answer("".join(chunks))
+            set_scan_answer(prefix + "".join(chunks))
 
         try:
-            result = await stream_map_scan(png, q, _collect)
-            set_scan_answer(result.text or "".join(chunks))
+            result = await stream_map_scan(png, q, _collect, history=prior or None)
+            set_scan_answer(prefix + (result.text or "".join(chunks)))
             set_scan_model(result.model)
             if not (result.text or chunks):
                 set_scan_unavailable(True)
@@ -97,12 +106,15 @@ def MapScreen() -> Control:
             set_scan_answer("")
             return
         set_scan_open(True)
+        # Rescan is a fresh run — clears any prior transcript.
         schedule(_run_scan, DEFAULT_SCAN_QUESTION, page=page)
 
-    def _on_scan_ask(e=None):
-        q = scan_question
+    def _on_scan_ask(q: str = ""):
+        # Event-first (the submit's field value), state as fallback.
+        text = (q or "").strip() or scan_question.strip()
         set_scan_question("")
-        schedule(_run_scan, q, page=page)
+        if text:
+            schedule(_run_scan, text, True, page=page)
 
     # Follow the active focus point (search / GPS / suggestion selections)
     use_map_center(map_ref, state.current_lat, state.current_lon, 10.0)

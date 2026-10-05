@@ -9,6 +9,7 @@ import flet as ft
 import flet_map as map
 
 from core import tokens
+from core.actions import open_url_action
 from core.theme import AppColors
 
 logger = logging.getLogger("asase.map")
@@ -210,6 +211,9 @@ def build_event_detail_sheet(
         details.append(str(event["category_title"]))
 
     url = str(event.get("url") or "")
+    # Client-side open (web popup-proof); None outside a runtime, where
+    # the button falls back to the on_click Python path.
+    source_action = open_url_action(url)
     share_msg = (
         f"\U0001f30d ASASE PLANETARY ALERT\n{title}\n"
         f"{' • '.join(details)}{f'\n{url}' if url else ''}"
@@ -301,7 +305,15 @@ def build_event_detail_sheet(
                                         ft.TextButton(
                                             "SOURCE",
                                             icon=ft.Icons.OPEN_IN_NEW_ROUNDED,
-                                            on_click=lambda _: on_open_url(url),
+                                            action=source_action,
+                                            # action runs client-side first;
+                                            # Python path only when there is
+                                            # no action (avoids double-open).
+                                            on_click=(
+                                                None
+                                                if source_action
+                                                else lambda _: on_open_url(url)
+                                            ),
                                         )
                                     ]
                                     if url and on_open_url

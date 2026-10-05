@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-"""Patch Flet Web build output with a simple theme-reactive boot splash and Pyodide bridge.
+"""Patch Flet Web build output with the Mission Control boot splash and Pyodide bridge.
 
-Pure loading state — brand icon, spinner, and rotating status lines
-("Starting Earth Intelligence...", "Initializing telemetry core...",
-"Connecting planetary feeds...") — covering the 3-7s Pyodide/WASM cold boot.
+Staged, honest progress over the 3-7s (cold up to ~45s) Pyodide/WASM boot:
+a determinate bar + percentage + a checklist whose four rows check off on
+REAL milestones (paint → assets loaded → engine handshake → feeds painted →
+first frame) — no timer-driven fake progress. The three status lines live
+on as checklist rows ("Starting Earth Intelligence...", "Initializing
+telemetry core...", "Connecting planetary feeds...").
 
-Theme follows the app exactly: the user's saved Asase theme (dark/light)
-when one exists, else the OS preference. Colors come from the app palette
-(core/theme.py AppColors) — never guessed. The splash carries NO onboarding
-content and never touches asase.onboarding_done; first-run onboarding is the
-in-app deck.
+Theme follows the app exactly: the user's saved Asase theme (dark/light/
+system) when one exists, else the live OS preference (a mid-load OS flip
+updates the splash). Colors come from the app palette (core/theme.py
+AppColors) — never guessed. The splash carries NO onboarding content and
+never touches asase.onboarding_done; it IS the pre-load experience.
 """
 
 import os
@@ -45,23 +48,19 @@ SPLASH_HTML = f"""
   <style>
     #asase-splash {{
       --bg: {_DARK["bg"]};
+      --bg2: #111827;
+      --surface: #111827;
       --text: {_DARK["text"]};
       --muted: {_DARK["muted"]};
       --primary: {_DARK["primary"]};
-    }}
-    #asase-splash.light {{
-      --bg: {_LIGHT["bg"]};
-      --text: {_LIGHT["text"]};
-      --muted: {_LIGHT["muted"]};
-      --primary: {_LIGHT["primary"]};
-    }}
-    #asase-splash {{
+      --border: rgba(255, 255, 255, 0.10);
+      --track: rgba(255, 255, 255, 0.08);
       position: fixed;
       top: 0;
       left: 0;
       width: 100vw;
       height: 100vh;
-      background-color: var(--bg);
+      background: linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -72,110 +71,291 @@ SPLASH_HTML = f"""
       user-select: none;
       font-family: "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       color: var(--text);
+      margin: 0;
+      padding: 0;
     }}
-    #asase-splash .asase-wrap {{
+    #asase-splash.light {{
+      --bg: {_LIGHT["bg"]};
+      --bg2: #F1F5F9;
+      --surface: #FFFFFF;
+      --text: {_LIGHT["text"]};
+      --muted: {_LIGHT["muted"]};
+      --primary: {_LIGHT["primary"]};
+      --border: rgba(15, 23, 42, 0.10);
+      --track: rgba(15, 23, 42, 0.08);
+    }}
+    #asase-splash .asase-card {{
+      width: min(360px, calc(100vw - 48px));
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 22px;
-      padding: 24px;
+      gap: 18px;
+      padding: 28px 24px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+      box-sizing: border-box;
     }}
     #asase-splash .asase-logo {{
       width: 64px;
       height: 64px;
       border-radius: 16px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
     }}
-    #asase-splash .asase-status-row {{
+    #asase-splash .asase-pct {{
+      font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-variant-numeric: tabular-nums;
+      font-size: 40px;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--text);
+    }}
+    #asase-splash .asase-step {{
       display: flex;
       align-items: center;
-      gap: 10px;
-      font-size: 12px;
+      gap: 8px;
+      font-size: 12.5px;
       font-weight: 500;
       color: var(--muted);
+      min-height: 16px;
     }}
     #asase-splash .asase-spinner {{
-      width: 16px;
-      height: 16px;
+      width: 14px;
+      height: 14px;
       border: 2px solid rgba(16, 185, 129, 0.3);
       border-top-color: var(--primary);
       border-radius: 50%;
       animation: asase-spin 0.75s linear infinite;
+      flex: none;
     }}
     @keyframes asase-spin {{
       to {{ transform: rotate(360deg); }}
+    }}
+    #asase-splash .asase-bar {{
+      width: 100%;
+      height: 4px;
+      background: var(--track);
+      border-radius: 999px;
+      overflow: hidden;
+    }}
+    #asase-splash .asase-bar-fill {{
+      height: 100%;
+      width: 5%;
+      background: var(--primary);
+      border-radius: 999px;
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+      transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+    }}
+    #asase-splash .asase-checklist {{
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 12.5px;
+    }}
+    #asase-splash .asase-checklist li {{
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+    }}
+    #asase-splash .asase-checklist li .dot {{
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 1.5px solid var(--muted);
+      box-sizing: border-box;
+      flex: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      line-height: 1;
+    }}
+    #asase-splash .asase-checklist li[data-state="current"] {{
+      color: var(--text);
+    }}
+    #asase-splash .asase-checklist li[data-state="current"] .dot {{
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+      animation: asase-pulse 1.4s ease-in-out infinite;
+    }}
+    #asase-splash .asase-checklist li[data-state="done"] {{
+      color: var(--text);
+    }}
+    #asase-splash .asase-checklist li[data-state="done"] .dot {{
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #0B0F17;
+    }}
+    #asase-splash .asase-checklist li[data-state="done"] .dot::after {{
+      content: "\\2713";
+    }}
+    @keyframes asase-pulse {{
+      50% {{ opacity: 0.55; }}
+    }}
+    #asase-splash .asase-footer {{
+      font-size: 11px;
+      color: var(--muted);
+      opacity: 0.85;
+      text-align: center;
     }}
     #asase-splash .fade-out {{
       opacity: 0 !important;
       pointer-events: none;
     }}
+    @media (prefers-reduced-motion: reduce) {{
+      #asase-splash .asase-bar-fill {{ transition: none; }}
+      #asase-splash .asase-checklist li[data-state="current"] .dot {{ animation: none; }}
+      #asase-splash .asase-spinner {{ animation-duration: 1.5s; }}
+    }}
   </style>
 
-  <div class="asase-wrap">
+  <div class="asase-card">
     <img class="asase-logo" src="icon.png" alt="Asase" />
-    <div class="asase-status-row">
-      <div class="asase-spinner"></div>
-      <div id="asase-status-text">Starting Earth Intelligence...</div>
+    <div class="asase-pct" id="asase-pct">0%</div>
+    <div class="asase-step">
+      <span class="asase-spinner" aria-hidden="true"></span>
+      <span id="asase-step">Step 1 of 4 · Starting Earth Intelligence...</span>
     </div>
+    <div class="asase-bar"><div class="asase-bar-fill" id="asase-bar-fill"></div></div>
+    <ul class="asase-checklist" id="asase-checklist">
+      <li data-state="current"><span class="dot"></span>Starting Earth Intelligence...</li>
+      <li data-state="pending"><span class="dot"></span>Initializing telemetry core...</li>
+      <li data-state="pending"><span class="dot"></span>Connecting planetary feeds...</li>
+      <li data-state="pending"><span class="dot"></span>Rendering first frame...</li>
+    </ul>
+    <div class="asase-footer">First load ~45–60 s · runtime caches for next visit</div>
   </div>
 
   <script>
     (function() {{
-      // Theme: honor the user's saved Asase theme (SharedPreferences on web
-      // prefixes localStorage keys with "flutter."; legacy walks wrote the
-      // bare key), falling back to the OS preference. Never guess.
       var splash = document.getElementById("asase-splash");
-      var raw = null;
-      try {{
-        raw = localStorage.getItem("flutter.asase_storage")
-           || localStorage.getItem("asase_storage");
-      }} catch (e) {{}}
-      try {{
-        var saved = raw ? JSON.parse(raw) : null;
-        var theme = saved ? (saved["asase.theme"] || saved["theme"]) : null;
-        var dark = theme === "dark" ? true
-                 : theme === "light" ? false
-                 : window.matchMedia("(prefers-color-scheme: dark)").matches;
-        if (!dark) splash.classList.add("light");
-      }} catch (e) {{
-        if (!window.matchMedia("(prefers-color-scheme: dark)").matches)
-          splash.classList.add("light");
+      var KEYS = ["flutter.asase_storage", "asase_storage"];
+
+      function readBlob() {{
+        try {{
+          for (var i = 0; i < KEYS.length; i++) {{
+            var raw = localStorage.getItem(KEYS[i]);
+            if (raw) return {{ key: KEYS[i], data: JSON.parse(raw) }};
+          }}
+        }} catch (e) {{}}
+        return null;
       }}
 
-      // Rotating micro-stage feedback while the WASM engine boots
-      var stages = [
+      // Theme: saved Asase theme (dark/light; "system" falls through) >
+      // live OS preference — an OS flip mid-load updates the splash.
+      var mq = window.matchMedia("(prefers-color-scheme: dark)");
+      function applyTheme() {{
+        var cur = readBlob();
+        var theme = cur && cur.data
+          ? (cur.data["asase.theme"] || cur.data["theme"])
+          : null;
+        var dark = theme === "dark" ? true
+                 : theme === "light" ? false
+                 : mq.matches;
+        if (dark) splash.classList.remove("light");
+        else splash.classList.add("light");
+      }}
+      applyTheme();
+      if (mq.addEventListener) mq.addEventListener("change", applyTheme);
+
+      // Clear a stale boot key from a previous session so this boot's poll
+      // can't skip a stage off last session's stamp.
+      var blob = readBlob();
+      if (blob && blob.data && "asase.boot" in blob.data) {{
+        try {{
+          delete blob.data["asase.boot"];
+          localStorage.setItem(blob.key, JSON.stringify(blob.data));
+        }} catch (e) {{}}
+      }}
+
+      // ── Staged progress: bands advance only on real milestones ──
+      var CEIL = [40, 65, 95, 100];  // per-stage ceilings; creep caps at ceiling-2
+      var STEPS = [
         "Starting Earth Intelligence...",
         "Initializing telemetry core...",
-        "Connecting planetary feeds..."
+        "Connecting planetary feeds...",
+        "Rendering first frame..."
       ];
-      var idx = 0;
-      var statusEl = document.getElementById("asase-status-text");
-      var timer = setInterval(function() {{
-        if (!document.getElementById("asase-splash")) {{
-          clearInterval(timer);
-          return;
-        }}
-        idx = (idx + 1) % stages.length;
-        if (statusEl) {{
-          statusEl.style.opacity = '0';
-          setTimeout(function() {{
-            if (statusEl) {{
-              statusEl.innerText = stages[idx];
-              statusEl.style.opacity = '1';
-            }}
-          }}, 300);
-        }}
-      }}, 3500);
+      var pct = 5, stage = 0, done = false, handshake = false, feedsDone = false;
+      var poll = null;
+      var pctEl = document.getElementById("asase-pct");
+      var stepEl = document.getElementById("asase-step");
+      var fillEl = document.getElementById("asase-bar-fill");
+      var rows = document.querySelectorAll("#asase-checklist li");
 
-      // Engine ready — fade the boot screen away. Nothing else is touched;
-      // first-run onboarding is owned by the in-app deck.
-      window.__asaseSignalReady = function() {{
-        clearInterval(timer);
+      function render() {{
+        var p = Math.max(0, Math.min(Math.round(pct), 100));
+        if (pctEl) pctEl.innerText = p + "%";
+        if (fillEl) fillEl.style.width = p + "%";
+        if (stepEl)
+          stepEl.innerText = "Step " + Math.min(stage + 1, 4) + " of 4 · "
+            + STEPS[Math.min(stage, 3)];
+        for (var i = 0; i < rows.length; i++)
+          rows[i].setAttribute("data-state",
+            i < stage ? "done" : (i === stage ? "current" : "pending"));
+      }}
+
+      function reach(value, nextStage) {{  // monotonic — never goes back
+        if (value > pct) pct = value;
+        if (nextStage > stage) stage = nextStage;
+        render();
+      }}
+
+      function finishFeeds() {{  // real boot key OR 6s watchdog post-handshake
+        if (feedsDone) return;
+        feedsDone = true;
+        if (poll) clearInterval(poll);
+        reach(95, 3);
+        setTimeout(dismiss, 250);
+      }}
+
+      function dismiss() {{
+        if (done) return;
+        done = true;
+        clearInterval(creep);
+        reach(100, 4);
         splash.classList.add("fade-out");
         setTimeout(function() {{
           if (splash && splash.parentNode) splash.parentNode.removeChild(splash);
         }}, 350);
-      }};
+      }}
+
+      function bootFresh() {{  // controller stamps asase.boot after first paint
+        var b = readBlob();
+        if (!b || !b.data) return false;
+        var n = Number(b.data["asase.boot"]);
+        return !!n && Math.abs(Date.now() / 1000 - n) < 3600;
+      }}
+
+      function onHandshake() {{  // first dartOnMessage — Python engine is up
+        if (handshake || done) return;
+        handshake = true;
+        reach(65, 2);
+        poll = setInterval(function() {{
+          if (bootFresh()) finishFeeds();
+        }}, 250);
+        setTimeout(finishFeeds, 6000);  // watchdog: storage missing/broken
+      }}
+
+      // Kept exact: python.js DISMISS_BRIDGE calls this on every message.
+      window.__asaseSignalReady = onHandshake;
+
+      if (document.readyState === "complete") reach(40, 1);
+      else window.addEventListener("load", function() {{ reach(40, 1); }});
+      setTimeout(function() {{ if (!done) finishFeeds(); }}, 45000);  // absolute cap
+
+      var creep = setInterval(function() {{  // eased motion INSIDE the band
+        if (done) return;
+        var cap = CEIL[Math.min(stage, 3)] - 2;
+        if (pct < cap) {{ pct += 1; render(); }}
+      }}, 1300);
+
+      render();  // paint at 5% immediately
     }})();
   </script>
 </div>
@@ -201,14 +381,12 @@ def patch_web():
                 '<head><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="dns-prefetch" href="https://cdn.jsdelivr.net">',
             )
 
-        # 2. Inject Theme-Reactive Boot Splash
+        # 2. Inject the Mission Control boot splash
         if 'id="asase-splash"' not in html:
             html = html.replace("<body>", "<body>" + SPLASH_HTML)
             with open(INDEX_PATH, "w", encoding="utf-8") as f:
                 f.write(html)
-            print(
-                f"Patched {INDEX_PATH} with theme-reactive boot splash + resource hints"
-            )
+            print(f"Patched {INDEX_PATH} with staged boot splash + resource hints")
             patched += 1
         else:
             splash_present = True

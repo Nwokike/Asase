@@ -303,3 +303,136 @@ def test_map_scan_section_states():
         "", True, False, "", "", lambda e: None, lambda e: None, lambda e: None
     )
     assert any("Scanning map view" in t for t in [x.value for x in walk_texts(busy)])
+
+
+# ── Follow-up chat: history payloads, empty guard, transcript, wiring ──
+
+_PRIOR_BRIEFING = "**Lagos: quiet seismic week.** • AQI 42 — good"
+
+
+def _stream_client() -> MagicMock:
+    client = MagicMock()
+    client.stream = MagicMock(return_value=_FakeStreamContext(["data: [DONE]"]))
+    return client
+
+
+async def test_stream_briefing_followup_includes_prior_answer():
+    client = _stream_client()
+    with patch("core.network.NetworkManager.get_client", return_value=client):
+        await stream_briefing(
+            "Should I jog outdoors?", lambda t: None, history=_PRIOR_BRIEFING
+        )
+    payload = client.stream.call_args.kwargs["json"]
+    system = payload["messages"][0]["content"]
+    user = payload["messages"][1]["content"]
+    assert _PRIOR_BRIEFING in user
+    assert "Should I jog outdoors?" in user
+    assert DEFAULT_QUESTION not in user  # typed question, not the default
+    # The system prompt gains the direct-answer rule for follow-ups
+    assert "answer the question directly" in system
+
+
+async def test_stream_briefing_default_flow_has_no_history_block():
+    client = _stream_client()
+    with patch("core.network.NetworkManager.get_client", return_value=client):
+        await stream_briefing(DEFAULT_QUESTION, lambda t: None)
+    payload = client.stream.call_args.kwargs["json"]
+    user = payload["messages"][1]["content"]
+    assert "PREVIOUS BRIEFING" not in user
+    assert f"QUESTION: {DEFAULT_QUESTION}" in user
+
+
+async def test_stream_map_scan_followup_includes_prior_scan():
+    prior_scan = "**Scan:** wildfire cluster NE"
+    client = _stream_client()
+    with patch("core.network.NetworkManager.get_client", return_value=client):
+        await stream_map_scan(
+            b"png",
+            "Any flood markers near the river?",
+            lambda t: None,
+            history=prior_scan,
+        )
+    payload = client.stream.call_args.kwargs["json"]
+    content = payload["messages"][1]["content"]
+    text_part = content[0]["text"]
+    assert prior_scan in text_part
+    assert "Any flood markers near the river?" in text_part
+    assert DEFAULT_SCAN_QUESTION not in text_part
+    # Image context is still attached on follow-ups
+    assert content[1]["type"] == "image_url"
+
+
+async def test_empty_question_never_reaches_gateway():
+    client = _stream_client()
+    with patch("core.network.NetworkManager.get_client", return_value=client):
+        assert (await stream_briefing("   ", lambda t: None)).text == ""
+        assert (await stream_briefing(None, lambda t: None)).text == ""
+        assert (await stream_map_scan(b"png", "", lambda t: None)).text == ""
+        assert (await stream_map_scan(b"png", "  \n ", lambda t: None)).text == ""
+    client.stream.assert_not_called()
+
+
+def test_followup_transcript_marker():
+    from services.ai_service import followup_transcript
+
+    marker = followup_transcript("  Is it safe to jog?  ")
+    assert marker.startswith("\n\n---\n\n")
+    assert "**You:** Is it safe to jog?" in marker
+
+
+def test_briefing_followup_submit_passes_typed_value():
+    from types import SimpleNamespace
+
+    asked: list = []
+    section = build_ai_briefing_section(
+        _PRIOR_BRIEFING, False, False, "", lambda: None, asked.append, lambda e: None
+    )
+    fields = [
+        c
+        for c in walk(section)
+        if isinstance(c, ft.TextField) and (c.hint_text or "").find("follow-up") >= 0
+    ]
+    assert len(fields) == 1
+    fields[0].on_submit(
+        SimpleNamespace(control=SimpleNamespace(value="What about PM2.5?"))
+    )
+    assert asked == ["What about PM2.5?"]
+
+
+def test_briefing_input_stays_mounted_while_busy():
+    section = build_ai_briefing_section(
+        _PRIOR_BRIEFING, True, False, "", lambda: None, lambda q: None, lambda e: None
+    )
+    fields = [
+        c
+        for c in walk(section)
+        if isinstance(c, ft.TextField) and (c.hint_text or "").find("follow-up") >= 0
+    ]
+    assert len(fields) == 1  # mounted during streaming…
+    assert fields[0].disabled is True  # …but disabled until it finishes
+
+
+def test_scan_followup_submit_passes_typed_value():
+    from types import SimpleNamespace
+
+    from components.map.map_scan_section import build_map_scan_section
+
+    asked: list = []
+    section = build_map_scan_section(
+        "**Scan:** cluster NE",
+        False,
+        False,
+        "",
+        "",
+        lambda e=None, close_only=False: None,
+        asked.append,
+        lambda e: None,
+    )
+    fields = [
+        c
+        for c in walk(section)
+        if isinstance(c, ft.TextField) and (c.hint_text or "").find("follow-up") >= 0
+    ]
+    assert len(fields) == 1
+    fields[0].on_submit(SimpleNamespace(control=SimpleNamespace(value="floods?")))
+    assert asked == ["floods?"]

@@ -18,7 +18,6 @@ from components.adaptive_nav import (
 from core import tokens
 from core.constants import APP_VERSION, STORAGE_SIDEBAR_COLLAPSED
 from core.theme import is_dark_mode
-from screens.boot_screen import BootScreen
 from screens.home_screen import HomeScreen
 from screens.map_screen import MapScreen
 from screens.report_screen import ReportScreen
@@ -62,15 +61,16 @@ def resolve_dashboard_screen(active_tab: int):
     return SettingsScreen
 
 
-def _should_show_boot(state) -> bool:
-    """Boot screen while the first telemetry load is in flight.
+def open_version_dialog(page=None):
+    """Status-bar version chip entry point.
 
-    Replaces the old 3-slide onboarding deck: one loading view covering
-    init (and Pyodide interpreter load on web), auto-dismissed when the
-    first refresh lands. First-run terms acceptance is a no-op pass —
-    there is no account, no tracking, nothing to consent to.
+    Module-level (not a closure) so the exact call site is unit-testable —
+    `show_version_dialog` takes (page, update_data) only, unlike
+    `show_command_palette`, which does accept a controller kwarg.
     """
-    return state.is_loading and not state.telemetry_version
+    from components.version_dialog import show_version_dialog
+
+    show_version_dialog(page if page is not None else flet_context.page)
 
 
 def _build_appbar(
@@ -179,14 +179,6 @@ def AppShell() -> Control:
         except Exception:
             logger.exception("Suppressed exception")
 
-        if _should_show_boot(state):
-            page.views[0].navigation_bar = None
-            try:
-                page.update()
-            except Exception:
-                logger.exception("Suppressed exception")
-            return
-
         # Compact windows and overlay views keep the bottom bar contract:
         # dashboard tabs get NavigationBar, overlays hide it (back arrow
         # in the appbar is the way out). Medium/expanded windows render
@@ -275,21 +267,17 @@ def AppShell() -> Control:
         state.telemetry_version,
         state.telemetry_version,
     )
-    if _should_show_boot(state):
-        screen = BootScreen()
-    elif active_view == "report":
+    if active_view == "report":
         screen = ReportScreen()
     elif active_view == "space":
         screen = SpaceScreen()
     else:
         screen = resolve_dashboard_screen(active_tab)()
 
-    show_boot_now = _should_show_boot(state)
     wclass = window_class(viewport_width)
-    use_side_chrome = (
-        not show_boot_now
-        and active_view == "dashboard"
-        and wclass in ("medium", "expanded")
+    use_side_chrome = active_view == "dashboard" and wclass in (
+        "medium",
+        "expanded",
     )
 
     screen_holder = ft.Container(
@@ -403,9 +391,14 @@ def AppShell() -> Control:
         return "System Theme"
 
     def _open_version_dialog():
-        from components.version_dialog import show_version_dialog as _show
+        open_version_dialog(flet_context.page)
 
-        _show(flet_context.page, controller=controller)
+    def _refresh_feeds():
+        # refresh_all is async — the status bar invokes on_refresh as a
+        # plain sync callback, so it must be scheduled, never bare-called.
+        from core.tasks import schedule
+
+        schedule(controller.refresh_all, page=flet_context.page)
 
     def _open_command_palette():
         from components.command_palette import show_command_palette as _show
@@ -421,7 +414,7 @@ def AppShell() -> Control:
         is_dark=is_dark_mode(flet_context.page),
         title=_sb_title,
         subtitle=_sb_subtitle,
-        on_refresh=controller.refresh_all,
+        on_refresh=_refresh_feeds,
         on_settings=lambda: _select_tab(_TAB_INDEX["Settings"]),
         on_toggle_theme=_toggle_theme_mode,
         theme_icon=_theme_icon(),

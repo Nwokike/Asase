@@ -153,7 +153,7 @@ def build_map_scan_section(
         )
 
     body_rows.append(ft.Row(action_controls, spacing=tokens.SPACE_SM))
-    if answer and not busy:
+    if answer:
         body_rows.append(
             ft.TextField(
                 value=question,
@@ -161,7 +161,10 @@ def build_map_scan_section(
                 border_radius=tokens.RADIUS_MD,
                 text_size=tokens.FONT_SM,
                 content_padding=tokens.SPACE_SM,
-                on_submit=on_ask,
+                # Stay mounted while streaming (disabled); submit passes the
+                # FIELD VALUE so fast type+Enter can't submit stale text.
+                disabled=busy,
+                on_submit=lambda e: on_ask(e.control.value or ""),
                 on_change=on_question_change,
             )
         )

@@ -178,11 +178,16 @@ def build_ai_briefing_section(
                                 border_radius=tokens.RADIUS_MD,
                                 text_size=tokens.FONT_SM,
                                 content_padding=tokens.SPACE_SM,
-                                on_submit=on_ask,
+                                # Stay mounted while streaming (disabled) so
+                                # the thread context doesn't blink away;
+                                # submit passes the FIELD VALUE, not render-
+                                # time state (fast type+Enter can't go stale).
+                                disabled=busy,
+                                on_submit=lambda e: on_ask(e.control.value or ""),
                                 on_change=on_question_change,
                             ),
                         ]
-                        if answer and not busy
+                        if answer
                         else []
                     ),
                 ],

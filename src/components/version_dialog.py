@@ -29,9 +29,19 @@ logger = logging.getLogger(__name__)
 def _launch(page: ft.Page, url: str):
     async def _run():
         try:
-            await ft.UrlLauncher().launch_url(url)
+            # Reuse the page's mounted UrlLauncher (controller mounts one on
+            # every platform); a transient local never attaches to the page
+            # and its invoke raises instead of launching.
+            launcher = next(
+                (s for s in page.services if isinstance(s, ft.UrlLauncher)), None
+            )
+            if launcher is None:
+                launcher = ft.UrlLauncher()
+                if launcher not in page.services:
+                    page.services.append(launcher)
+            await launcher.launch_url(url)
         except Exception as ex:
-            logger.debug("Update URL launch failed: %s", ex)
+            logger.warning("URL launch failed for %s: %s", url, ex)
 
     page.run_task(_run)
 

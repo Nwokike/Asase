@@ -58,6 +58,7 @@ class AppController:
         self.url_launcher: ft.UrlLauncher | None = None
         self.storage_paths: ft.StoragePaths | None = None
         self._controller_methods: ControllerMethods | None = None
+        self._boot_stamped = False  # web splash boot key written at most once
 
     async def init(self) -> None:
         """Initialize page configuration, storage, and mount AppShell."""
@@ -86,6 +87,17 @@ class AppController:
         self.geolocator = Geolocator()
         self.page.services.append(self.geolocator)
 
+        # Clipboard + URL launching work on web too (Flet implements both
+        # via browser APIs). Mounting them everywhere is what makes the
+        # dossier Copy button and every alert "Official Source" link work
+        # in the browser — a None service silently no-ops instead.
+        # (Construction outside a page context is safe: Service.__post_init__
+        # swallows the missing-context error; the explicit append registers.)
+        self.clipboard = ft.Clipboard()
+        self.page.services.append(self.clipboard)
+        self.url_launcher = ft.UrlLauncher()
+        self.page.services.append(self.url_launcher)
+
         # Register Native Ecosystem Services (Desktop / Mobile only)
         if not is_web:
             self.connectivity = ft.Connectivity()
@@ -99,15 +111,6 @@ class AppController:
 
             self.share = ft.Share()
             self.page.services.append(self.share)
-
-            # Single mounted Clipboard service for all copy fallbacks
-            # (share_text, activity terminal, report dossier). Flet 1.0.3
-            # requires a registered instance — transient locals never attach.
-            self.clipboard = ft.Clipboard()
-            self.page.services.append(self.clipboard)
-
-            self.url_launcher = ft.UrlLauncher()
-            self.page.services.append(self.url_launcher)
 
             self.storage_paths = ft.StoragePaths()
             self.page.services.append(self.storage_paths)
@@ -352,6 +355,7 @@ class AppController:
 
             state.telemetry_version += 1
             logger.info("%s telemetry feeds updated successfully", scope.capitalize())
+            await self._stamp_web_boot()
             if self.page:
                 self.page.update()
 
@@ -362,6 +366,25 @@ class AppController:
             state.is_loading = False
             if self.page:
                 self.page.update()
+
+    async def _stamp_web_boot(self) -> None:
+        """Stamp asase.boot after the first successful load (web only).
+
+        The injected splash (scripts/patch_web_splash.py) polls this key
+        and dismisses only when feeds are actually painted — with a 6s
+        watchdog so a missing key degrades to today's behavior. flush()
+        because set() is 1s-debounced and the splash polls on a timer.
+        """
+        if self._boot_stamped:
+            return
+        self._boot_stamped = True
+        if not getattr(self.page, "web", False) or not self.storage:
+            return
+        import time
+
+        with contextlib.suppress(Exception):
+            await self.storage.set("asase.boot", time.time())
+            await self.storage.flush()
 
     async def _fetch_global_feeds(self) -> None:
         """Location-independent feeds: USGS quakes, NASA EONET, NOAA space weather."""

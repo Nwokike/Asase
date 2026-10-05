@@ -25,7 +25,7 @@ from core.notify import show_snack
 from core.tasks import schedule
 from core.theme import AppColors, AppStyles, is_dark_mode
 from core.units import safe_float as units_safe_float
-from services.ai_service import DEFAULT_QUESTION, stream_briefing
+from services.ai_service import DEFAULT_QUESTION, followup_transcript, stream_briefing
 from state.app_state import AppStateCtx
 from state.controller_ctx import ControllerMethodsCtx
 
@@ -244,14 +244,19 @@ def ReportScreen() -> Control:
     # older fire (superseded by a newer location or question) no-op.
     ai_gen_ref = ft.use_ref(0)
 
-    async def _run_ai(q: str):
+    async def _run_ai(q: str, follow_up: bool = False):
         if not q.strip():
             return
         gen = (ai_gen_ref.current or 0) + 1
         ai_gen_ref.current = gen
         fired_at = (state.current_lat, state.current_lon)
+        # History/prefix captured BEFORE any state writes: a follow-up keeps
+        # the thread (prior answer + asked question) and sends the prior text
+        # so the model answers instead of regenerating.
+        prior = ai_answer if follow_up else ""
+        prefix = f"{ai_answer}{followup_transcript(q)}" if follow_up else ""
         set_ai_busy(True)
-        set_ai_answer("")
+        set_ai_answer(prefix)
         set_ai_unavailable(False)
         set_ai_model("")
 
@@ -266,21 +271,24 @@ def ReportScreen() -> Control:
             now = time.monotonic()
             if now - last_push > 0.2:  # batch UI updates while streaming
                 last_push = now
-                set_ai_answer("".join(buf))
+                set_ai_answer(prefix + "".join(buf))
 
         try:
-            result = await stream_briefing(q, _on_token)
+            result = await stream_briefing(q, _on_token, history=prior or None)
             if ai_gen_ref.current != gen:
                 return  # a newer briefing took over mid-stream
-            set_ai_answer(result.text or "".join(buf))
+            set_ai_answer(prefix + (result.text or "".join(buf)))
             set_ai_model(result.model)
-            if result.text:
-                # Cache keyed to the exact coordinates it was generated for
+            if result.text and not follow_up:
+                # Cache keyed to the exact coordinates it was generated for.
+                # Follow-ups are never cached — they'd evict the location
+                # briefing under the same key.
                 state.ai_briefing = {
                     "answer": result.text,
                     "model": result.model,
                     "lat": fired_at[0],
                     "lon": fired_at[1],
+                    "question": q,
                 }
             elif not (result.text or buf):
                 set_ai_unavailable(True)
@@ -295,13 +303,18 @@ def ReportScreen() -> Control:
     def _generate_briefing(e=None):
         if ai_busy:
             return
+        # Fresh run: clears the transcript and starts a new briefing.
         schedule(_run_ai, DEFAULT_QUESTION, page=page)
 
-    def _ask_followup(e=None):
-        q = ai_question
+    def _ask_followup(q: str = ""):
+        if ai_busy:
+            return
+        # Event-first (the submit's field value), state as fallback —
+        # a fast type+Enter must not submit stale/empty text.
+        text = (q or "").strip() or ai_question.strip()
         set_ai_question("")
-        if q.strip():
-            schedule(_run_ai, q, page=page)
+        if text:
+            schedule(_run_ai, text, True, page=page)
 
     # The briefing is a function of the tracked LOCATION, not of screen
     # mounts: the effect fires on Dossier open and RE-FIRES for every

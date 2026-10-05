@@ -69,3 +69,28 @@ def test_status_bar_renders_context():
     assert "Lagos" in joined
     assert "3 alerts" in joined
     assert "Kp 4.2" in joined
+
+
+def test_status_bar_refresh_click_invokes_callback_without_warnings():
+    """The status bar calls on_refresh as a plain sync callback — the
+    app_shell wiring must pass a sync wrapper (schedule), never the bare
+    async refresh_all (that produced 'coroutine never awaited' + no refresh)."""
+    import warnings
+
+    fired = []
+    bar = build_status_bar(
+        "Lagos", 3, "Kp 4.2", lambda: None, on_refresh=lambda: fired.append(1)
+    )
+    from flet_tree import walk
+
+    refresh_btns = [
+        b
+        for b in walk(bar)
+        if isinstance(b, ft.IconButton) and b.tooltip == "Sync Live Feeds"
+    ]
+    assert len(refresh_btns) == 1
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        refresh_btns[0].on_click(None)
+    assert fired == [1]
+    assert not [w for w in caught if issubclass(w.category, RuntimeWarning)]

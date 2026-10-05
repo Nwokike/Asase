@@ -393,9 +393,8 @@ def test_shell_status_bar_absorbs_screen_headers():
     assert "v1.0.2" in texts
 
 
-def test_about_card_and_boot_use_reactive_logo():
+def test_about_card_uses_reactive_logo():
     from components.settings.sections_about import build_about_card
-    from screens.boot_screen import build_boot_view
 
     # page=None resolves to dark mode → white-wordmark logo variant.
     about = build_about_card(page=None)
@@ -404,19 +403,17 @@ def test_about_card_and_boot_use_reactive_logo():
     about_texts = [t.value for t in walk_texts(about)]
     assert "Asase" not in about_texts  # wordmark is inside the logo asset
 
-    # Boot screen: single loading view, no slides/deck/skip/next.
-    # The logo carries the wordmark — no repeated name text beside it.
-    view = build_boot_view("Loading USGS feeds…", progress=0.5)
-    texts = [t.value for t in walk_texts(view)]
-    assert "ASASE" not in texts  # wordmark is inside the logo asset
-    assert "GLOBAL EARTH INTELLIGENCE" not in texts  # part of logo, not repeated
-    assert "Loading USGS feeds…" in texts
-    assert "Next" not in texts and "Skip" not in texts
-    bars = [c for c in walk(view) if isinstance(c, ft.ProgressBar)]
-    assert len(bars) == 1
-    assert bars[0].value == 0.5
-    imgs = [c for c in walk(view) if isinstance(c, ft.Image)]
-    assert any("logo" in (img.src or "") for img in imgs)
+
+def test_in_app_boot_screen_is_gone():
+    """One loader only: the in-app Flet BootScreen was deleted — the web
+    splash (scripts/patch_web_splash.py) owns pre-load UX, HomeScreen
+    skeletons cover the first fetch."""
+    import importlib.util
+
+    assert importlib.util.find_spec("screens.boot_screen") is None
+    from core.state import state
+
+    assert not hasattr(state, "loading_message")
 
 
 def test_location_search_bar():

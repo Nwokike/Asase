@@ -65,3 +65,35 @@ async def test_schedule_fallback_logs_failures(caplog):
         except RuntimeError:
             pass
     assert any("Background task failed" in r.message for r in caplog.records)
+
+
+def test_no_bare_async_controller_refs_as_ui_callbacks():
+    """Keyword-passing an async controller method straight into an on_*
+    callback lets the builder invoke it synchronously — the coroutine is
+    dropped (RuntimeWarning + the action silently never runs; this killed
+    the status-bar Refresh button). Wrap in a sync lambda + schedule()."""
+    async_methods = (
+        "refresh_all",
+        "select_coordinates",
+        "open_report",
+        "locate_user",
+        "share_text",
+        "launch_external_url",
+        "save_setting",
+        "toggle_bookmark",
+        "fetch_radius_history",
+        "copy_text",
+        "tap_haptic",
+    )
+    pattern = re.compile(
+        r"on_\w+\s*=\s*controller\.(" + "|".join(async_methods) + r")\b"
+    )
+    offenders = []
+    for f in Path("src").rglob("*.py"):
+        for i, line in enumerate(f.read_text().splitlines(), 1):
+            if pattern.search(line):
+                offenders.append(f"{f}:{i} ({line.strip()})")
+    assert offenders == [], (
+        "bare async controller method passed as UI callback — wrap with "
+        f"schedule(): {offenders}"
+    )
