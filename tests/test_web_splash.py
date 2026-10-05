@@ -20,8 +20,11 @@ def test_splash_html_is_simple_theme_reactive_boot_screen():
     assert "#0F172A" in SPLASH_HTML  # LIGHT_TEXT
     assert "#10B981" in SPLASH_HTML  # PRIMARY (Emerald)
 
-    # Simple loading state: brand icon, spinner, rotating status text
-    assert "icon.png" in SPLASH_HTML
+    # Brand logo SVG — white wordmark in dark mode, dark in light (the
+    # same assets core.theme logo_asset() resolves), swapped with theme.
+    assert 'id="asase-logo"' in SPLASH_HTML
+    assert "/logo_dark.svg" in SPLASH_HTML
+    assert "/logo.svg" in SPLASH_HTML
     assert "asase-spinner" in SPLASH_HTML
     assert "Starting Earth Intelligence" in SPLASH_HTML
     assert "Initializing telemetry core" in SPLASH_HTML
@@ -140,14 +143,21 @@ def test_splash_is_mission_control_staged_progress():
     assert "First load ~45" in SPLASH_HTML
     assert "runtime caches for next visit" in SPLASH_HTML
 
-    # Real milestones only — window load, idempotent handshake, boot key,
-    # 6s post-handshake watchdog, 45s absolute cap
+    # Real milestones: window load advances stage 1; the FIRST engine
+    # message dismisses IMMEDIATELY (the splash never delays readiness —
+    # zero added latency vs the v1 splash). 45s bridge-miss safety cap.
     assert 'addEventListener("load"' in SPLASH_HTML
-    assert '"asase.boot"' in SPLASH_HTML
-    assert "setTimeout(finishFeeds, 6000)" in SPLASH_HTML
+    assert "function onHandshake()" in SPLASH_HTML
+    assert "window.__asaseSignalReady = onHandshake" in SPLASH_HTML
+    assert "Dismiss IMMEDIATELY" in SPLASH_HTML
     assert "45000" in SPLASH_HTML
-    # Stale boot key cleared at paint so repeat visits can't skip stage 3
-    assert 'delete blob.data["asase.boot"]' in SPLASH_HTML
+    # Flet stores localStorage double-encoded (JSON string of a JSON string)
+    # — must decode BOTH shapes or returning users crash the splash script.
+    assert 'typeof parsed === "string"' in SPLASH_HTML
+    # READ-ONLY localStorage: the splash never writes (a bad rewrite once
+    # corrupted the store format contract).
+    assert "localStorage.setItem" not in SPLASH_HTML
+    assert '"asase.boot"' not in SPLASH_HTML
     # Monotonic band ceilings + in-band creep
     assert "CEIL" in SPLASH_HTML
     # Live OS theme flip updates the splash mid-load
@@ -159,58 +169,3 @@ def test_splash_is_mission_control_staged_progress():
     assert "JetBrains Mono" in SPLASH_HTML
     assert "tabular-nums" in SPLASH_HTML
     assert "prefers-reduced-motion" in SPLASH_HTML
-
-
-@pytest.mark.asyncio
-async def test_first_web_refresh_stamps_boot_key_once(tmp_path, monkeypatch):
-    """_do_refresh stamps asase.boot (+flush) exactly once, on web only —
-    the splash polls this key and its 6s watchdog degrades gracefully."""
-    monkeypatch.setenv("FLET_APP_STORAGE_DATA", str(tmp_path))
-    mock_page = MagicMock(spec=ft.Page)
-    mock_page.web = True
-    mock_page.services = []
-    mock_page.run_task = MagicMock()
-    mock_page.render = MagicMock()
-    mock_page.update = MagicMock()
-    mock_page.theme_mode = ft.ThemeMode.SYSTEM
-    mock_page.window = MagicMock()
-
-    controller = AppController(mock_page)
-    controller.storage = AsyncMock()
-
-    with (
-        patch.object(controller, "_fetch_global_feeds", new=AsyncMock()),
-        patch.object(controller, "_fetch_local_feeds", new=AsyncMock()),
-    ):
-        await controller._do_refresh(True, True)
-        await controller._do_refresh(True, True)  # loop refresh must not re-stamp
-
-    assert controller.storage.set.call_count == 1
-    key, value = controller.storage.set.call_args.args
-    assert key == "asase.boot"
-    assert isinstance(value, float) and value > 0
-    assert controller.storage.flush.call_count == 1
-
-
-@pytest.mark.asyncio
-async def test_native_refresh_never_stamps_boot_key(tmp_path, monkeypatch):
-    monkeypatch.setenv("FLET_APP_STORAGE_DATA", str(tmp_path))
-    mock_page = MagicMock(spec=ft.Page)
-    mock_page.web = False
-    mock_page.services = []
-    mock_page.run_task = MagicMock()
-    mock_page.render = MagicMock()
-    mock_page.update = MagicMock()
-    mock_page.theme_mode = ft.ThemeMode.SYSTEM
-    mock_page.window = MagicMock()
-
-    controller = AppController(mock_page)
-    controller.storage = AsyncMock()
-
-    with (
-        patch.object(controller, "_fetch_global_feeds", new=AsyncMock()),
-        patch.object(controller, "_fetch_local_feeds", new=AsyncMock()),
-    ):
-        await controller._do_refresh(True, True)
-
-    controller.storage.set.assert_not_called()

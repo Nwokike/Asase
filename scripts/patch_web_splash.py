@@ -215,7 +215,7 @@ SPLASH_HTML = f"""
   </style>
 
   <div class="asase-card">
-    <img class="asase-logo" src="icon.png" alt="Asase" />
+    <img class="asase-logo" id="asase-logo" src="/logo_dark.svg" alt="Asase" />
     <div class="asase-pct" id="asase-pct">0%</div>
     <div class="asase-step">
       <span class="asase-spinner" aria-hidden="true"></span>
@@ -240,7 +240,14 @@ SPLASH_HTML = f"""
         try {{
           for (var i = 0; i < KEYS.length; i++) {{
             var raw = localStorage.getItem(KEYS[i]);
-            if (raw) return {{ key: KEYS[i], data: JSON.parse(raw) }};
+            if (!raw) continue;
+            var parsed = JSON.parse(raw);
+            // Flet's SharedPreferences web plugin jsonEncode()s the stored
+            // string — one extra decode layer. Handle both shapes so a
+            // returning user never crashes the splash script.
+            if (typeof parsed === "string") parsed = JSON.parse(parsed);
+            if (parsed && typeof parsed === "object")
+              return {{ data: parsed }};
           }}
         }} catch (e) {{}}
         return null;
@@ -248,6 +255,7 @@ SPLASH_HTML = f"""
 
       // Theme: saved Asase theme (dark/light; "system" falls through) >
       // live OS preference — an OS flip mid-load updates the splash.
+      // The logo swaps with it: logo_dark.svg is the white wordmark.
       var mq = window.matchMedia("(prefers-color-scheme: dark)");
       function applyTheme() {{
         var cur = readBlob();
@@ -259,19 +267,11 @@ SPLASH_HTML = f"""
                  : mq.matches;
         if (dark) splash.classList.remove("light");
         else splash.classList.add("light");
+        var logo = document.getElementById("asase-logo");
+        if (logo) logo.src = dark ? "/logo_dark.svg" : "/logo.svg";
       }}
       applyTheme();
       if (mq.addEventListener) mq.addEventListener("change", applyTheme);
-
-      // Clear a stale boot key from a previous session so this boot's poll
-      // can't skip a stage off last session's stamp.
-      var blob = readBlob();
-      if (blob && blob.data && "asase.boot" in blob.data) {{
-        try {{
-          delete blob.data["asase.boot"];
-          localStorage.setItem(blob.key, JSON.stringify(blob.data));
-        }} catch (e) {{}}
-      }}
 
       // ── Staged progress: bands advance only on real milestones ──
       var CEIL = [40, 65, 95, 100];  // per-stage ceilings; creep caps at ceiling-2
@@ -281,8 +281,7 @@ SPLASH_HTML = f"""
         "Connecting planetary feeds...",
         "Rendering first frame..."
       ];
-      var pct = 5, stage = 0, done = false, handshake = false, feedsDone = false;
-      var poll = null;
+      var pct = 5, stage = 0, done = false;
       var pctEl = document.getElementById("asase-pct");
       var stepEl = document.getElementById("asase-step");
       var fillEl = document.getElementById("asase-bar-fill");
@@ -306,14 +305,6 @@ SPLASH_HTML = f"""
         render();
       }}
 
-      function finishFeeds() {{  // real boot key OR 6s watchdog post-handshake
-        if (feedsDone) return;
-        feedsDone = true;
-        if (poll) clearInterval(poll);
-        reach(95, 3);
-        setTimeout(dismiss, 250);
-      }}
-
       function dismiss() {{
         if (done) return;
         done = true;
@@ -325,21 +316,11 @@ SPLASH_HTML = f"""
         }}, 350);
       }}
 
-      function bootFresh() {{  // controller stamps asase.boot after first paint
-        var b = readBlob();
-        if (!b || !b.data) return false;
-        var n = Number(b.data["asase.boot"]);
-        return !!n && Math.abs(Date.now() / 1000 - n) < 3600;
-      }}
-
-      function onHandshake() {{  // first dartOnMessage — Python engine is up
-        if (handshake || done) return;
-        handshake = true;
-        reach(65, 2);
-        poll = setInterval(function() {{
-          if (bootFresh()) finishFeeds();
-        }}, 250);
-        setTimeout(finishFeeds, 6000);  // watchdog: storage missing/broken
+      function onHandshake() {{
+        // First dartOnMessage — the Python engine is up and the app is
+        // about to paint. Dismiss IMMEDIATELY: the splash never delays
+        // readiness (same latency as the original v1 splash).
+        dismiss();
       }}
 
       // Kept exact: python.js DISMISS_BRIDGE calls this on every message.
@@ -347,7 +328,7 @@ SPLASH_HTML = f"""
 
       if (document.readyState === "complete") reach(40, 1);
       else window.addEventListener("load", function() {{ reach(40, 1); }});
-      setTimeout(function() {{ if (!done) finishFeeds(); }}, 45000);  // absolute cap
+      setTimeout(function() {{ if (!done) dismiss(); }}, 45000);  // bridge-miss safety
 
       var creep = setInterval(function() {{  // eased motion INSIDE the band
         if (done) return;

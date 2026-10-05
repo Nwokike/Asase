@@ -60,7 +60,7 @@ def test_overflow_chip_surfaces_truncation():
 
 def test_no_overflow_chip_within_caps():
     hmap = HazardMap(lat=0.0, lon=0.0, earthquakes=[_eq(0)])
-    assert isinstance(hmap, ft.Container)
+    assert isinstance(hmap, ft.Stack)  # map body + zoom pill, no chip
     texts = [t.value for t in walk_texts(hmap)]
     assert not any("more" in (t or "") for t in texts)
 
@@ -72,3 +72,62 @@ def test_markers_have_no_rotate_noop():
 
     marker = build_hazard_marker(_eq(0))
     assert marker.rotate in (None, False)
+
+
+def test_desktop_zoom_controls_present():
+    """The +/− zoom pill ships on every HazardMap (desktop users have no
+    pinch gesture; wheel zoom alone was undiscoverable)."""
+    hmap = HazardMap(lat=0.0, lon=0.0, earthquakes=[])
+    tooltips = [b.tooltip for b in walk(hmap) if isinstance(b, ft.IconButton)]
+    assert "Zoom in" in tooltips
+    assert "Zoom out" in tooltips
+
+
+def test_zoom_click_schedules_map_methods():
+    """Clicking +/− schedules the ref'd Map's zoom_in/zoom_out through
+    core.tasks.schedule — never a bare coroutine call."""
+    from unittest.mock import patch
+
+    class _FakeMap:
+        def __init__(self):
+            self.calls = []
+
+        async def zoom_in(self):
+            self.calls.append("in")
+
+        async def zoom_out(self):
+            self.calls.append("out")
+
+    class _Ref:
+        current = _FakeMap()
+
+    hmap = HazardMap(lat=0.0, lon=0.0, earthquakes=[], map_ref=_Ref())
+    buttons = {
+        b.tooltip: b
+        for b in walk(hmap)
+        if isinstance(b, ft.IconButton) and b.tooltip in ("Zoom in", "Zoom out")
+    }
+    scheduled = []
+    with patch(
+        "components.hazard_map.schedule",
+        side_effect=lambda fn, **kw: scheduled.append(fn),
+    ):
+        buttons["Zoom in"].on_click(None)
+        buttons["Zoom out"].on_click(None)
+    assert [f.__name__ for f in scheduled] == ["zoom_in", "zoom_out"]
+    # Coroutine functions bound to the ref'd Map control (Flet's ref=
+    # wiring sets ref.current to the created Map; schedule must receive
+    # real async callables, never bare-invoked coroutines).
+    import inspect
+
+    assert all(inspect.iscoroutinefunction(f) for f in scheduled)
+    assert all(isinstance(f.__self__, fmap.Map) for f in scheduled)
+
+
+def test_zoom_click_without_map_ref_is_noop():
+    hmap = HazardMap(lat=0.0, lon=0.0, earthquakes=[], map_ref=None)
+    buttons = [
+        b for b in walk(hmap) if isinstance(b, ft.IconButton) and b.tooltip == "Zoom in"
+    ]
+    assert len(buttons) == 1
+    buttons[0].on_click(None)  # must not raise

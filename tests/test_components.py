@@ -205,7 +205,11 @@ def test_hazard_map_component():
         earthquakes=eqs,
         disasters=disasters,
     )
-    assert isinstance(hmap, ft.Container)
+    # Always a Stack now: map body + the desktop zoom pill (+ optional
+    # overflow chip).
+    assert isinstance(hmap, ft.Stack)
+    tooltips = [c.tooltip for c in walk(hmap) if isinstance(c, ft.IconButton)]
+    assert "Zoom in" in tooltips and "Zoom out" in tooltips
 
 
 def test_build_hazard_marker():

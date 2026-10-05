@@ -7,9 +7,11 @@ from collections.abc import Callable
 
 import flet as ft
 import flet_map as map
+from flet import context as flet_context
 
 from core import tokens
 from core.actions import open_url_action
+from core.tasks import schedule
 from core.theme import AppColors
 
 logger = logging.getLogger("asase.map")
@@ -481,14 +483,67 @@ def HazardMap(
         height=height,
     )
 
-    if not hidden_total:
-        return map_body
+    # Desktop-friendly zoom controls: touch has pinch and desktop has
+    # wheel zoom (SCROLL_WHEEL_ZOOM flag), but explicit +/− buttons make
+    # zooming discoverable on every platform. Top-left corner is free on
+    # both embeds (layer stack = top-right, detail sheet = bottom-left,
+    # attribution/overflow chip = bottom-right).
+    try:
+        _page = flet_context.page
+    except RuntimeError:
+        _page = None  # tree-building tests — schedule falls back
+
+    def _zoom_in(e=None):
+        m = map_ref.current if map_ref else None
+        if m is not None:
+            schedule(m.zoom_in, page=_page)
+
+    def _zoom_out(e=None):
+        m = map_ref.current if map_ref else None
+        if m is not None:
+            schedule(m.zoom_out, page=_page)
+
+    zoom_pill = ft.Container(
+        content=ft.Column(
+            [
+                ft.IconButton(
+                    icon=ft.Icons.ADD_ROUNDED,
+                    icon_size=18,
+                    tooltip="Zoom in",
+                    icon_color=AppColors.PRIMARY,
+                    on_click=_zoom_in,
+                ),
+                ft.Container(
+                    height=1,
+                    bgcolor=ft.Colors.with_opacity(0.2, AppColors.PRIMARY),
+                ),
+                ft.IconButton(
+                    icon=ft.Icons.REMOVE_ROUNDED,
+                    icon_size=18,
+                    tooltip="Zoom out",
+                    icon_color=AppColors.PRIMARY,
+                    on_click=_zoom_out,
+                ),
+            ],
+            spacing=0,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            alignment=ft.MainAxisAlignment.CENTER,
+        ),
+        top=tokens.SPACE_SM,
+        left=tokens.SPACE_SM,
+        width=40,
+        bgcolor=ft.Colors.with_opacity(0.85, AppColors.DARK_SURFACE)
+        if is_dark
+        else ft.Colors.WHITE,
+        border_radius=tokens.RADIUS_MD,
+    )
+
+    stack_controls = [map_body, zoom_pill]
 
     # Overflow chip: the caps above silently dropped events — surface the
     # count so users know to zoom in rather than assuming full coverage.
-    return ft.Stack(
-        controls=[
-            map_body,
+    if hidden_total:
+        stack_controls.append(
             ft.Container(
                 content=ft.Text(
                     f"+{hidden_total} more — zoom in",
@@ -503,8 +558,7 @@ def HazardMap(
                 border_radius=tokens.RADIUS_FULL,
                 bottom=tokens.SPACE_SM,
                 right=tokens.SPACE_SM,
-            ),
-        ],
-        expand=expand,
-        height=height,
-    )
+            )
+        )
+
+    return ft.Stack(controls=stack_controls, expand=expand, height=height)
