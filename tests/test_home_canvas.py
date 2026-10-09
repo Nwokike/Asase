@@ -48,10 +48,18 @@ def test_medium_wide_end_caps_rail_at_320():
     assert rail_w == 320.0  # min(320, 839*0.45≈377) → cap
 
 
-def test_expanded_canvas_uses_fixed_panels():
-    use_canvas, rail_w, feeds_w = canvas_panel_widths(1200)
+def test_expanded_canvas_panels_are_proportional_with_caps():
+    # Roomier panels on big screens (the old fixed 360/420 cramped the
+    # search rail + filter chips), capped so a 4K viewport can't drift.
+    use_canvas, rail_w, feeds_w = canvas_panel_widths(1440)
     assert use_canvas is True
-    assert (rail_w, feeds_w) == (360.0, 420.0)
+    assert rail_w == 1440 * 0.26
+    assert feeds_w == 1440 * 0.34
+    _, rail_4k, feeds_4k = canvas_panel_widths(2560)
+    assert (rail_4k, feeds_4k) == (440.0, 560.0)
+    # Small expanded window still gets sane minimums
+    _, rail_mid, feeds_mid = canvas_panel_widths(850)
+    assert (rail_mid, feeds_mid) == (360.0, 420.0)
 
 
 def test_unknown_width_defaults_to_compact_scroll():
@@ -59,3 +67,28 @@ def test_unknown_width_defaults_to_compact_scroll():
     assert use_canvas is False
     use_canvas_none, _, _ = canvas_panel_widths(None)
     assert use_canvas_none is False
+
+
+def test_filter_chips_wrap_and_all_visible():
+    """All six hazard chips render and wrap — no horizontal scroller
+    hiding Storm/Volcano behind a swipe."""
+    import flet as ft
+    from flet_tree import walk
+
+    from components.home.hazard_filter_chips import build_hazard_filter_chips
+
+    row = build_hazard_filter_chips(page=None, selected="all", on_select=lambda k: None)
+    chips = [
+        c
+        for c in walk(row)
+        if isinstance(c, ft.Container) and getattr(c, "on_click", None)
+    ]
+    labels = []
+    for c in chips:
+        texts = [t.value for t in walk(c) if isinstance(t, ft.Text)]
+        labels.extend(t for t in texts if t)
+    assert labels == ["All", "Seismic", "Wildfire", "Flood", "Storm", "Volcano"]
+    # Wrapped content: the chips Row must carry wrap=True (no scroll)
+    rows = [c for c in walk(row) if isinstance(c, ft.Row) and c.wrap is True]
+    assert len(rows) == 1
+    assert rows[0].wrap is True

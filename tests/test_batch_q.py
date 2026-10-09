@@ -22,7 +22,7 @@ def test_flet_family_pinned_exact():
     ):
         pinned = [d for d in deps if d.startswith(f"{name}==")]
         assert len(pinned) == 1, f"{name} not pinned exact: {deps}"
-        assert pinned[0] == f"{name}==1.0.3"
+        assert pinned[0] == f"{name}==1.0.4"
 
 
 def _page():

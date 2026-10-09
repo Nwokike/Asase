@@ -75,9 +75,11 @@ def build_hazard_filter_chips(
     chips = [
         _chip(k, lbl, ic, selected == k, on_select, page) for k, lbl, ic in CHIP_OPTIONS
     ]
+    # Wrap instead of horizontal scroll: on the home canvas the rail is
+    # wide enough for every hazard to show, so Storm/Volcano must not sit
+    # off-screen behind a scroller (scrolling only hid options users
+    # never knew existed).
     return ft.Container(
-        content=ft.Row(
-            chips, spacing=tokens.SPACE_XS, scroll=ft.ScrollMode.AUTO, wrap=False
-        ),
+        content=ft.Row(chips, spacing=tokens.SPACE_XS, wrap=True),
         padding=ft.Padding(tokens.SPACE_LG, tokens.SPACE_SM, tokens.SPACE_LG, 0),
     )

@@ -10,7 +10,11 @@ from flet import Control
 from components.adaptive_nav import window_class
 from components.banner_ad import AdMobBanner
 from components.empty_state import EmptyState
-from components.hazard_map import HazardMap, build_event_detail_sheet
+from components.hazard_map import (
+    HazardMap,
+    build_event_detail_sheet,
+    build_zoom_controls,
+)
 from components.home.active_alert_banner import build_active_alert_banner
 from components.home.bookmarks_section import build_bookmarks_section
 from components.home.focus_banner import build_focus_banner
@@ -38,18 +42,21 @@ logger = logging.getLogger("asase.home")
 def canvas_panel_widths(viewport_width: float | None) -> tuple[bool, float, float]:
     """(use_canvas, rail_width, feeds_width) for a viewport width.
 
-    Compact windows keep the single-column scroll (no canvas). Fixed
-    360/420 panels overflow medium (600-840px) — proportional widths
-    there keep the panels + margins inside the viewport; expanded uses
-    the fixed sizes.
+    Compact windows keep the single-column scroll (no canvas). Medium
+    (600-840px) computes proportional widths so panels + margins stay
+    inside the viewport; expanded uses the room proportionally with
+    caps — a big screen gets wide, roomy panels instead of cramped
+    fixed ones (a 4K viewport caps so panels can't drift).
     """
     vw = viewport_width or 0.0
-    use_canvas = window_class(vw if vw else None) in ("medium", "expanded")
-    if use_canvas and window_class(vw if vw else None) == "medium" and vw:
+    cls = window_class(vw if vw else None)
+    use_canvas = cls in ("medium", "expanded")
+    if cls == "medium" and vw:
         rail_w = min(320.0, vw * 0.45)
         feeds_w = max(260.0, vw - rail_w - 2 * tokens.SPACE_MD - 8)
     else:
-        rail_w, feeds_w = 360.0, 420.0
+        rail_w = max(360.0, min(440.0, vw * 0.26))
+        feeds_w = max(420.0, min(560.0, vw * 0.34))
     return use_canvas, rail_w, feeds_w
 
 
@@ -279,6 +286,14 @@ def HomeScreen() -> Control:
         if controller.share_text:
             schedule(controller.share_text, msg, "Asase Hazard Alert", page=page)
 
+    # Canvas mode decision first — the map's zoom-control placement and the
+    # rail contents depend on it.
+    try:
+        _vw = float(page.width) if page and page.width else 0.0
+    except (TypeError, ValueError):
+        _vw = 0.0
+    use_canvas, _rail_w, _feeds_w = canvas_panel_widths(_vw)
+
     map_widget = HazardMap(
         lat=state.current_lat,
         lon=state.current_lon,
@@ -289,21 +304,26 @@ def HomeScreen() -> Control:
         is_dark=is_dark_mode(page),
         on_marker_click=lambda ev: set_selected_event(ev),
         map_ref=home_map_ref,
+        # Canvas mode renders its own in-rail zoom row (floating pills
+        # under the home panels were unclickable); the compact mini-map
+        # in the scroll keeps the floating top-left pill.
+        zoom_placement="none" if use_canvas else "top-left",
+    )
+
+    # In-rail zoom row for the canvas — sits under the filter chips, always
+    # clickable at every window class (medium's inter-panel gap is 8px, so
+    # a floating pill could never fit between rail and feeds).
+    rail_zoom = build_zoom_controls(
+        home_map_ref,
+        page=page,
+        horizontal=True,
+        is_dark=is_dark_mode(page),
     )
     map_header = SectionHeader(
         "GLOBAL HAZARD RADAR",
         action_text="EXPAND MAP",
         on_action=lambda _: controller.show_map() if controller.show_map else None,
     )
-
-    # Compact windows keep the proven single-column scroll. Medium+ windows
-    # get the full-bleed canvas: map as background layer, controls + feeds
-    # as floating translucent panels over it.
-    try:
-        _vw = float(page.width) if page and page.width else 0.0
-    except (TypeError, ValueError):
-        _vw = 0.0
-    use_canvas, _rail_w, _feeds_w = canvas_panel_widths(_vw)
 
     content_list = ft.ListView(
         controls=[
@@ -492,7 +512,7 @@ def HomeScreen() -> Control:
     # scrollable feed column as a translucent right panel.
     left_rail = ft.Container(
         content=ft.Column(
-            [search_bar, filter_chips, focus_banner],
+            [search_bar, filter_chips, focus_banner, rail_zoom],
             spacing=tokens.SPACE_SM,
             scroll=ft.ScrollMode.AUTO,
         ),

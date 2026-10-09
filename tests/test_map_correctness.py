@@ -131,3 +131,69 @@ def test_zoom_click_without_map_ref_is_noop():
     ]
     assert len(buttons) == 1
     buttons[0].on_click(None)  # must not raise
+
+
+def _zoom_pill(root):
+    """The vertical zoom pill container inside a map tree (or [])."""
+    return [
+        c
+        for c in walk(root)
+        if isinstance(c, ft.Container)
+        and isinstance(c.content, ft.Column)
+        and any(
+            isinstance(b, ft.IconButton) and b.tooltip == "Zoom in"
+            for b in c.content.controls
+        )
+    ]
+
+
+def test_zoom_pill_placement_per_embed():
+    from components.hazard_map import HazardMap
+
+    # Default (full map screen + compact mini-map): top-left pill — corner
+    # is free there (layer stack is top-right, sheet/panels are bottom).
+    hmap = HazardMap(lat=0.0, lon=0.0, earthquakes=[])
+    pill = _zoom_pill(hmap)
+    assert len(pill) == 1
+    assert pill[0].top is not None and pill[0].left is not None  # positioned top-left
+
+    # Home canvas: NO floating pill — the inter-panel gap is only 8px on
+    # medium, so the home drops its own in-rail zoom row instead.
+    hmap2 = HazardMap(lat=0.0, lon=0.0, earthquakes=[], zoom_placement="none")
+    assert _zoom_pill(hmap2) == []
+
+
+def test_rail_zoom_controls_horizontal_row():
+    from components.hazard_map import build_zoom_controls
+
+    class _Ref:
+        pass
+
+    row = build_zoom_controls(_Ref(), horizontal=True)
+    tooltips = [b.tooltip for b in walk(row) if isinstance(b, ft.IconButton)]
+    assert tooltips == ["Zoom out", "Zoom in"]  # minus then plus, in-flow
+
+
+def test_rail_zoom_click_schedules_map_methods():
+    from unittest.mock import patch
+
+    from components.hazard_map import build_zoom_controls
+
+    class _FakeMap:
+        async def zoom_in(self):
+            pass
+
+        async def zoom_out(self):
+            pass
+
+    ref = type("R", (), {"current": _FakeMap()})()
+    row = build_zoom_controls(ref, horizontal=True)
+    buttons = {b.tooltip: b for b in walk(row) if isinstance(b, ft.IconButton)}
+    scheduled = []
+    with patch(
+        "components.hazard_map.schedule",
+        side_effect=lambda fn, **kw: scheduled.append(fn),
+    ):
+        buttons["Zoom out"].on_click(None)
+        buttons["Zoom in"].on_click(None)
+    assert [f.__name__ for f in scheduled] == ["zoom_out", "zoom_in"]

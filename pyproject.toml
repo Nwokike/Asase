@@ -4,16 +4,16 @@ version = "1.0.2"
 description = "Asase — Global Earth Intelligence & Multi-Hazard Planetary Defense Platform"
 readme = "README.md"
 requires-python = ">=3.12"
-# Flet family pinned exact: the audit verified every API against 1.0.3
+# Flet family pinned exact: the audit verified every API against the
 # installed source. Unpin only with a re-verification pass.
 dependencies = [
-    "flet==1.0.3",
-    "flet-ads==1.0.3",
-    "flet-map==1.0.3",
-    "flet-geolocator==1.0.3",
+    "flet==1.0.4",
+    "flet-ads==1.0.4",
+    "flet-map==1.0.4",
+    "flet-geolocator==1.0.4",
     "httpx[http2]>=0.28.1",
     "pydantic>=2.10.0",
-    "flet-charts==1.0.3",
+    "flet-charts==1.0.4",
 ]
 
 [tool.flet]
@@ -34,6 +34,9 @@ route_url_strategy = "path"
 renderer = "canvaskit"
 pwa_background_color = "#0B0F17"
 pwa_theme_color = "#10B981"
+# iOS Home Screen label for the installed PWA (1.0.4 honors it; the
+# project name "asase" showed there before).
+pwa_short_name = "Asase"
 dependencies = []
 
 [tool.flet.android]

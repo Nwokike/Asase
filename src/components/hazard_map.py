@@ -345,6 +345,104 @@ def build_event_detail_sheet(
     )
 
 
+def build_zoom_controls(
+    map_ref,
+    page=None,
+    *,
+    horizontal: bool = False,
+    is_dark: bool = True,
+) -> ft.Control:
+    """+/- zoom controls for a flet-map instance.
+
+    Vertical pill (default) floats over a map corner; the horizontal row
+    variant is in-flow — the home canvas drops it into its control rail
+    where floating pills were covered by the floating search/feed panels.
+    Wheel zoom and pinch remain available on the map itself.
+    """
+    try:
+        if page is None:
+            page = flet_context.page
+    except RuntimeError:
+        page = None  # tree-building tests — schedule falls back
+
+    def _zoom_in(e=None):
+        m = map_ref.current if map_ref else None
+        if m is not None:
+            schedule(m.zoom_in, page=page)
+
+    def _zoom_out(e=None):
+        m = map_ref.current if map_ref else None
+        if m is not None:
+            schedule(m.zoom_out, page=page)
+
+    surface = (
+        ft.Colors.with_opacity(0.85, AppColors.DARK_SURFACE)
+        if is_dark
+        else ft.Colors.WHITE
+    )
+    divider_color = ft.Colors.with_opacity(0.2, AppColors.PRIMARY)
+
+    if horizontal:
+        return ft.Container(
+            content=ft.Row(
+                [
+                    ft.IconButton(
+                        icon=ft.Icons.REMOVE_ROUNDED,
+                        icon_size=18,
+                        tooltip="Zoom out",
+                        icon_color=AppColors.PRIMARY,
+                        on_click=_zoom_out,
+                    ),
+                    ft.Container(
+                        height=18,
+                        width=1,
+                        bgcolor=divider_color,
+                    ),
+                    ft.IconButton(
+                        icon=ft.Icons.ADD_ROUNDED,
+                        icon_size=18,
+                        tooltip="Zoom in",
+                        icon_color=AppColors.PRIMARY,
+                        on_click=_zoom_in,
+                    ),
+                ],
+                spacing=0,
+                alignment=ft.MainAxisAlignment.CENTER,
+            ),
+            bgcolor=surface,
+            border_radius=tokens.RADIUS_MD,
+            alignment=ft.Alignment.CENTER,
+        )
+
+    return ft.Container(
+        content=ft.Column(
+            [
+                ft.IconButton(
+                    icon=ft.Icons.ADD_ROUNDED,
+                    icon_size=18,
+                    tooltip="Zoom in",
+                    icon_color=AppColors.PRIMARY,
+                    on_click=_zoom_in,
+                ),
+                ft.Container(height=1, bgcolor=divider_color),
+                ft.IconButton(
+                    icon=ft.Icons.REMOVE_ROUNDED,
+                    icon_size=18,
+                    tooltip="Zoom out",
+                    icon_color=AppColors.PRIMARY,
+                    on_click=_zoom_out,
+                ),
+            ],
+            spacing=0,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            alignment=ft.MainAxisAlignment.CENTER,
+        ),
+        width=40,
+        bgcolor=surface,
+        border_radius=tokens.RADIUS_MD,
+    )
+
+
 def HazardMap(
     lat: float = 6.5244,
     lon: float = 3.3792,
@@ -358,6 +456,7 @@ def HazardMap(
     is_dark: bool = True,
     satellite: bool = False,
     map_ref=None,
+    zoom_placement: str = "top-left",
 ) -> ft.Control:
     """Builds the interactive multi-layer planetary map with 100% auth-free, watermark-free tiles."""
     markers: list[map.Marker] = []
@@ -485,60 +584,21 @@ def HazardMap(
 
     # Desktop-friendly zoom controls: touch has pinch and desktop has
     # wheel zoom (SCROLL_WHEEL_ZOOM flag), but explicit +/− buttons make
-    # zooming discoverable on every platform. Top-left corner is free on
-    # both embeds (layer stack = top-right, detail sheet = bottom-left,
-    # attribution/overflow chip = bottom-right).
+    # zooming discoverable on every platform. Floating pill suits the
+    # full map (top-left is free there); the home canvas passes
+    # zoom_placement="none" and renders its own in-rail horizontal zoom
+    # row (floating pills under home's panels were unclickable).
     try:
         _page = flet_context.page
     except RuntimeError:
         _page = None  # tree-building tests — schedule falls back
 
-    def _zoom_in(e=None):
-        m = map_ref.current if map_ref else None
-        if m is not None:
-            schedule(m.zoom_in, page=_page)
-
-    def _zoom_out(e=None):
-        m = map_ref.current if map_ref else None
-        if m is not None:
-            schedule(m.zoom_out, page=_page)
-
-    zoom_pill = ft.Container(
-        content=ft.Column(
-            [
-                ft.IconButton(
-                    icon=ft.Icons.ADD_ROUNDED,
-                    icon_size=18,
-                    tooltip="Zoom in",
-                    icon_color=AppColors.PRIMARY,
-                    on_click=_zoom_in,
-                ),
-                ft.Container(
-                    height=1,
-                    bgcolor=ft.Colors.with_opacity(0.2, AppColors.PRIMARY),
-                ),
-                ft.IconButton(
-                    icon=ft.Icons.REMOVE_ROUNDED,
-                    icon_size=18,
-                    tooltip="Zoom out",
-                    icon_color=AppColors.PRIMARY,
-                    on_click=_zoom_out,
-                ),
-            ],
-            spacing=0,
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            alignment=ft.MainAxisAlignment.CENTER,
-        ),
-        top=tokens.SPACE_SM,
-        left=tokens.SPACE_SM,
-        width=40,
-        bgcolor=ft.Colors.with_opacity(0.85, AppColors.DARK_SURFACE)
-        if is_dark
-        else ft.Colors.WHITE,
-        border_radius=tokens.RADIUS_MD,
-    )
-
-    stack_controls = [map_body, zoom_pill]
+    stack_controls = [map_body]
+    if zoom_placement == "top-left":
+        zoom_pill = build_zoom_controls(map_ref, page=_page, is_dark=is_dark)
+        zoom_pill.top = tokens.SPACE_SM
+        zoom_pill.left = tokens.SPACE_SM
+        stack_controls.append(zoom_pill)
 
     # Overflow chip: the caps above silently dropped events — surface the
     # count so users know to zoom in rather than assuming full coverage.
