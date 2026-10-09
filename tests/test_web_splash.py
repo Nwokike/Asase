@@ -140,9 +140,9 @@ def test_splash_is_mission_control_staged_progress():
     assert "Rendering first frame" in SPLASH_HTML
     assert "data-state" in SPLASH_HTML
     # Plain microcopy that can't be missed (no rotating-timer gimmicks):
-    # first visit is slow, repeat visits are fast.
-    assert "First time you visit" in SPLASH_HTML
-    assert "After that it's fast" in SPLASH_HTML
+    # first visit is the slow one, subsequent visits are fast.
+    assert "First time visits take about 45 seconds" in SPLASH_HTML
+    assert "Subsequent visits are fast" in SPLASH_HTML
     # And it must be the LOUD element on the card, not fine print:
     # 12.5px, weight 700, full contrast. Scoped to the footer rule so
     # this can't pass off the percentage's own boldness.

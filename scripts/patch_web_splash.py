@@ -229,7 +229,7 @@ SPLASH_HTML = f"""
       <li data-state="pending"><span class="dot"></span>Connecting planetary feeds...</li>
       <li data-state="pending"><span class="dot"></span>Rendering first frame...</li>
     </ul>
-    <div class="asase-footer">First time you visit, it takes about a minute. After that it's fast.</div>
+    <div class="asase-footer">First time visits take about 45 seconds to set everything up. Subsequent visits are fast.</div>
   </div>
 
   <script>
