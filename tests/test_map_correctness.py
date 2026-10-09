@@ -163,15 +163,23 @@ def test_zoom_pill_placement_per_embed():
     assert _zoom_pill(hmap2) == []
 
 
-def test_rail_zoom_controls_horizontal_row():
+def test_rail_zoom_is_the_same_pill_design():
+    """Home's zoom control is the SAME pill as the full map's — only its
+    position changes (it docks at the rail's bottom-left instead of the
+    map's top-left)."""
     from components.hazard_map import build_zoom_controls
 
     class _Ref:
         pass
 
-    row = build_zoom_controls(_Ref(), horizontal=True)
-    tooltips = [b.tooltip for b in walk(row) if isinstance(b, ft.IconButton)]
-    assert tooltips == ["Zoom out", "Zoom in"]  # minus then plus, in-flow
+    pill = build_zoom_controls(_Ref())
+    # Vertical pill: Column of icons inside a 40px-wide glass container —
+    # identical structure to the map-screen pill.
+    assert isinstance(pill, ft.Container)
+    assert isinstance(pill.content, ft.Column)
+    assert pill.width == 40
+    tooltips = [b.tooltip for b in walk(pill) if isinstance(b, ft.IconButton)]
+    assert tooltips == ["Zoom in", "Zoom out"]  # plus over minus
 
 
 def test_rail_zoom_click_schedules_map_methods():
@@ -187,8 +195,8 @@ def test_rail_zoom_click_schedules_map_methods():
             pass
 
     ref = type("R", (), {"current": _FakeMap()})()
-    row = build_zoom_controls(ref, horizontal=True)
-    buttons = {b.tooltip: b for b in walk(row) if isinstance(b, ft.IconButton)}
+    pill = build_zoom_controls(ref)
+    buttons = {b.tooltip: b for b in walk(pill) if isinstance(b, ft.IconButton)}
     scheduled = []
     with patch(
         "components.hazard_map.schedule",

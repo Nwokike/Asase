@@ -304,21 +304,13 @@ def HomeScreen() -> Control:
         is_dark=is_dark_mode(page),
         on_marker_click=lambda ev: set_selected_event(ev),
         map_ref=home_map_ref,
-        # Canvas mode renders its own in-rail zoom row (floating pills
-        # under the home panels were unclickable); the compact mini-map
-        # in the scroll keeps the floating top-left pill.
+        # Canvas mode gets the pill inside the rail (a pill floating over
+        # the map itself is unclickable on home — the search rail and feeds
+        # panel cover it, and medium's inter-panel gap is 8px at every
+        # width). The compact mini-map keeps the floating top-left pill.
         zoom_placement="none" if use_canvas else "top-left",
     )
 
-    # In-rail zoom row for the canvas — sits under the filter chips, always
-    # clickable at every window class (medium's inter-panel gap is 8px, so
-    # a floating pill could never fit between rail and feeds).
-    rail_zoom = build_zoom_controls(
-        home_map_ref,
-        page=page,
-        horizontal=True,
-        is_dark=is_dark_mode(page),
-    )
     map_header = SectionHeader(
         "GLOBAL HAZARD RADAR",
         action_text="EXPAND MAP",
@@ -510,11 +502,26 @@ def HomeScreen() -> Control:
         )
     # Full-bleed canvas: map background, floating control rail on the left,
     # scrollable feed column as a translucent right panel.
+    # The SAME pill the full map screen uses — position is the only
+    # change: bottom-left inside the rail's own box, where the search
+    # bar, the feeds panel and the event sheet can never cover it.
+    # (A pill floating over the map itself can't work on home: medium's
+    # inter-panel gap is exactly 8px at every width.)
+    rail_zoom = build_zoom_controls(home_map_ref, page=page, is_dark=is_dark_mode(page))
+    rail_zoom.bottom = tokens.SPACE_MD
+    rail_zoom.left = tokens.SPACE_MD
+
     left_rail = ft.Container(
-        content=ft.Column(
-            [search_bar, filter_chips, focus_banner, rail_zoom],
-            spacing=tokens.SPACE_SM,
-            scroll=ft.ScrollMode.AUTO,
+        content=ft.Stack(
+            controls=[
+                ft.Column(
+                    [search_bar, filter_chips, focus_banner],
+                    spacing=tokens.SPACE_SM,
+                    scroll=ft.ScrollMode.AUTO,
+                ),
+                rail_zoom,
+            ],
+            expand=True,
         ),
         width=_rail_w,
         padding=ft.Padding(tokens.SPACE_MD, tokens.SPACE_MD, 0, tokens.SPACE_MD),

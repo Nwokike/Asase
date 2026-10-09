@@ -349,16 +349,10 @@ def build_zoom_controls(
     map_ref,
     page=None,
     *,
-    horizontal: bool = False,
     is_dark: bool = True,
 ) -> ft.Control:
-    """+/- zoom controls for a flet-map instance.
-
-    Vertical pill (default) floats over a map corner; the horizontal row
-    variant is in-flow — the home canvas drops it into its control rail
-    where floating pills were covered by the floating search/feed panels.
-    Wheel zoom and pinch remain available on the map itself.
-    """
+    """The +/− zoom pill — identical design everywhere it appears (full
+    map pill, home rail pill). Position is decided by the embed."""
     try:
         if page is None:
             page = flet_context.page
@@ -381,38 +375,6 @@ def build_zoom_controls(
         else ft.Colors.WHITE
     )
     divider_color = ft.Colors.with_opacity(0.2, AppColors.PRIMARY)
-
-    if horizontal:
-        return ft.Container(
-            content=ft.Row(
-                [
-                    ft.IconButton(
-                        icon=ft.Icons.REMOVE_ROUNDED,
-                        icon_size=18,
-                        tooltip="Zoom out",
-                        icon_color=AppColors.PRIMARY,
-                        on_click=_zoom_out,
-                    ),
-                    ft.Container(
-                        height=18,
-                        width=1,
-                        bgcolor=divider_color,
-                    ),
-                    ft.IconButton(
-                        icon=ft.Icons.ADD_ROUNDED,
-                        icon_size=18,
-                        tooltip="Zoom in",
-                        icon_color=AppColors.PRIMARY,
-                        on_click=_zoom_in,
-                    ),
-                ],
-                spacing=0,
-                alignment=ft.MainAxisAlignment.CENTER,
-            ),
-            bgcolor=surface,
-            border_radius=tokens.RADIUS_MD,
-            alignment=ft.Alignment.CENTER,
-        )
 
     return ft.Container(
         content=ft.Column(
