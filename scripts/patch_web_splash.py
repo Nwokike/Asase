@@ -198,9 +198,10 @@ SPLASH_HTML = f"""
       50% {{ opacity: 0.55; }}
     }}
     #asase-splash .asase-footer {{
-      font-size: 11px;
-      color: var(--muted);
-      opacity: 0.85;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text);
+      opacity: 1;
       text-align: center;
     }}
     #asase-splash .fade-out {{
@@ -228,7 +229,7 @@ SPLASH_HTML = f"""
       <li data-state="pending"><span class="dot"></span>Connecting planetary feeds...</li>
       <li data-state="pending"><span class="dot"></span>Rendering first frame...</li>
     </ul>
-    <div class="asase-footer">First load ~45–60 s · runtime caches for next visit</div>
+    <div class="asase-footer">First time you visit, it takes about a minute. After that it's fast.</div>
   </div>
 
   <script>

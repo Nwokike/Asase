@@ -139,9 +139,17 @@ def test_splash_is_mission_control_staged_progress():
     assert 'id="asase-checklist"' in SPLASH_HTML
     assert "Rendering first frame" in SPLASH_HTML
     assert "data-state" in SPLASH_HTML
-    # Static anti-bounce microcopy (no rotating-timer gimmicks)
-    assert "First load ~45" in SPLASH_HTML
-    assert "runtime caches for next visit" in SPLASH_HTML
+    # Plain microcopy that can't be missed (no rotating-timer gimmicks):
+    # first visit is slow, repeat visits are fast.
+    assert "First time you visit" in SPLASH_HTML
+    assert "After that it's fast" in SPLASH_HTML
+    # And it must be the LOUD element on the card, not fine print:
+    # 12.5px, weight 700, full contrast. Scoped to the footer rule so
+    # this can't pass off the percentage's own boldness.
+    _footer_css = SPLASH_HTML.split("#asase-splash .asase-footer")[1].split("}")[0]
+    assert "font-weight: 700" in _footer_css
+    assert "12.5px" in _footer_css
+    assert "var(--text)" in _footer_css
 
     # Real milestones: window load advances stage 1; the FIRST engine
     # message dismisses IMMEDIATELY (the splash never delays readiness —
