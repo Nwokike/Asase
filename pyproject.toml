@@ -41,7 +41,6 @@ dependencies = []
 
 [tool.flet.android]
 bundle_id = "ng.kiri.asase"
-target_arch = ["arm64-v8a", "armeabi-v7a"]
 
 [tool.flet.android.manifest_application]
 usesCleartextTraffic = "false"
