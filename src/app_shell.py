@@ -287,22 +287,13 @@ def AppShell() -> Control:
     )
     if use_side_chrome:
         # Constrain content width on wide windows instead of full-bleed.
-        # (Container has no max_width in 1.0.3 — pad symmetrically past the
-        # cap so the column centers itself.)
-        try:
-            vw = float(viewport_width or 0)
-        except (TypeError, ValueError):
-            vw = 0.0
-        side_w = (
-            tokens.SIDEBAR_RAIL_WIDTH
-            if state.sidebar_collapsed or wclass == "medium"
-            else tokens.SIDEBAR_EXPANDED_WIDTH
-        )
-        gutter = max(0.0, (vw - side_w - tokens.CONTENT_MAX_WIDTH) / 2.0)
+        # Flet 1.1 supports max_width on every layout control, so the
+        # engine handles centering — no manual gutter math / one-frame lag.
         screen_holder = ft.Container(
             content=screen_holder,
             expand=True,
-            padding=ft.Padding(gutter, 0, gutter, 0),
+            max_width=tokens.CONTENT_MAX_WIDTH,
+            alignment=ft.Alignment.CENTER,
         )
 
     if not use_side_chrome:

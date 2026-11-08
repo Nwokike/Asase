@@ -21,6 +21,13 @@ CHANGELOG: dict[str, str] = {
         "• Temperature (°C/°F) and wind (km/h/mph) follow your settings\n"
         "• Reliability pass: feeds survive bad records, search + cache hardened"
     ),
+    "1.0.3": (
+        "• Flet 1.1.2: ~3x smaller web bundles, 2-3x faster startup (gzip + Pyodide .pyc)\n"
+        "• Responsive layouts use min/max sizing (no one-frame width lag)\n"
+        "• Pull-to-refresh on home and history feeds\n"
+        "• Neutral theme surfaces + unified input styling\n"
+        "• Dependency refresh: pydantic 2.14, pytest 9.2, ruff 0.17"
+    ),
 }
 
 

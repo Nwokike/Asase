@@ -260,6 +260,14 @@ class AppTheme:
             ),
             font_family="Outfit",
             visual_density=ft.VisualDensity.COMFORTABLE,
+            surfaces=ft.ThemeSurfaces.NEUTRAL,
+            input_decoration_theme=ft.InputDecorationTheme(
+                border=ft.OutlineInputBorder(),
+                content_padding=ft.Padding.symmetric(horizontal=12, vertical=8),
+            ),
+            text_field_theme=ft.TextFieldTheme(
+                text_style=ft.TextStyle(font_family="Outfit"),
+            ),
         )
 
     @staticmethod
@@ -284,6 +292,14 @@ class AppTheme:
             ),
             font_family="Outfit",
             visual_density=ft.VisualDensity.COMFORTABLE,
+            surfaces=ft.ThemeSurfaces.NEUTRAL,
+            input_decoration_theme=ft.InputDecorationTheme(
+                border=ft.OutlineInputBorder(),
+                content_padding=ft.Padding.symmetric(horizontal=12, vertical=8),
+            ),
+            text_field_theme=ft.TextFieldTheme(
+                text_style=ft.TextStyle(font_family="Outfit"),
+            ),
         )
 
 

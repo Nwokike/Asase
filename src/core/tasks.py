@@ -31,7 +31,7 @@ def _log_failure(task: asyncio.Task) -> None:
         logger.warning("Background task failed: %s", exc)
 
 
-def schedule(coro_fn, *args: Any, page=None, **kwargs: Any):
+def schedule(coro_fn, *args: Any, page=None, awaitable: bool = False, **kwargs: Any):
     """Run ``coro_fn(*args, **kwargs)`` on the page loop when possible.
 
     Coroutine functions are scheduled (Future via ``page.run_task`` when a
@@ -51,7 +51,10 @@ def schedule(coro_fn, *args: Any, page=None, **kwargs: Any):
             raise
     if page is not None and hasattr(page, "run_task"):
         try:
-            return page.run_task(coro_fn, *args, **kwargs)
+            fut = page.run_task(coro_fn, *args, **kwargs)
+            if awaitable and not isinstance(fut, asyncio.Future):
+                return asyncio.wrap_future(fut)
+            return fut
         except TypeError:
             # run_task requires a coroutine function — fall through to Task
             pass
@@ -59,4 +62,6 @@ def schedule(coro_fn, *args: Any, page=None, **kwargs: Any):
             logger.warning("page.run_task failed (%s); falling back", ex)
     task = asyncio.create_task(coro_fn(*args, **kwargs))
     task.add_done_callback(_log_failure)
+    if awaitable:
+        return task  # already an asyncio.Task (awaitable)
     return task

@@ -192,7 +192,7 @@ def HistoryScreen() -> Control:
                 )
         body = ft.Column(rows, spacing=tokens.SPACE_XS)
 
-    return ft.ListView(
+    _lv = ft.ListView(
         controls=[
             clear_row,
             ft.Container(content=body, padding=ft.Padding(0, tokens.SPACE_SM, 0, 0)),
@@ -200,4 +200,12 @@ def HistoryScreen() -> Control:
         ],
         expand=True,
         spacing=0,
+    )
+
+    async def _refresh_history():
+        if controller.refresh_all:
+            await controller.refresh_all()
+
+    return ft.RefreshIndicator(
+        content=_lv, on_refresh=_refresh_history, handle_nested_scrolls=True
     )

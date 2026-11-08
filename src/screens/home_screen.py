@@ -475,6 +475,18 @@ def HomeScreen() -> Control:
         expand=True,
     )
 
+    # Pull-to-refresh on the main feed (touch only; desktop/web keep the
+    # status-bar refresh button).
+    async def _refresh_feeds():
+        if controller.refresh_all:
+            await controller.refresh_all()
+
+    content_list = ft.RefreshIndicator(
+        content=content_list,
+        on_refresh=_refresh_feeds,
+        handle_nested_scrolls=True,
+    )
+
     # Page-level overlay stack: event cards and map markers both open the
     # detail sheet here, so it's visible no matter where in the feed you tap
     # (the old sheet only overlay the 240px mini-map region).

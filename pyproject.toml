@@ -1,26 +1,26 @@
 [project]
 name = "asase"
-version = "1.0.2"
+version = "1.0.3"
 description = "Asase — Global Earth Intelligence & Multi-Hazard Planetary Defense Platform"
 readme = "README.md"
 requires-python = ">=3.12"
 # Flet family pinned exact: the audit verified every API against the
 # installed source. Unpin only with a re-verification pass.
 dependencies = [
-    "flet==1.0.4",
-    "flet-ads==1.0.4",
-    "flet-map==1.0.4",
-    "flet-geolocator==1.0.4",
+    "flet==1.1.2",
+    "flet-ads==1.1.2",
+    "flet-map==1.1.2",
+    "flet-geolocator==1.1.2",
     "httpx[http2]>=0.28.1",
     "pydantic>=2.10.0",
-    "flet-charts==1.0.4",
+    "flet-charts==1.1.2",
 ]
 
 [tool.flet]
 org = "ng.kiri"
 product = "Asase"
 company = "Kiri Research Labs"
-build_number = 4
+build_number = 5
 
 [tool.flet.app]
 path = "src"
@@ -60,15 +60,16 @@ key_alias = "upload"
 
 [dependency-groups]
 dev = [
-    "pytest>=9.1.1",
-    "pytest-asyncio>=0.24.0",
-    "pytest-timeout>=2.3.1",
-    "ruff>=0.16.4",
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.4.0",
+    "pytest-timeout>=2.4.0",
+    "ruff>=0.17.4",
 ]
 
 [tool.pytest.ini_options]
 pythonpath = [".", "src", "tests"]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 # M9: no test may hang CI — every test gets a hard 120s ceiling.
 timeout = 120
 
