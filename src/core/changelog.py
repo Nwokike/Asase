@@ -26,7 +26,7 @@ CHANGELOG: dict[str, str] = {
         "• Responsive layouts use min/max sizing (no one-frame width lag)\n"
         "• Pull-to-refresh on home and history feeds\n"
         "• Neutral theme surfaces + unified input styling\n"
-        "• Dependency refresh: pydantic 2.14, pytest 9.2, ruff 0.17"
+        "• Slimmer app: pydantic removed — feed models on stdlib dataclasses"
     ),
 }
 
