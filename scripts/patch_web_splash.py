@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Patch Flet Web build output with the Mission Control boot splash and Pyodide bridge.
 
-Staged, honest progress over the 3-7s (cold up to ~45s) Pyodide/WASM boot:
+Staged, honest progress over the 3-7s (cold up to ~20s on Flet 1.1) Pyodide/WASM boot:
 a determinate bar + percentage + a checklist whose four rows check off on
 REAL milestones (paint → assets loaded → engine handshake → feeds painted →
 first frame) — no timer-driven fake progress. The three status lines live
@@ -250,7 +250,7 @@ SPLASH_HTML = f"""
       <li data-state="pending"><span class="dot"></span>Connecting planetary feeds...</li>
       <li data-state="pending"><span class="dot"></span>Rendering first frame...</li>
     </ul>
-    <div class="asase-footer">First time visits take about 45 seconds to set everything up. Subsequent visits are fast.</div>
+    <div class="asase-footer">First time visits take about 20 seconds to set everything up. Subsequent visits are fast.</div>
   </div>
 
   <script>

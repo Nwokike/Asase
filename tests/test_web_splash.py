@@ -143,8 +143,10 @@ def test_splash_is_mission_control_staged_progress():
     assert "Rendering first frame" in SPLASH_HTML
     assert "data-state" in SPLASH_HTML
     # Plain microcopy that can't be missed (no rotating-timer gimmicks):
-    # first visit is the slow one, subsequent visits are fast.
-    assert "First time visits take about 45 seconds" in SPLASH_HTML
+    # first visit is the slow one, subsequent visits are fast. 20s since
+    # the Flet 1.1 web speedups (user-verified cold boot).
+    assert "First time visits take about 20 seconds" in SPLASH_HTML
+    assert "45 seconds" not in SPLASH_HTML
     assert "Subsequent visits are fast" in SPLASH_HTML
     # And it must be the LOUD element on the card, not fine print:
     # 12.5px, weight 700, full contrast. Scoped to the footer rule so
@@ -156,7 +158,9 @@ def test_splash_is_mission_control_staged_progress():
 
     # Real milestones: window load advances stage 1; the FIRST engine
     # message dismisses IMMEDIATELY (the splash never delays readiness —
-    # zero added latency vs the v1 splash). 45s bridge-miss safety cap.
+    # zero added latency vs the v1 splash). 45s bridge-miss safety cap —
+    # deliberately above the ~20s copy: a last-resort escape hatch must
+    # exceed worst-case boot, not typical.
     assert 'addEventListener("load"' in SPLASH_HTML
     assert "function onHandshake()" in SPLASH_HTML
     assert "window.__asaseSignalReady = onHandshake" in SPLASH_HTML
