@@ -326,10 +326,15 @@ class AppStyles:
 
         Follows the akili-app family pattern: comfortable line-height body,
         bold accent headings, monospace code on tinted blocks, underlined
-        accent links, and a left-barred blockquote.
+        accent links, and a left-barred blockquote. Every text style sets
+        an explicit theme color — an unset color inherits the client's
+        black default ink, which is invisible on dark surfaces.
         """
+        body_color = AppColors.DARK_TEXT if is_dark else AppColors.LIGHT_TEXT
         return ft.MarkdownStyleSheet(
-            p_text_style=ft.TextStyle(size=tokens.FONT_MD, height=1.6),
+            p_text_style=ft.TextStyle(
+                size=tokens.FONT_MD, height=1.6, color=body_color
+            ),
             h1_text_style=ft.TextStyle(
                 size=tokens.FONT_HERO,
                 weight=ft.FontWeight.BOLD,
@@ -340,10 +345,18 @@ class AppStyles:
                 weight=ft.FontWeight.BOLD,
                 color=AppColors.PRIMARY,
             ),
-            h3_text_style=ft.TextStyle(size=tokens.FONT_XL, weight=ft.FontWeight.W_600),
-            h4_text_style=ft.TextStyle(size=tokens.FONT_LG, weight=ft.FontWeight.W_600),
-            strong_text_style=ft.TextStyle(weight=ft.FontWeight.BOLD),
-            em_text_style=ft.TextStyle(italic=True),
+            h3_text_style=ft.TextStyle(
+                size=tokens.FONT_XL,
+                weight=ft.FontWeight.W_600,
+                color=body_color,
+            ),
+            h4_text_style=ft.TextStyle(
+                size=tokens.FONT_LG,
+                weight=ft.FontWeight.W_600,
+                color=body_color,
+            ),
+            strong_text_style=ft.TextStyle(weight=ft.FontWeight.BOLD, color=body_color),
+            em_text_style=ft.TextStyle(italic=True, color=body_color),
             code_text_style=ft.TextStyle(
                 font_family="Courier New",
                 size=tokens.FONT_SM,
@@ -370,7 +383,9 @@ class AppStyles:
                     bottom=ft.BorderSide(0, ft.Colors.TRANSPARENT),
                 ),
             ),
-            list_bullet_text_style=ft.TextStyle(size=tokens.FONT_MD, height=1.5),
+            list_bullet_text_style=ft.TextStyle(
+                size=tokens.FONT_MD, height=1.5, color=body_color
+            ),
             horizontal_rule_decoration=ft.BoxDecoration(
                 border=ft.Border(
                     bottom=ft.BorderSide(

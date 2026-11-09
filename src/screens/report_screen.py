@@ -474,8 +474,11 @@ def ReportScreen() -> Control:
         temp, apparent_temp, wind_gust, wind_speed, cape, pressure, humidity
     )
 
-    # ── Tabbed Dossier: Summary → Evidence → Raw ──
-    active_tab, set_active_tab = ft.use_state("summary")
+    # ── Dossier: Summary on top, then Evidence | Raw Telemetry ──
+    # Summary is not a tab: it always renders first, and the chosen tab's
+    # content follows immediately after it in the same scroll. Evidence
+    # is the default — it opens right beneath the summary.
+    active_tab, set_active_tab = ft.use_state("evidence")
 
     def _tab_btn(key: str, label: str):
         is_active = active_tab == key
@@ -500,7 +503,6 @@ def ReportScreen() -> Control:
     tab_bar = ft.Container(
         content=ft.Row(
             [
-                _tab_btn("summary", "Summary"),
                 _tab_btn("evidence", "Evidence"),
                 _tab_btn("raw", "Raw Telemetry"),
             ],
@@ -509,186 +511,170 @@ def ReportScreen() -> Control:
         padding=ft.Padding(0, tokens.SPACE_SM, 0, 0),
     )
 
-    # Summary tab: hero + radar + AI briefing
-    summary_tab = ft.ListView(
-        controls=[
-            ft.Container(height=tokens.SPACE_SM),
-            # Location Hero Card
-            ft.Container(
-                content=AppStyles.glass_card(
-                    ft.Row(
-                        [
-                            ft.Column(
-                                [
-                                    ft.Row(
-                                        [
-                                            ft.Text(
-                                                state.current_location_name,
-                                                size=tokens.FONT_XL,
-                                                weight=ft.FontWeight.BOLD,
-                                                font_family="Outfit",
-                                            ),
-                                            ft.IconButton(
-                                                icon=(
-                                                    ft.Icons.STAR_ROUNDED
-                                                    if is_bookmarked
-                                                    else ft.Icons.STAR_BORDER_ROUNDED
-                                                ),
-                                                icon_color=(
-                                                    AppColors.WARNING
-                                                    if is_bookmarked
-                                                    else ft.Colors.ON_SURFACE_VARIANT
-                                                ),
-                                                tooltip="Bookmark Location",
-                                                on_click=_toggle_bookmark_click,
-                                            ),
-                                        ],
-                                        spacing=tokens.SPACE_XS,
-                                    ),
-                                    ft.Text(
-                                        f"Coordinates: {(safe_float(state.current_lat, 0.0) or 0.0):.4f}° N, {(safe_float(state.current_lon, 0.0) or 0.0):.4f}° E • Elevation: {int(safe_float(state.current_elevation, 0.0) or 0.0)}m",
-                                        size=tokens.FONT_XS,
-                                        color=ft.Colors.ON_SURFACE_VARIANT,
-                                        font_family="Outfit",
-                                    ),
-                                ],
-                                spacing=tokens.SPACE_XXS,
-                                expand=True,
-                            ),
-                            ft.Container(
-                                content=ft.Column(
+    # Summary (always visible): hero + radar + AI briefing
+    summary_controls = [
+        ft.Container(height=tokens.SPACE_SM),
+        # Location Hero Card
+        ft.Container(
+            content=AppStyles.glass_card(
+                ft.Row(
+                    [
+                        ft.Column(
+                            [
+                                ft.Row(
                                     [
                                         ft.Text(
-                                            f"{safety_score}",
-                                            size=tokens.FONT_XXL,
+                                            state.current_location_name,
+                                            size=tokens.FONT_XL,
                                             weight=ft.FontWeight.BOLD,
-                                            color=score_color,
                                             font_family="Outfit",
                                         ),
-                                        ft.Text(
-                                            "SAFETY SCORE",
-                                            size=tokens.FONT_XXS,
-                                            weight=ft.FontWeight.W_700,
-                                            color=score_color,
+                                        ft.IconButton(
+                                            icon=(
+                                                ft.Icons.STAR_ROUNDED
+                                                if is_bookmarked
+                                                else ft.Icons.STAR_BORDER_ROUNDED
+                                            ),
+                                            icon_color=(
+                                                AppColors.WARNING
+                                                if is_bookmarked
+                                                else ft.Colors.ON_SURFACE_VARIANT
+                                            ),
+                                            tooltip="Bookmark Location",
+                                            on_click=_toggle_bookmark_click,
                                         ),
                                     ],
-                                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                                    spacing=0,
+                                    spacing=tokens.SPACE_XS,
                                 ),
-                                padding=tokens.SPACE_SM,
-                                border_radius=tokens.RADIUS_MD,
-                                bgcolor=ft.Colors.with_opacity(0.12, score_color),
-                                border=ft.Border.all(
-                                    1, ft.Colors.with_opacity(0.3, score_color)
+                                ft.Text(
+                                    f"Coordinates: {(safe_float(state.current_lat, 0.0) or 0.0):.4f}° N, {(safe_float(state.current_lon, 0.0) or 0.0):.4f}° E • Elevation: {int(safe_float(state.current_elevation, 0.0) or 0.0)}m",
+                                    size=tokens.FONT_XS,
+                                    color=ft.Colors.ON_SURFACE_VARIANT,
+                                    font_family="Outfit",
                                 ),
-                            ),
-                        ],
-                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                    ),
-                    padding=tokens.SPACE_LG,
-                ),
-                padding=ft.Padding(
-                    tokens.SPACE_LG, tokens.SPACE_SM, tokens.SPACE_LG, 0
-                ),
-            ),
-            # Actions
-            ft.Container(
-                content=ft.Row(
-                    [
-                        ft.FilledButton(
-                            content=ft.Row(
+                            ],
+                            spacing=tokens.SPACE_XXS,
+                            expand=True,
+                        ),
+                        ft.Container(
+                            content=ft.Column(
                                 [
-                                    ft.Icon(
-                                        ft.Icons.SHARE_ROUNDED,
-                                        size=tokens.ICON_SM,
-                                        color=ft.Colors.WHITE,
+                                    ft.Text(
+                                        f"{safety_score}",
+                                        size=tokens.FONT_XXL,
+                                        weight=ft.FontWeight.BOLD,
+                                        color=score_color,
+                                        font_family="Outfit",
                                     ),
                                     ft.Text(
-                                        "Share Full Dossier",
-                                        size=tokens.FONT_SM,
-                                        weight=ft.FontWeight.W_600,
-                                        color=ft.Colors.WHITE,
+                                        "SAFETY SCORE",
+                                        size=tokens.FONT_XXS,
+                                        weight=ft.FontWeight.W_700,
+                                        color=score_color,
                                     ),
                                 ],
-                                spacing=4,
+                                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                                spacing=0,
                             ),
-                            style=ft.ButtonStyle(
-                                bgcolor=AppColors.PRIMARY,
-                                shape=ft.RoundedRectangleBorder(
-                                    radius=tokens.RADIUS_MD
-                                ),
-                            ),
-                            on_click=lambda _: schedule(_export_dossier, page=page),
-                        ),
-                        ft.OutlinedButton(
-                            content=ft.Row(
-                                [
-                                    ft.Icon(ft.Icons.MAP_ROUNDED, size=tokens.ICON_SM),
-                                    ft.Text("View on Map", size=tokens.FONT_SM),
-                                ],
-                                spacing=4,
-                            ),
-                            style=ft.ButtonStyle(
-                                shape=ft.RoundedRectangleBorder(radius=tokens.RADIUS_MD)
-                            ),
-                            on_click=lambda _: (
-                                controller.show_map() if controller.show_map else None
+                            padding=tokens.SPACE_SM,
+                            border_radius=tokens.RADIUS_MD,
+                            bgcolor=ft.Colors.with_opacity(0.12, score_color),
+                            border=ft.Border.all(
+                                1, ft.Colors.with_opacity(0.3, score_color)
                             ),
                         ),
                     ],
-                    spacing=tokens.SPACE_MD,
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 ),
-                padding=ft.Padding(
-                    tokens.SPACE_LG, tokens.SPACE_SM, tokens.SPACE_LG, 0
-                ),
+                padding=tokens.SPACE_LG,
             ),
-            SectionHeader("PLANETARY THREAT RADAR PROFILE"),
-            threat_radar,
-            ai_section,
-            _radius_history_block,
-            ft.Container(height=tokens.SPACE_MD),
-            build_banner_ad(page),
-            ft.Container(height=tokens.SPACE_XXXL),
-        ],
-        spacing=0,
-        expand=True,
-    )
+            padding=ft.Padding(tokens.SPACE_LG, tokens.SPACE_SM, tokens.SPACE_LG, 0),
+        ),
+        # Actions
+        ft.Container(
+            content=ft.Row(
+                [
+                    ft.FilledButton(
+                        content=ft.Row(
+                            [
+                                ft.Icon(
+                                    ft.Icons.SHARE_ROUNDED,
+                                    size=tokens.ICON_SM,
+                                    color=ft.Colors.WHITE,
+                                ),
+                                ft.Text(
+                                    "Share Full Dossier",
+                                    size=tokens.FONT_SM,
+                                    weight=ft.FontWeight.W_600,
+                                    color=ft.Colors.WHITE,
+                                ),
+                            ],
+                            spacing=4,
+                        ),
+                        style=ft.ButtonStyle(
+                            bgcolor=AppColors.PRIMARY,
+                            shape=ft.RoundedRectangleBorder(radius=tokens.RADIUS_MD),
+                        ),
+                        on_click=lambda _: schedule(_export_dossier, page=page),
+                    ),
+                    ft.OutlinedButton(
+                        content=ft.Row(
+                            [
+                                ft.Icon(ft.Icons.MAP_ROUNDED, size=tokens.ICON_SM),
+                                ft.Text("View on Map", size=tokens.FONT_SM),
+                            ],
+                            spacing=4,
+                        ),
+                        style=ft.ButtonStyle(
+                            shape=ft.RoundedRectangleBorder(radius=tokens.RADIUS_MD)
+                        ),
+                        on_click=lambda _: (
+                            controller.show_map() if controller.show_map else None
+                        ),
+                    ),
+                ],
+                spacing=tokens.SPACE_MD,
+            ),
+            padding=ft.Padding(tokens.SPACE_LG, tokens.SPACE_SM, tokens.SPACE_LG, 0),
+        ),
+        SectionHeader("PLANETARY THREAT RADAR PROFILE"),
+        threat_radar,
+        ai_section,
+        _radius_history_block,
+        ft.Container(height=tokens.SPACE_MD),
+        build_banner_ad(page),
+        ft.Container(height=tokens.SPACE_MD),
+    ]
 
-    # Evidence tab: charts with thresholds + staleness chips
+    # Evidence: charts with thresholds + staleness chips
     from core.units import feed_age
 
     usgs_age = feed_age("usgs")
     meteo_age = feed_age("openmeteo")
 
-    evidence_tab = ft.ListView(
-        controls=[
-            ft.Container(height=tokens.SPACE_SM),
-            SectionHeader("HYDROLOGY & GLOFAS RIVER DISCHARGE (7-DAY FORECAST)"),
-            ft.Container(
-                content=ft.Text(
-                    f"Open-Meteo • {meteo_age}",
-                    style=AppColors.data_text_style(size=tokens.FONT_XXS),
-                ),
-                padding=ft.Padding(
-                    tokens.SPACE_LG, 0, tokens.SPACE_LG, tokens.SPACE_XS
-                ),
+    evidence_controls = [
+        ft.Container(height=tokens.SPACE_SM),
+        SectionHeader("HYDROLOGY & GLOFAS RIVER DISCHARGE (7-DAY FORECAST)"),
+        ft.Container(
+            content=ft.Text(
+                f"Open-Meteo • {meteo_age}",
+                style=AppColors.data_text_style(size=tokens.FONT_XXS),
             ),
-            hydrology_sec,
-            SectionHeader("MARINE DYNAMICS & COASTAL SWELL"),
-            marine_sec,
-            SectionHeader("AIR QUALITY & POLLUTANTS (OPEN-METEO AQI)"),
-            air_quality_sec,
-            SectionHeader("ATMOSPHERIC DYNAMICS & CONVECTIVE STORM INDEX"),
-            weather_sec,
-            ft.Container(height=tokens.SPACE_MD),
-            build_banner_ad(page),
-            ft.Container(height=tokens.SPACE_XXXL),
-        ],
-        spacing=0,
-        expand=True,
-    )
+            padding=ft.Padding(tokens.SPACE_LG, 0, tokens.SPACE_LG, tokens.SPACE_XS),
+        ),
+        hydrology_sec,
+        SectionHeader("MARINE DYNAMICS & COASTAL SWELL"),
+        marine_sec,
+        SectionHeader("AIR QUALITY & POLLUTANTS (OPEN-METEO AQI)"),
+        air_quality_sec,
+        SectionHeader("ATMOSPHERIC DYNAMICS & CONVECTIVE STORM INDEX"),
+        weather_sec,
+        ft.Container(height=tokens.SPACE_MD),
+        build_banner_ad(page),
+        ft.Container(height=tokens.SPACE_MD),
+    ]
 
-    # Raw tab: mono telemetry dump
+    # Raw: mono telemetry dump
     raw_lines = [
         f"Location: {state.current_location_name}",
         f"Coordinates: {state.current_lat:.4f}° N, {state.current_lon:.4f}° E",
@@ -721,56 +707,45 @@ def ReportScreen() -> Control:
     )
     raw_text = "\n".join(raw_lines)
 
-    raw_tab = ft.ListView(
-        controls=[
-            ft.Container(height=tokens.SPACE_SM),
-            SectionHeader("RAW TELEMETRY DUMP"),
-            ft.Container(
-                content=ft.Text(
+    raw_controls = [
+        ft.Container(height=tokens.SPACE_SM),
+        SectionHeader("RAW TELEMETRY DUMP"),
+        ft.Container(
+            content=ft.Text(
+                raw_text,
+                style=AppColors.data_text_style(size=tokens.FONT_XS),
+                selectable=True,
+            ),
+            padding=ft.Padding(
+                tokens.SPACE_MD, tokens.SPACE_SM, tokens.SPACE_MD, tokens.SPACE_SM
+            ),
+            bgcolor=ft.Colors.with_opacity(0.03, ft.Colors.ON_SURFACE),
+            border_radius=tokens.RADIUS_SM,
+        ),
+        ft.Container(height=tokens.SPACE_SM),
+        ft.FilledButton(
+            content=ft.Text("Copy Raw Telemetry", size=tokens.FONT_SM),
+            icon=ft.Icons.CONTENT_COPY_ROUNDED,
+            on_click=lambda _: (
+                schedule(
+                    controller.share_text,
                     raw_text,
-                    style=AppColors.data_text_style(size=tokens.FONT_XS),
-                    selectable=True,
-                ),
-                padding=ft.Padding(
-                    tokens.SPACE_MD, tokens.SPACE_SM, tokens.SPACE_MD, tokens.SPACE_SM
-                ),
-                bgcolor=ft.Colors.with_opacity(0.03, ft.Colors.ON_SURFACE),
-                border_radius=tokens.RADIUS_SM,
+                    "Asase Raw Telemetry",
+                    page=page,
+                )
+                if controller.share_text
+                else None
             ),
-            ft.Container(height=tokens.SPACE_SM),
-            ft.FilledButton(
-                content=ft.Text("Copy Raw Telemetry", size=tokens.FONT_SM),
-                icon=ft.Icons.CONTENT_COPY_ROUNDED,
-                on_click=lambda _: (
-                    schedule(
-                        controller.share_text,
-                        raw_text,
-                        "Asase Raw Telemetry",
-                        page=page,
-                    )
-                    if controller.share_text
-                    else None
-                ),
-            ),
-            ft.Container(height=tokens.SPACE_XXXL),
-        ],
-        spacing=0,
-        expand=True,
-    )
+        ),
+        ft.Container(height=tokens.SPACE_XXXL),
+    ]
 
-    tab_content = {
-        "summary": summary_tab,
-        "evidence": evidence_tab,
-        "raw": raw_tab,
-    }
-
-    return ft.Column(
-        [
+    # One scroll: summary first, the chooser, then the chosen tab's body.
+    return ft.ListView(
+        controls=[
+            *summary_controls,
             tab_bar,
-            ft.Container(
-                content=tab_content[active_tab],
-                expand=True,
-            ),
+            *(evidence_controls if active_tab == "evidence" else raw_controls),
         ],
         spacing=0,
         expand=True,
