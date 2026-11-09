@@ -1,4 +1,4 @@
-"""NOAA Space Weather Prediction Center client with Pydantic v2."""
+"""NOAA Space Weather Prediction Center client with stdlib dataclass models."""
 
 from __future__ import annotations
 

@@ -29,7 +29,7 @@ def _parse_features(raw_features: list) -> list[EarthquakeFeature]:
 class SeismicService:
     @staticmethod
     async def fetch_earthquakes(min_magnitude: float = 2.5) -> list[dict] | None:
-        """Fetch live global earthquakes using connection-pooled HTTPX client & Pydantic v2."""
+        """Fetch live global earthquakes using connection-pooled HTTPX + dataclass models."""
         url = (
             USGS_EARTHQUAKES_DAY
             if min_magnitude <= 4.0

@@ -1,23 +1,40 @@
-"""NASA EONET and GDACS disaster schemas using Pydantic v2."""
+"""NASA EONET and GDACS disaster schemas — stdlib dataclasses, no pydantic."""
 
 from __future__ import annotations
 
-from typing import Literal
+from dataclasses import dataclass, field
+from typing import ClassVar, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field
+from models._coerce import opt_list, opt_str
+from models._model import DataModel, parse_models
 
 
-class EonetCategory(BaseModel):
-    model_config = ConfigDict(frozen=True)
+@dataclass(frozen=True, kw_only=True)
+class EonetCategory(DataModel):
     id: str
     title: str
 
+    @classmethod
+    def model_validate(cls, data) -> EonetCategory:
+        if not isinstance(data, dict):
+            raise TypeError("EonetCategory: expected object")
+        return cls(id=opt_str(data, "id", ""), title=opt_str(data, "title", ""))
 
-class EonetGeometry(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="ignore")
+
+@dataclass(frozen=True, kw_only=True)
+class EonetGeometry(DataModel):
     date: str = ""
     type: str = "Point"
-    coordinates: list = Field(default_factory=list)
+    coordinates: list = field(default_factory=list)
+
+    @classmethod
+    def model_validate(cls, data) -> EonetGeometry:
+        if not isinstance(data, dict):
+            raise TypeError("EonetGeometry: expected object")
+        return cls(
+            date=opt_str(data, "date", ""),
+            coordinates=opt_list(data, "coordinates"),
+        )
 
     @property
     def point_coords(self) -> tuple[float, float]:
@@ -51,18 +68,20 @@ class EonetGeometry(BaseModel):
         return (0.0, 0.0)
 
 
-class EonetEvent(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="ignore")
+@dataclass(frozen=True, kw_only=True)
+class EonetEvent(DataModel):
+    _COMPUTED = ("hazard_type", "primary_coordinates")
+
     id: str
     title: str
     description: str | None = None
     link: str = ""
-    categories: list[EonetCategory] = Field(default_factory=list)
-    geometry: list[EonetGeometry] = Field(default_factory=list)
+    categories: list[EonetCategory] = field(default_factory=list)
+    geometry: list[EonetGeometry] = field(default_factory=list)
 
     # Stable EONET category ids (exact match first — substring matching
     # misfires on future categories, e.g. "campfire" containing "fire").
-    _EONET_TYPE_BY_ID = {
+    _EONET_TYPE_BY_ID: ClassVar[dict] = {
         "wildfires": "wildfire",
         "severeStorms": "storm",
         "volcanoes": "volcano",
@@ -78,7 +97,30 @@ class EonetEvent(BaseModel):
         "waterColor": "disaster",
     }
 
-    @computed_field
+    @classmethod
+    def model_validate(cls, data) -> EonetEvent:
+        if not isinstance(data, dict):
+            raise TypeError("EonetEvent: expected object")
+        # id/title are the required pair: a record without either is the
+        # "missing required shape" case the fail-open tests pin down.
+        event_id = data.get("id")
+        title = data.get("title")
+        if not isinstance(event_id, str) or not event_id:
+            raise ValueError("EonetEvent: id required")
+        if not isinstance(title, str) or not title:
+            raise ValueError("EonetEvent: title required")
+        description = data.get("description")
+        if description is not None and not isinstance(description, str):
+            raise ValueError("description: expected string")
+        return cls(
+            id=event_id,
+            title=title,
+            description=description,
+            link=opt_str(data, "link", ""),
+            categories=parse_models(data, "categories", EonetCategory.model_validate),
+            geometry=parse_models(data, "geometry", EonetGeometry.model_validate),
+        )
+
     @property
     def hazard_type(
         self,
@@ -100,7 +142,6 @@ class EonetEvent(BaseModel):
             return "storm"
         return "disaster"
 
-    @computed_field
     @property
     def primary_coordinates(self) -> tuple[float, float]:
         if not self.geometry:
@@ -157,7 +198,16 @@ class EonetEvent(BaseModel):
         }
 
 
-class EonetResponse(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="ignore")
+@dataclass(frozen=True, kw_only=True)
+class EonetResponse(DataModel):
     title: str = ""
-    events: list[EonetEvent] = Field(default_factory=list)
+    events: list[EonetEvent] = field(default_factory=list)
+
+    @classmethod
+    def model_validate(cls, data) -> EonetResponse:
+        if not isinstance(data, dict):
+            raise TypeError("EonetResponse: expected object")
+        return cls(
+            title=opt_str(data, "title", ""),
+            events=parse_models(data, "events", EonetEvent.model_validate),
+        )

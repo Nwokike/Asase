@@ -1,13 +1,15 @@
-"""Open-Meteo geocoding schemas using Pydantic v2."""
+"""Open-Meteo geocoding schemas — stdlib dataclasses, no pydantic."""
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from dataclasses import dataclass, field
+
+from models._coerce import as_float, as_str, opt_float, opt_int, opt_str
+from models._model import DataModel, parse_models
 
 
-class GeocodingLocation(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="ignore")
-
+@dataclass(frozen=True, kw_only=True)
+class GeocodingLocation(DataModel):
     id: int | None = None
     name: str
     latitude: float
@@ -19,21 +21,36 @@ class GeocodingLocation(BaseModel):
     timezone: str = "UTC"
     population: int = 0
 
-    @field_validator("country", "country_code", "admin1", "timezone", mode="before")
     @classmethod
-    def _null_str_to_default(cls, v, info):
+    def model_validate(cls, data) -> GeocodingLocation:
+        if not isinstance(data, dict):
+            raise TypeError("GeocodingLocation: expected object")
         # Upstream nulls on display strings must not reject the whole
-        # response — fall back to the field default instead.
-        if v is None:
-            return cls.model_fields[info.field_name].default
-        return v
+        # response — fall back to the field default instead (the old
+        # before-validators did exactly this). name/latitude/longitude
+        # stay required: a result without them is Null Island bait.
+        return cls(
+            id=opt_int(data, "id", None),
+            name=as_str(data, "name"),
+            latitude=as_float(data, "latitude"),
+            longitude=as_float(data, "longitude"),
+            elevation=opt_float(data, "elevation", 0.0),
+            country=opt_str(data, "country", ""),
+            country_code=opt_str(data, "country_code", ""),
+            admin1=opt_str(data, "admin1", ""),
+            timezone=opt_str(data, "timezone", "UTC"),
+            population=opt_int(data, "population", 0),
+        )
 
-    @field_validator("population", mode="before")
+
+@dataclass(frozen=True, kw_only=True)
+class GeocodingResponse(DataModel):
+    results: list[GeocodingLocation] = field(default_factory=list)
+
     @classmethod
-    def _null_population_to_zero(cls, v):
-        return 0 if v is None else v
-
-
-class GeocodingResponse(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="ignore")
-    results: list[GeocodingLocation] = Field(default_factory=list)
+    def model_validate(cls, data) -> GeocodingResponse:
+        if not isinstance(data, dict):
+            raise TypeError("GeocodingResponse: expected object")
+        return cls(
+            results=parse_models(data, "results", GeocodingLocation.model_validate)
+        )

@@ -1,19 +1,38 @@
-"""USGS Earthquake GeoJSON schemas using Pydantic v2."""
+"""USGS Earthquake GeoJSON schemas — stdlib dataclasses, no pydantic.
+
+Validation semantics live in models/_coerce.py: nulls fall back to
+defaults, wrong-typed values raise so the service's per-record
+try/except skips exactly the records pydantic's ValidationError skipped.
+"""
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
+from models._coerce import (
+    as_int,
+    as_str,
+    opt_dict,
+    opt_float,
+    opt_int,
+    opt_list,
+    opt_str,
+)
+from models._model import DataModel, parse_models
 
 
-class GeoJsonPointGeometry(BaseModel):
-    model_config = ConfigDict(frozen=True)
-    type: Literal["Point"] = "Point"
-    coordinates: list[float] = Field(
-        default_factory=list
-    )  # [longitude, latitude, depth_km]
+@dataclass(frozen=True, kw_only=True)
+class GeoJsonPointGeometry(DataModel):
+    type: str = "Point"
+    coordinates: list = field(default_factory=list)  # [lon, lat, depth_km]
+
+    @classmethod
+    def model_validate(cls, data) -> GeoJsonPointGeometry:
+        if not isinstance(data, dict):
+            raise TypeError("GeoJsonPointGeometry: expected object")
+        return cls(coordinates=opt_list(data, "coordinates"))
 
     @property
     def longitude(self) -> float:
@@ -28,20 +47,18 @@ class GeoJsonPointGeometry(BaseModel):
         return self.coordinates[2] if len(self.coordinates) > 2 else 0.0
 
 
-class EarthquakeProperties(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="ignore")
+@dataclass(frozen=True, kw_only=True)
+class EarthquakeProperties(DataModel):
+    _COMPUTED = (
+        "utc_datetime",
+        "formatted_time",
+        "has_tsunami_warning",
+        "severity_level",
+    )
 
-    mag: float = Field(default=0.0, description="Earthquake magnitude")
-
-    @field_validator("mag", mode="before")
-    @classmethod
-    def _null_mag_to_zero(cls, v):
-        # USGS occasionally emits explicit null magnitudes; a null on one
-        # feature must not reject the whole batch. Coerce to the default.
-        return 0.0 if v is None else v
-
-    place: str = Field(default="Unknown location")
-    time: int = Field(description="Epoch time in milliseconds")
+    mag: float = 0.0
+    place: str = "Unknown location"
+    time: int  # epoch milliseconds — required, a record without it is skipped
     updated: int | None = None
     url: str = ""
     detail: str = ""
@@ -57,22 +74,52 @@ class EarthquakeProperties(BaseModel):
     magType: str = "ml"
     title: str = "Earthquake"
 
-    @computed_field
+    @classmethod
+    def model_validate(cls, data) -> EarthquakeProperties:
+        if not isinstance(data, dict):
+            raise TypeError("EarthquakeProperties: expected object")
+        # USGS occasionally emits explicit null magnitudes; a null on one
+        # feature must not reject the whole batch. Coerce to the default.
+        mag = data.get("mag")
+        if mag is None:
+            mag = 0.0
+        elif isinstance(mag, bool) or not isinstance(mag, (int, float)):
+            raise ValueError("mag: expected number")
+        alert = data.get("alert", "green")
+        if alert is not None and not isinstance(alert, str):
+            raise ValueError("alert: expected string")
+        return cls(
+            mag=float(mag),
+            place=opt_str(data, "place", "Unknown location"),
+            time=as_int(data, "time"),
+            updated=opt_int(data, "updated", None),
+            url=opt_str(data, "url", ""),
+            detail=opt_str(data, "detail", ""),
+            felt=opt_int(data, "felt", None),
+            cdi=opt_float(data, "cdi", None),
+            mmi=opt_float(data, "mmi", None),
+            alert=alert,
+            status=opt_str(data, "status", "reviewed"),
+            tsunami=opt_int(data, "tsunami", 0),
+            sig=opt_int(data, "sig", 0),
+            net=opt_str(data, "net", ""),
+            code=opt_str(data, "code", ""),
+            magType=opt_str(data, "magType", "ml"),
+            title=opt_str(data, "title", "Earthquake"),
+        )
+
     @property
     def utc_datetime(self) -> datetime:
         return datetime.fromtimestamp(self.time / 1000.0, tz=UTC)
 
-    @computed_field
     @property
     def formatted_time(self) -> str:
         return self.utc_datetime.strftime("%Y-%m-%d %H:%M UTC")
 
-    @computed_field
     @property
     def has_tsunami_warning(self) -> bool:
         return self.tsunami == 1
 
-    @computed_field
     @property
     def severity_level(self) -> Literal["low", "moderate", "high", "critical"]:
         if self.mag >= 6.5 or self.alert in ("red", "orange"):
@@ -84,13 +131,26 @@ class EarthquakeProperties(BaseModel):
         return "low"
 
 
-class EarthquakeFeature(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="ignore")
+@dataclass(frozen=True, kw_only=True)
+class EarthquakeFeature(DataModel):
     id: str
-    type: Literal["Feature"] = "Feature"
+    type: str = "Feature"
     properties: EarthquakeProperties
     # USGS emits explicit null geometry for deleted/superseded events.
     geometry: GeoJsonPointGeometry | None = None
+
+    @classmethod
+    def model_validate(cls, data) -> EarthquakeFeature:
+        if not isinstance(data, dict):
+            raise TypeError("EarthquakeFeature: expected object")
+        raw_geometry = data.get("geometry")
+        return cls(
+            id=as_str(data, "id"),
+            properties=EarthquakeProperties.model_validate(data.get("properties")),
+            geometry=None
+            if raw_geometry is None
+            else GeoJsonPointGeometry.model_validate(raw_geometry),
+        )
 
     def to_map_dict(self) -> dict:
         """Normalized dictionary for UI consumption and flet-map markers."""
@@ -113,8 +173,19 @@ class EarthquakeFeature(BaseModel):
         }
 
 
-class EarthquakeFeatureCollection(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="ignore")
-    type: Literal["FeatureCollection"] = "FeatureCollection"
-    features: list[EarthquakeFeature] = Field(default_factory=list)
-    metadata: dict = Field(default_factory=dict)
+@dataclass(frozen=True, kw_only=True)
+class EarthquakeFeatureCollection(DataModel):
+    type: str = "FeatureCollection"
+    features: list[EarthquakeFeature] = field(default_factory=list)
+    metadata: dict = field(default_factory=dict)
+
+    @classmethod
+    def model_validate(cls, data) -> EarthquakeFeatureCollection:
+        if not isinstance(data, dict):
+            raise TypeError("EarthquakeFeatureCollection: expected object")
+        return cls(
+            # Strict: one bad feature raises, so the service's whole-batch
+            # fast path falls back to per-feature parsing (fail open).
+            features=parse_models(data, "features", EarthquakeFeature.model_validate),
+            metadata=opt_dict(data, "metadata"),
+        )

@@ -1,4 +1,4 @@
-"""Open-Meteo Geocoding and Elevation client with Pydantic v2."""
+"""Open-Meteo Geocoding and Elevation client with stdlib dataclass models."""
 
 from __future__ import annotations
 

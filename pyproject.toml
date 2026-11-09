@@ -12,7 +12,6 @@ dependencies = [
     "flet-map==1.1.2",
     "flet-geolocator==1.1.2",
     "httpx[http2]>=0.28.1",
-    "pydantic>=2.10.0",
     "flet-charts==1.1.2",
 ]
 
@@ -40,6 +39,11 @@ pwa_short_name = "Asase"
 dependencies = []
 
 [tool.flet.android]
+# Family standard (ktv-player / DDGS / akili-v2 / lm-router): extract
+# native libraries to disk at install time instead of memory-mapping
+# them from the APK — smaller .apk for side-loading, larger on-device
+# install, slower native-lib loading.
+legacy_packaging = true
 bundle_id = "ng.kiri.asase"
 
 [tool.flet.android.manifest_application]

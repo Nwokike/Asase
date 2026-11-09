@@ -1,4 +1,4 @@
-"""Deep testing of Pydantic v2 data models."""
+"""Deep testing of the stdlib dataclass feed models."""
 
 from models.atmospheric import CurrentAirQuality, CurrentWeather
 from models.disasters import EonetCategory, EonetEvent, EonetGeometry

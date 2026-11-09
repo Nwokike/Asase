@@ -30,7 +30,7 @@ async def _fetch_json(url: str) -> dict:
 
 
 def _validate_section(model, data: dict, name: str) -> dict:
-    """Validate a feed section through its pydantic model.
+    """Validate a feed section through its dataclass model.
 
     Returns the validated dump on success; on shape drift the RAW data
     passes through untouched (today's behavior) with a debug log — a
