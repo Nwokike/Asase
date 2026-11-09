@@ -116,8 +116,12 @@ def MapScreen() -> Control:
         if text:
             schedule(_run_scan, text, True, page=page)
 
-    # Follow the active focus point (search / GPS / suggestion selections)
-    use_map_center(map_ref, state.current_lat, state.current_lon, 10.0)
+    # Follow the active focus point (search / GPS / suggestion selections).
+    # The full map view opens ON the focus — it flies on mount, unlike the
+    # home radar which stays on the world view at startup.
+    use_map_center(
+        map_ref, state.current_lat, state.current_lon, 10.0, fly_on_mount=True
+    )
 
     # Filter events based on active layers (multi-select)
     filtered_earthquakes = state.earthquakes if "earthquake" in active_layers else []

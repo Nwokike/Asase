@@ -16,7 +16,13 @@ import flet as ft
 logger = logging.getLogger("asase.hooks.map_center")
 
 
-def use_map_center(map_ref, lat: float, lon: float, zoom: float):
+def use_map_center(
+    map_ref,
+    lat: float,
+    lon: float,
+    zoom: float,
+    fly_on_mount: bool = False,
+):
     """Animate `map_ref.current` to (lat, lon) whenever the focus point changes.
 
     Args:
@@ -24,6 +30,10 @@ def use_map_center(map_ref, lat: float, lon: float, zoom: float):
         lat: Latitude of the new focus point.
         lon: Longitude of the new focus point.
         zoom: Zoom level to apply when re-centering.
+        fly_on_mount: animate on the first render too. Home's embedded
+            radar leaves this off so the app opens on the world view the
+            map control paints itself — not yanked to city zoom at
+            startup. The full map screen opts in.
     """
 
     async def _center():
@@ -41,8 +51,15 @@ def use_map_center(map_ref, lat: float, lon: float, zoom: float):
         except Exception as ex:
             logger.debug("Map re-center skipped: %s", ex)
 
+    flew_once = ft.use_ref(False)
+
     def _schedule():
-        if (lat, lon) != (0.0, 0.0):
-            asyncio.create_task(_center())
+        first = not flew_once.current
+        flew_once.current = True
+        if (lat, lon) == (0.0, 0.0):
+            return
+        if first and not fly_on_mount:
+            return
+        asyncio.create_task(_center())
 
     ft.use_effect(_schedule, [lat, lon])

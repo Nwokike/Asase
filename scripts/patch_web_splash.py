@@ -18,6 +18,12 @@ never touches asase.onboarding_done; it IS the pre-load experience.
 import os
 import sys
 
+# The one logo (core/brand.py) inlined into the splash; the wordmark is a
+# CSS var so the stylesheet recolors it with the theme — no src swapping.
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+
+from core.brand import logo_svg
+
 INDEX_PATHS = [
     "build/flutter/build/web/index.html",
     "build/flutter/web/index.html",
@@ -43,6 +49,18 @@ _LIGHT = {
     "primary": "#059669",
 }
 
+# The one logo inlined; its wordmark fill is var(--logo-mark) so the
+# stylesheet recolors it with the theme (no src swapping, no second file).
+_LOGO_INLINE = (
+    logo_svg("var(--logo-mark)")
+    .replace('<?xml version="1.0" encoding="UTF-8"?>\n', "")
+    .replace(
+        "<svg ",
+        '<svg class="asase-logo" role="img" aria-label="Asase" ',
+        1,
+    )
+)
+
 SPLASH_HTML = f"""
 <div id="asase-splash">
   <style>
@@ -53,6 +71,7 @@ SPLASH_HTML = f"""
       --text: {_DARK["text"]};
       --muted: {_DARK["muted"]};
       --primary: {_DARK["primary"]};
+      --logo-mark: {_DARK["text"]};
       --border: rgba(255, 255, 255, 0.10);
       --track: rgba(255, 255, 255, 0.08);
       position: fixed;
@@ -81,6 +100,7 @@ SPLASH_HTML = f"""
       --text: {_LIGHT["text"]};
       --muted: {_LIGHT["muted"]};
       --primary: {_LIGHT["primary"]};
+      --logo-mark: #253746;
       --border: rgba(15, 23, 42, 0.10);
       --track: rgba(15, 23, 42, 0.08);
     }}
@@ -98,6 +118,7 @@ SPLASH_HTML = f"""
       box-sizing: border-box;
     }}
     #asase-splash .asase-logo {{
+      display: block;
       width: 64px;
       height: 64px;
       border-radius: 16px;
@@ -216,7 +237,7 @@ SPLASH_HTML = f"""
   </style>
 
   <div class="asase-card">
-    <img class="asase-logo" id="asase-logo" src="/logo_dark.svg" alt="Asase" />
+    {_LOGO_INLINE}
     <div class="asase-pct" id="asase-pct">0%</div>
     <div class="asase-step">
       <span class="asase-spinner" aria-hidden="true"></span>
@@ -256,7 +277,8 @@ SPLASH_HTML = f"""
 
       // Theme: saved Asase theme (dark/light; "system" falls through) >
       // live OS preference — an OS flip mid-load updates the splash.
-      // The logo swaps with it: logo_dark.svg is the white wordmark.
+      // The logo needs no swap: its wordmark fill is var(--logo-mark),
+      // recolored by the .light class.
       var mq = window.matchMedia("(prefers-color-scheme: dark)");
       function applyTheme() {{
         var cur = readBlob();
@@ -268,8 +290,6 @@ SPLASH_HTML = f"""
                  : mq.matches;
         if (dark) splash.classList.remove("light");
         else splash.classList.add("light");
-        var logo = document.getElementById("asase-logo");
-        if (logo) logo.src = dark ? "/logo_dark.svg" : "/logo.svg";
       }}
       applyTheme();
       if (mq.addEventListener) mq.addEventListener("change", applyTheme);

@@ -145,7 +145,7 @@ def SettingsScreen() -> Control:
         state.min_magnitude_filter, _on_magnitude_change, _clear_history_dialog
     )
     terminal_card = build_terminal_card(page)
-    about_card = build_about_card(page)
+    about_card = build_about_card(page, launch_url=controller.launch_url)
 
     return ft.ListView(
         controls=[

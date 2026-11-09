@@ -20,11 +20,14 @@ def test_splash_html_is_simple_theme_reactive_boot_screen():
     assert "#0F172A" in SPLASH_HTML  # LIGHT_TEXT
     assert "#10B981" in SPLASH_HTML  # PRIMARY (Emerald)
 
-    # Brand logo SVG — white wordmark in dark mode, dark in light (the
-    # same assets core.theme logo_asset() resolves), swapped with theme.
-    assert 'id="asase-logo"' in SPLASH_HTML
-    assert "/logo_dark.svg" in SPLASH_HTML
-    assert "/logo.svg" in SPLASH_HTML
+    # Brand logo — the ONE SVG (core/brand.py) inlined, wordmark fill is
+    # a CSS var the theme classes recolor. No asset srcs, no swap JS.
+    assert 'class="asase-logo"' in SPLASH_HTML
+    assert "var(--logo-mark)" in SPLASH_HTML
+    assert "--logo-mark: #F8FAFC" in SPLASH_HTML  # dark wordmark
+    assert "--logo-mark: #253746" in SPLASH_HTML  # light wordmark
+    assert "/logo_dark.svg" not in SPLASH_HTML
+    assert "/logo.svg" not in SPLASH_HTML
     assert "asase-spinner" in SPLASH_HTML
     assert "Starting Earth Intelligence" in SPLASH_HTML
     assert "Initializing telemetry core" in SPLASH_HTML

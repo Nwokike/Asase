@@ -634,8 +634,12 @@ class AppController:
                 logger.exception("Suppressed exception")
 
     def on_error(self, e) -> None:
+        # Log only — the snack must stay reserved for real telemetry
+        # failures (the refresh path shows ERR_GENERIC with context).
+        # Client-side noise like asset/image load errors used to surface
+        # here as "unexpected error while fetching earth telemetry",
+        # mislabeling a rendering hiccup as a data failure.
         logger.error("Page uncaught error: %s", e.data)
-        show_snack(self.page, ERR_GENERIC, bgcolor=AppColors.ERROR)
 
     async def cleanup(self) -> None:
         """Gracefully release HTTP connection pools."""

@@ -41,4 +41,14 @@ async def main(page: ft.Page) -> None:
 
 
 if __name__ == "__main__":
-    ft.run(main, assets_dir="src/assets")
+    # Anchor to this file, never the CWD: `flet run` starts the app with
+    # its working directory at .flet/storage/data, and a CWD-relative
+    # path silently fails to resolve — the desktop client then boots with
+    # an empty assets dir and every asset Image dies with
+    # "No host specified in URI".
+    import pathlib
+
+    ft.run(
+        main,
+        assets_dir=str(pathlib.Path(__file__).resolve().parent / "assets"),
+    )

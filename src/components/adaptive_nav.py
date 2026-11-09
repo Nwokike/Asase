@@ -140,7 +140,10 @@ def build_sidebar(
                             if not collapsed
                             else [
                                 ft.Image(
-                                    src="/icon.svg",
+                                    # Relative src: Flet 1.1's desktop client
+                                    # fails leading-slash asset srcs when its
+                                    # assets dir is empty.
+                                    src="icon.svg",
                                     width=28,
                                     height=28,
                                     color=ft.Colors.WHITE if is_dark_mode() else None,

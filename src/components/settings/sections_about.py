@@ -4,7 +4,13 @@ import flet as ft
 
 from components.activity_terminal import show_activity_terminal_dialog
 from core import tokens
-from core.constants import APP_VERSION
+from core.constants import (
+    APP_VERSION,
+    CONTACT_EMAIL,
+    GITHUB_REPO_URL,
+    KIRI_APPS_PLAY_URL,
+    KIRI_APPS_URL,
+)
 from core.state import state
 from core.tasks import schedule
 from core.theme import AppColors, AppStyles, build_logo, is_dark_mode
@@ -64,14 +70,74 @@ def build_terminal_card(page: ft.Page) -> ft.Container:
     )
 
 
-def build_about_card(page: ft.Page) -> ft.Container:
-    """Builds the About & Licenses Card with theme-reactive full logo."""
+def _is_store_device(page: ft.Page | None) -> bool:
+    """Phones/TV are the Play audience; desktop/web star on GitHub (KTV)."""
+    try:
+        return page is not None and page.platform in (
+            ft.PagePlatform.ANDROID,
+            ft.PagePlatform.IOS,
+            ft.PagePlatform.ANDROID_TV,
+        )
+    except Exception:
+        return False
+
+
+def build_about_card(
+    page: ft.Page,
+    launch_url=None,  # controller.launch_url — async (url)
+) -> ft.Container:
+    """Builds the About & Licenses Card with theme-reactive full logo.
+
+    Family pattern (ktv-player / DDGS): tappable icon rows for Contact,
+    Rate and More apps from Kiri — the Play developer listing on store
+    devices, the kiri.ng showcase everywhere else.
+    """
     is_dark = is_dark_mode(page)
 
     def _open_version_dialog(e=None):
         from components.version_dialog import show_version_dialog
 
         show_version_dialog(page)
+
+    def _open(url: str):
+        if launch_url:
+            schedule(launch_url, url, page=page)
+
+    def _row(icon, title: str, subtitle: str, url: str):
+        return ft.Container(
+            content=ft.Row(
+                [
+                    ft.Icon(icon, size=tokens.ICON_MD, color=AppColors.PRIMARY),
+                    ft.Column(
+                        [
+                            ft.Text(
+                                title,
+                                size=tokens.FONT_SM,
+                                weight=ft.FontWeight.W_600,
+                            ),
+                            ft.Text(
+                                subtitle,
+                                size=tokens.FONT_XS,
+                                color=ft.Colors.ON_SURFACE_VARIANT,
+                            ),
+                        ],
+                        spacing=tokens.SPACE_XXS,
+                        expand=True,
+                    ),
+                    ft.Icon(
+                        ft.Icons.OPEN_IN_NEW_ROUNDED,
+                        size=15,
+                        color=ft.Colors.ON_SURFACE_VARIANT,
+                    ),
+                ],
+                spacing=tokens.SPACE_MD,
+            ),
+            ink=True,
+            border_radius=tokens.RADIUS_MD,
+            on_click=lambda _, _url=url: _open(_url),
+        )
+
+    store = _is_store_device(page)
 
     return AppStyles.glass_card(
         ft.Container(
@@ -91,6 +157,27 @@ def build_about_card(page: ft.Page) -> ft.Container:
                         ink=True,
                         tooltip="Tap to view changelog",
                         on_click=_open_version_dialog,
+                    ),
+                    ft.Container(height=tokens.SPACE_XS),
+                    _row(
+                        ft.Icons.MAIL_OUTLINE_ROUNDED,
+                        "Contact developer",
+                        CONTACT_EMAIL,
+                        f"mailto:{CONTACT_EMAIL}",
+                    ),
+                    _row(
+                        ft.Icons.STAR_ROUNDED,
+                        "Rate 5 stars",
+                        "Rate us on Google Play" if store else "Star us on GitHub",
+                        KIRI_APPS_PLAY_URL if store else GITHUB_REPO_URL,
+                    ),
+                    _row(
+                        ft.Icons.APPS_ROUNDED,
+                        "More apps from Kiri",
+                        "All our apps on Google Play"
+                        if store
+                        else "Asase, Sherlock, DDGS and more",
+                        KIRI_APPS_PLAY_URL if store else KIRI_APPS_URL,
                     ),
                     ft.Container(height=tokens.SPACE_XS),
                     ft.Text(

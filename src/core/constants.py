@@ -10,6 +10,12 @@ APP_SUBTITLE = "Global Earth Intelligence & Planetary Telemetry"
 # ── Update & Distribution URLs ─────────────────────────────────────────
 UPDATE_CONFIG_URL = "https://raw.githubusercontent.com/Nwokike/Asase/main/version.json"
 GITHUB_RELEASES_URL = "https://github.com/Nwokike/Asase/releases/latest"
+GITHUB_REPO_URL = "https://github.com/Nwokike/Asase"
+
+# Kiri family (same constants as ktv-player / DDGS About rows)
+CONTACT_EMAIL = "hello@kiri.ng"
+KIRI_APPS_PLAY_URL = "https://play.google.com/store/apps/dev?id=5797833969564243342"
+KIRI_APPS_URL = "https://kiri.ng/projects"
 
 # Kiri Gateway (family-shared app key, same as akili/MarkItDown)
 GATEWAY_BASE_URL = "https://api.kiri.ng"

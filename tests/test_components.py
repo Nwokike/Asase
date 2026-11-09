@@ -400,12 +400,21 @@ def test_shell_status_bar_absorbs_screen_headers():
 def test_about_card_uses_reactive_logo():
     from components.settings.sections_about import build_about_card
 
-    # page=None resolves to dark mode → white-wordmark logo variant.
+    # One logo (core/brand.py), recolored in code: page=None resolves to
+    # dark mode → white wordmark bytes, never an asset path.
     about = build_about_card(page=None)
     about_images = [c for c in walk(about) if isinstance(c, ft.Image)]
-    assert any(img.src == "/logo_dark.svg" for img in about_images)
+    assert about_images
+    for img in about_images:
+        assert isinstance(img.src, bytes), "logo must be bytes, not an asset path"
+    assert any(b"#F8FAFC" in img.src for img in about_images)
+    assert not any(b"#253746" in img.src for img in about_images)
+
+    # Family rows (ktv-player / DDGS pattern) link out.
     about_texts = [t.value for t in walk_texts(about)]
-    assert "Asase" not in about_texts  # wordmark is inside the logo asset
+    assert "More apps from Kiri" in about_texts
+    assert "Contact developer" in about_texts
+    assert "Asase" not in about_texts  # wordmark is inside the logo SVG
 
 
 def test_in_app_boot_screen_is_gone():
