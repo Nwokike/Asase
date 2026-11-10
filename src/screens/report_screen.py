@@ -311,6 +311,9 @@ def ReportScreen() -> Control:
     def _generate_briefing(e=None):
         if ai_busy:
             return
+        # Major action: interstitial before the briefing streams in.
+        if getattr(state, "ad_service", None):
+            schedule(state.ad_service.show_interstitial, page=page)
         # Fresh run: clears the transcript and starts a new briefing.
         schedule(_run_ai, DEFAULT_QUESTION, page=page)
 
@@ -647,10 +650,11 @@ def ReportScreen() -> Control:
         ),
         SectionHeader("PLANETARY THREAT RADAR PROFILE"),
         threat_radar,
+        pooled_banner_ad("report-radar"),
         ai_section,
         _radius_history_block,
         ft.Container(height=tokens.SPACE_MD),
-        pooled_banner_ad("report-summary"),
+        pooled_banner_ad("report-seismic-history"),
         ft.Container(height=tokens.SPACE_MD),
     ]
 
@@ -673,12 +677,11 @@ def ReportScreen() -> Control:
         hydrology_sec,
         SectionHeader("MARINE DYNAMICS & COASTAL SWELL"),
         marine_sec,
+        pooled_banner_ad("report-marine"),
         SectionHeader("AIR QUALITY & POLLUTANTS (OPEN-METEO AQI)"),
         air_quality_sec,
         SectionHeader("ATMOSPHERIC DYNAMICS & CONVECTIVE STORM INDEX"),
         weather_sec,
-        ft.Container(height=tokens.SPACE_MD),
-        pooled_banner_ad("report-evidence"),
         ft.Container(height=tokens.SPACE_MD),
     ]
 

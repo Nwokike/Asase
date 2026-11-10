@@ -317,6 +317,63 @@ def HomeScreen() -> Control:
         on_action=lambda _: controller.show_map() if controller.show_map else None,
     )
 
+    # Seismic stream: one card per row so a banner can be interleaved
+    # every 5 events (family pattern) — a single stacked Column can't.
+    seismic_blocks: list = []
+    if state.is_loading and not state.earthquakes:
+        seismic_blocks.append(
+            ft.Container(
+                content=ft.Column(
+                    [TelemetrySkeletonCard(height=95)],
+                    spacing=tokens.SPACE_SM,
+                ),
+                padding=ft.Padding(
+                    tokens.SPACE_LG, 0, tokens.SPACE_LG, tokens.SPACE_SM
+                ),
+            )
+        )
+    elif filtered_eq:
+        for _idx, _eq in enumerate(filtered_eq[:12]):
+            seismic_blocks.append(
+                ft.Container(
+                    content=TelemetryCard(
+                        title=_eq.get("place", "Earthquake"),
+                        subtitle=(
+                            f"Magnitude M{_eq.get('magnitude', 0):.1f} • "
+                            f"Depth {_eq.get('depth_km', 0):.1f}km • "
+                            f"{_eq.get('time_str', '')}"
+                        ),
+                        value=(
+                            f"MMI {_eq.get('mmi', 0.0):.1f}" if _eq.get("mmi") else ""
+                        ),
+                        severity=_eq.get("severity", "low"),
+                        icon=ft.Icons.WAVES_ROUNDED,
+                        event_lat=float(_eq.get("latitude", 0.0)),
+                        event_lon=float(_eq.get("longitude", 0.0)),
+                        event_url=_eq.get("url", ""),
+                        on_click=lambda _, ev=_eq: set_selected_event(ev),
+                    ),
+                    padding=ft.Padding(
+                        tokens.SPACE_LG, 0, tokens.SPACE_LG, tokens.SPACE_SM
+                    ),
+                )
+            )
+            if (_idx + 1) % 5 == 0 and (_idx + 1) < len(filtered_eq[:12]):
+                seismic_blocks.append(pooled_banner_ad(f"home-seismic-{_idx // 5}"))
+    else:
+        seismic_blocks.append(
+            ft.Container(
+                content=EmptyState(
+                    icon=ft.Icons.WAVES_ROUNDED,
+                    title="No quakes in range",
+                    subtitle="Nothing above your magnitude filter in the last 24h.",
+                ),
+                padding=ft.Padding(
+                    tokens.SPACE_LG, 0, tokens.SPACE_LG, tokens.SPACE_SM
+                ),
+            )
+        )
+
     content_list = ft.ListView(
         controls=[
             search_bar,
@@ -357,61 +414,14 @@ def HomeScreen() -> Control:
                 if not use_canvas
                 else []
             ),
+            # Banner right after the map (family pattern: mixed into the
+            # feed, never stacked at the bottom).
+            pooled_banner_ad("home-map"),
             # Real-Time Seismic Stream
             SectionHeader(
                 f"RECENT SEISMIC ACTIVITY (USGS 24H • {feed_age('usgs')})",
             ),
-            *(
-                [
-                    ft.Container(
-                        content=ft.Column(
-                            [
-                                TelemetrySkeletonCard(height=95),
-                                TelemetrySkeletonCard(height=95),
-                            ],
-                            spacing=tokens.SPACE_SM,
-                        ),
-                        padding=ft.Padding(
-                            tokens.SPACE_LG, 0, tokens.SPACE_LG, tokens.SPACE_SM
-                        ),
-                    )
-                ]
-                if state.is_loading and not state.earthquakes
-                else [
-                    ft.Container(
-                        content=ft.Column(
-                            [
-                                TelemetryCard(
-                                    title=eq.get("place", "Earthquake"),
-                                    subtitle=f"Magnitude M{eq.get('magnitude', 0):.1f} • Depth {eq.get('depth_km', 0):.1f}km • {eq.get('time_str', '')}",
-                                    value=f"MMI {eq.get('mmi', 0.0):.1f}"
-                                    if eq.get("mmi")
-                                    else "",
-                                    severity=eq.get("severity", "low"),
-                                    icon=ft.Icons.WAVES_ROUNDED,
-                                    event_lat=float(eq.get("latitude", 0.0)),
-                                    event_lon=float(eq.get("longitude", 0.0)),
-                                    event_url=eq.get("url", ""),
-                                    on_click=lambda _, ev=eq: set_selected_event(ev),
-                                )
-                                for eq in filtered_eq[:12]
-                            ]
-                            if filtered_eq
-                            else [
-                                EmptyState(
-                                    icon=ft.Icons.WAVES_ROUNDED,
-                                    title="No quakes in range",
-                                    subtitle="Nothing above your magnitude filter in the last 24h.",
-                                )
-                            ],
-                            spacing=tokens.SPACE_SM,
-                        ),
-                        padding=ft.Padding(
-                            tokens.SPACE_LG, 0, tokens.SPACE_LG, tokens.SPACE_SM
-                        ),
-                    )
-                ]
-            ),
+            *seismic_blocks,
             SectionHeader(
                 f"ACTIVE NATURAL EVENTS (NASA EONET • {feed_age('eonet')})",
             ),
@@ -467,9 +477,6 @@ def HomeScreen() -> Control:
                     )
                 ]
             ),
-            pooled_banner_ad("home-2"),
-            # AdMob Banner
-            pooled_banner_ad("home-1"),
             ft.Container(height=tokens.SPACE_XXXL),
         ],
         spacing=0,

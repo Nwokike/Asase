@@ -168,14 +168,12 @@ class AdService:
             return ft.Container(width=0, height=0)
 
     async def preload_interstitial(self, on_close: Callable | None = None) -> None:
-        """Pre-load an interstitial ad for subsequent display."""
+        """Pre-load an interstitial ad for subsequent display.
+
+        Consent never gates (owner's rule): ads serve with or without it.
+        """
         self._on_close = on_close
-        if (
-            not _HAS_ADS
-            or not self._is_mobile()
-            or not self._can_request_ads
-            or not self.page
-        ):
+        if not _HAS_ADS or not self._is_mobile() or not self.page:
             return
         try:
             req = fta.AdRequest(
@@ -274,7 +272,9 @@ class AdService:
             return False
 
         await self._refresh_consent()
-        if self.interstitial and self._is_mobile():
+        if not self._is_mobile():
+            return False
+        if self.interstitial is not None:
             try:
                 await self.interstitial.show()
                 self._last_interstitial_time = now
@@ -282,4 +282,31 @@ class AdService:
             except Exception as e:
                 logger.debug("Failed to display interstitial ad: %s", e)
                 return False
-        return False
+        # Preloaded ad not ready (or already spent) — fall back to a fresh
+        # self-loading instance that shows the moment the native side
+        # finishes loading (Sherlock/Proot pattern).
+        try:
+            req = fta.AdRequest(
+                keywords=["earthquake", "weather", "space", "intelligence"]
+            )
+            fresh = fta.InterstitialAd(
+                unit_id=self.interstitial_id,
+                request=req,
+                on_load=lambda e: self.page.run_task(self._show_fresh, e),
+                on_error=lambda e: logger.debug("Fresh interstitial load error: %s", e),
+                on_close=self._handle_close,
+            )
+            if fresh not in self.page.services:
+                self.page.services.append(fresh)
+            self.interstitial = fresh
+            self._last_interstitial_time = now
+            return True
+        except Exception as e:
+            logger.debug("Fresh interstitial construction failed: %s", e)
+            return False
+
+    async def _show_fresh(self, e) -> None:
+        try:
+            await e.control.show()
+        except Exception as ex:
+            logger.debug("Fresh interstitial show failed: %s", ex)

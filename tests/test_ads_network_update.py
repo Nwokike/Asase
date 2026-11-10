@@ -29,10 +29,12 @@ def _mobile_page():
 async def test_handle_close_evicts_shown_interstitial():
     page = _mobile_page()
     svc = AdService(page)
-    svc._can_request_ads = False  # block re-preload; isolate eviction
     shown = MagicMock()
     page.services.append(shown)
     svc.interstitial = shown
+    # Isolate eviction: stub the re-preload (consent no longer gates it,
+    # so the old _can_request_ads=False trick no longer blocks it).
+    svc.preload_interstitial = AsyncMock()
     await svc._handle_close(None)
     assert svc.interstitial is None
     assert all(s is not shown for s in page.services)

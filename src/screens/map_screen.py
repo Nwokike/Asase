@@ -106,6 +106,10 @@ def MapScreen() -> Control:
             set_scan_answer("")
             return
         set_scan_open(True)
+        # Major action: interstitial before the scan runs (60s cooldown
+        # collapses it with other triggers).
+        if getattr(state, "ad_service", None):
+            schedule(state.ad_service.show_interstitial, page=page)
         # Rescan is a fresh run — clears any prior transcript.
         schedule(_run_scan, DEFAULT_SCAN_QUESTION, page=page)
 

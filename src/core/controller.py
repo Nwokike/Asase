@@ -549,6 +549,12 @@ class AppController:
 
     async def locate_user(self) -> None:
         """Locate user using device GPS and reverse geocoding — no IP estimates."""
+        # Major action: interstitial before the fix + feed refresh (the
+        # select_coordinates callback fires its own — the 60s cooldown
+        # collapses the pair into one ad).
+        if self.ad_service:
+            with contextlib.suppress(Exception):
+                await self.ad_service.show_interstitial()
         await DeviceServices.locate_user(
             self.geolocator,
             self.page,
@@ -588,6 +594,10 @@ class AppController:
         await DeviceServices.share_text(
             self.share, self.page, text, subject, clipboard=self.clipboard
         )
+        # Value delivered — interstitial after the share sheet is handed off.
+        if self.ad_service:
+            with contextlib.suppress(Exception):
+                await self.ad_service.show_interstitial()
 
     async def launch_external_url(self, url: str) -> None:
         """Launch web link in external browser or custom tab."""

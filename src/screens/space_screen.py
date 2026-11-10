@@ -341,6 +341,7 @@ def SpaceScreen() -> Control:
                     tokens.SPACE_LG, 0, tokens.SPACE_LG, tokens.SPACE_SM
                 ),
             ),
+            pooled_banner_ad("space-kp"),
             # Solar X-ray flux — the live flare watch trace from GOES
             SectionHeader("SOLAR X-RAY FLUX (GOES 0.1–0.8NM)"),
             ft.Container(
@@ -417,6 +418,7 @@ def SpaceScreen() -> Control:
                     tokens.SPACE_LG, 0, tokens.SPACE_LG, tokens.SPACE_SM
                 ),
             ),
+            pooled_banner_ad("space-24h"),
             SectionHeader("SPACE WEATHER INDICES"),
             ft.Container(
                 content=AppStyles.glass_card(
@@ -548,9 +550,6 @@ def SpaceScreen() -> Control:
                 ),
             ),
             ft.Container(height=tokens.SPACE_MD),
-            pooled_banner_ad("space-1"),
-            ft.Container(height=tokens.SPACE_MD),
-            pooled_banner_ad("space-2"),
             ft.Container(height=tokens.SPACE_XXXL),
         ],
         spacing=0,
