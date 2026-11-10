@@ -7,7 +7,7 @@ import logging
 import flet as ft
 from flet import Control
 
-from components.banner_ad import build_banner_ad
+from components.banner_ad import pooled_banner_ad
 from components.section_header import SectionHeader
 from components.sparkline_chart import TelemetryLineChart
 from core import tokens
@@ -198,10 +198,6 @@ def SpaceScreen() -> Control:
         if kp < 4.0
         else (AppColors.SEVERITY_MODERATE if kp < 6.0 else AppColors.SEVERITY_CRITICAL)
     )
-
-    from flet import context as flet_context
-
-    page = flet_context.page
 
     return ft.ListView(
         controls=[
@@ -552,7 +548,9 @@ def SpaceScreen() -> Control:
                 ),
             ),
             ft.Container(height=tokens.SPACE_MD),
-            build_banner_ad(page),
+            pooled_banner_ad("space-1"),
+            ft.Container(height=tokens.SPACE_MD),
+            pooled_banner_ad("space-2"),
             ft.Container(height=tokens.SPACE_XXXL),
         ],
         spacing=0,

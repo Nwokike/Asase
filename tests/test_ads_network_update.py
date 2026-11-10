@@ -39,7 +39,10 @@ async def test_handle_close_evicts_shown_interstitial():
 
 
 @pytest.mark.asyncio
-async def test_show_interstitial_rechecks_consent():
+async def test_show_interstitial_serves_despite_revoked_consent():
+    """Owner's rule (all his apps): consent is wired but never gates —
+    a declined/revoked verdict still serves the ad. The re-check runs
+    (verdict recorded), the show proceeds."""
     page = _mobile_page()
     svc = AdService(page)
     interstitial = MagicMock()
@@ -50,8 +53,9 @@ async def test_show_interstitial_rechecks_consent():
     manager.can_request_ads = AsyncMock(return_value=False)  # revoked
     svc._consent_manager = manager
 
-    assert await svc.show_interstitial(min_interval_seconds=0) is False
-    interstitial.show.assert_not_called()
+    assert await svc.show_interstitial(min_interval_seconds=0) is True
+    interstitial.show.assert_called_once()
+    assert svc._can_request_ads is False  # verdict recorded, not obeyed
 
 
 @pytest.mark.asyncio

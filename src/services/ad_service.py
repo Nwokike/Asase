@@ -25,13 +25,14 @@ except ImportError:
 
 
 def _use_test_ids() -> bool:
-    """Live IDs only in real builds: any dev/CI run serves Google test ads.
+    """Production unit IDs by default (owner's rule across all his apps).
 
-    AdMob treats ad requests from development devices as invalid traffic —
-    a hardcoded ``False`` here once risked the publisher account on every
-    dev-loop run. ``ASASE_AD_TEST_IDS=0`` opts a build back into prod IDs.
+    Flip ``ASASE_AD_TEST_IDS=1`` only for a local diagnostic build: Google's
+    test units are served to every device, so a filled test banner proves
+    the pipeline. Never ship with True — the family CI quality gate fails
+    the build if Google's test IDs appear anywhere.
     """
-    return os.getenv("ASASE_AD_TEST_IDS", "1") != "0"
+    return os.getenv("ASASE_AD_TEST_IDS", "0") == "1"
 
 
 class AdService:
@@ -42,8 +43,12 @@ class AdService:
     BANNER_ID_ANDROID_TEST = "ca-app-pub-3940256099942544/9214589741"
     INTERSTITIAL_ID_ANDROID_TEST = "ca-app-pub-3940256099942544/1033173712"
 
-    BANNER_ID_ANDROID_PROD = "ca-app-pub-5679949845754640/6389274819"
-    INTERSTITIAL_ID_ANDROID_PROD = "ca-app-pub-5679949845754640/5339329844"
+    # Production units (AdMob console, Asase app ca-app-pub-5679949845754640~3484587388)
+    BANNER_ID_ANDROID_PROD = "ca-app-pub-5679949845754640/4500275250"
+    INTERSTITIAL_ID_ANDROID_PROD = "ca-app-pub-5679949845754640/1548689184"
+
+    # Owner's rule (all his apps): at least 60s between interstitials.
+    INTERSTITIAL_MIN_INTERVAL_SEC = 60.0
 
     def __init__(self, page: ft.Page | None = None):
         self.page = page
@@ -90,7 +95,12 @@ class AdService:
     # ── Consent Management (UMP) ──────────────────────────────────────────────
 
     async def gather_consent(self) -> None:
-        """Run UMP consent flow. Only shows UI in regulated regions (EEA/UK)."""
+        """Run UMP consent flow. Only shows UI in regulated regions (EEA/UK).
+
+        The verdict is recorded for logging/policy — never obeyed as an ad
+        gate (owner's rule, all his apps): if a user declines consent, ads
+        still serve. A failed UMP flow also defaults to allow.
+        """
         if not _HAS_ADS or not self._is_mobile() or not self.page:
             self._can_request_ads = True
             return
@@ -100,6 +110,10 @@ class AdService:
             await self._consent_manager.request_consent_info_update()
             await self._consent_manager.load_and_show_consent_form_if_required()
             self._can_request_ads = await self._consent_manager.can_request_ads()
+            logger.info(
+                "AdService: consent status recorded (can_request_ads=%s) — ads serve regardless",
+                self._can_request_ads,
+            )
         except Exception as e:
             logger.warning("UMP consent flow failed, defaulting to allow ads: %s", e)
             self._can_request_ads = True
@@ -121,8 +135,12 @@ class AdService:
     # ── Ad Controls ───────────────────────────────────────────────────────────
 
     def get_banner_ad(self) -> ft.Control:
-        """Return a banner ad control, or empty container on desktop/web."""
-        if not _HAS_ADS or not self._is_mobile() or not self._can_request_ads:
+        """Return a banner ad control, or empty container on desktop/web.
+
+        Consent never gates (owner's rule): the verdict is recorded, ads
+        serve with or without it.
+        """
+        if not _HAS_ADS or not self._is_mobile():
             return ft.Container(width=0, height=0)
         try:
             req = fta.AdRequest(
@@ -234,19 +252,29 @@ class AdService:
         self._evict_interstitial()
         await self.preload_interstitial(on_close=self._on_close)
 
-    async def show_interstitial(self, min_interval_seconds: float = 90.0) -> bool:
-        """Show preloaded interstitial if cooldown interval has elapsed."""
+    async def show_interstitial(
+        self, min_interval_seconds: float | None = None
+    ) -> bool:
+        """Show preloaded interstitial if cooldown interval has elapsed.
+
+        Consent never gates (owner's rule): ads serve with or without it.
+        """
+        interval = (
+            self.INTERSTITIAL_MIN_INTERVAL_SEC
+            if min_interval_seconds is None
+            else min_interval_seconds
+        )
         now = time.time()
-        if now - self._last_interstitial_time < min_interval_seconds:
+        if now - self._last_interstitial_time < interval:
             logger.debug(
                 "Interstitial suppressed: cooldown active (%.1fs elapsed < %.1fs)",
                 now - self._last_interstitial_time,
-                min_interval_seconds,
+                interval,
             )
             return False
 
         await self._refresh_consent()
-        if self.interstitial and self._is_mobile() and self._can_request_ads:
+        if self.interstitial and self._is_mobile():
             try:
                 await self.interstitial.show()
                 self._last_interstitial_time = now

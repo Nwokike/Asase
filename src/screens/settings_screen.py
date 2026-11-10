@@ -7,7 +7,7 @@ import logging
 import flet as ft
 from flet import Control
 
-from components.banner_ad import build_banner_ad
+from components.banner_ad import pooled_banner_ad
 from components.section_header import SectionHeader
 from components.settings.sections_about import build_about_card, build_terminal_card
 from components.settings.sections_hazards import build_hazards_section
@@ -186,7 +186,11 @@ def SettingsScreen() -> Control:
                 padding=ft.Padding(tokens.SPACE_LG, 0, tokens.SPACE_LG, 0),
             ),
             ft.Container(height=tokens.SPACE_LG),
-            build_banner_ad(page),
+            pooled_banner_ad("settings-1"),
+            ft.Container(height=tokens.SPACE_MD),
+            pooled_banner_ad("settings-2"),
+            ft.Container(height=tokens.SPACE_MD),
+            pooled_banner_ad("settings-3"),
             ft.Container(height=tokens.SPACE_XL),
         ],
         spacing=0,

@@ -8,7 +8,7 @@ import flet as ft
 from flet import Control
 
 from components.adaptive_nav import window_class
-from components.banner_ad import AdMobBanner
+from components.banner_ad import pooled_banner_ad
 from components.empty_state import EmptyState
 from components.hazard_map import (
     HazardMap,
@@ -467,8 +467,9 @@ def HomeScreen() -> Control:
                     )
                 ]
             ),
+            pooled_banner_ad("home-2"),
             # AdMob Banner
-            AdMobBanner(),
+            pooled_banner_ad("home-1"),
             ft.Container(height=tokens.SPACE_XXXL),
         ],
         spacing=0,
@@ -650,7 +651,7 @@ def HomeScreen() -> Control:
                         )
                     ]
                 ),
-                AdMobBanner(),
+                pooled_banner_ad("home-canvas"),
                 ft.Container(height=tokens.SPACE_XXXL),
             ],
             spacing=0,

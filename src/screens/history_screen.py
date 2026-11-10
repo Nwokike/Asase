@@ -7,6 +7,7 @@ import logging
 import flet as ft
 from flet import Control
 
+from components.banner_ad import pooled_banner_ad
 from components.empty_state import EmptyState
 from components.section_header import SectionHeader
 from core import tokens
@@ -181,7 +182,10 @@ def HistoryScreen() -> Control:
                 )
         if state.recent_searches:
             rows.append(SectionHeader("RECENT SEARCHES"))
-            for r in state.recent_searches[:20]:
+            # Interleaved banner every 5 rows (family pattern, capped):
+            # a long history scroll shows up to 2 in-list banners.
+            placed = 0
+            for idx, r in enumerate(state.recent_searches[:20]):
                 rows.append(
                     ft.Container(
                         content=_row(r, False),
@@ -190,12 +194,17 @@ def HistoryScreen() -> Control:
                         ),
                     )
                 )
+                placed += 1
+                if placed >= 5 and idx // 5 < 2:
+                    rows.append(pooled_banner_ad(f"history-list-{idx // 5}"))
+                    placed = 0
         body = ft.Column(rows, spacing=tokens.SPACE_XS)
 
     _lv = ft.ListView(
         controls=[
             clear_row,
             ft.Container(content=body, padding=ft.Padding(0, tokens.SPACE_SM, 0, 0)),
+            pooled_banner_ad("history-1"),
             ft.Container(height=tokens.SPACE_XXXL),
         ],
         expand=True,

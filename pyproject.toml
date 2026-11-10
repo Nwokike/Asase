@@ -56,7 +56,7 @@ usesCleartextTraffic = "false"
 "android.permission.ACCESS_COARSE_LOCATION" = true
 
 [tool.flet.android.meta_data]
-"com.google.android.gms.ads.APPLICATION_ID" = "ca-app-pub-5679949845754640~2413783608"
+"com.google.android.gms.ads.APPLICATION_ID" = "ca-app-pub-5679949845754640~3484587388"
 
 [tool.flet.android.signing]
 key_store = "../../../../kiri_keystore.jks"

@@ -451,7 +451,7 @@ class AppController:
 
         if not silent and self.ad_service:
             with contextlib.suppress(Exception):
-                await self.ad_service.show_interstitial(min_interval_seconds=120.0)
+                await self.ad_service.show_interstitial()
 
         if not silent and self.haptics:
             with contextlib.suppress(Exception):
@@ -500,7 +500,7 @@ class AppController:
         """Open Situation Report with strategic interstitial transition on mobile."""
         if self.ad_service:
             with contextlib.suppress(Exception):
-                await self.ad_service.show_interstitial(min_interval_seconds=60.0)
+                await self.ad_service.show_interstitial()
         if self._controller_methods and self._controller_methods.show_report:
             self._controller_methods.show_report()
 

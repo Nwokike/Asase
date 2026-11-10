@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import time
 
 import flet as ft
 from flet import Control
 
-from components.banner_ad import build_banner_ad
+from components.banner_ad import pooled_banner_ad
 from components.report.ai_briefing_section import build_ai_briefing_section
 from components.report.air_quality_section import build_air_quality_section
 from components.report.hydrology_marine_section import (
@@ -223,6 +224,13 @@ def ReportScreen() -> Control:
                 )
         else:
             logger.warning("Export dossier skipped: no share or clipboard wired")
+            return
+        # Ad item: an interstitial at the "I got what I came for" moment —
+        # the dossier just landed on disk/shared. The service's own 60s
+        # interval guard prevents stacking with other triggers.
+        if getattr(state, "ad_service", None):
+            with contextlib.suppress(Exception):
+                await state.ad_service.show_interstitial()
 
     threat_radar = build_threat_radar_section(
         seismic_risk_val,
@@ -642,7 +650,7 @@ def ReportScreen() -> Control:
         ai_section,
         _radius_history_block,
         ft.Container(height=tokens.SPACE_MD),
-        build_banner_ad(page),
+        pooled_banner_ad("report-summary"),
         ft.Container(height=tokens.SPACE_MD),
     ]
 
@@ -670,7 +678,7 @@ def ReportScreen() -> Control:
         SectionHeader("ATMOSPHERIC DYNAMICS & CONVECTIVE STORM INDEX"),
         weather_sec,
         ft.Container(height=tokens.SPACE_MD),
-        build_banner_ad(page),
+        pooled_banner_ad("report-evidence"),
         ft.Container(height=tokens.SPACE_MD),
     ]
 
